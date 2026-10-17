@@ -2,11 +2,13 @@
 import type { DonneesDeSalle } from "../donnees";
 import { debut, fin, precedent, suivant, type Position } from "./etat";
 import { rendreDiapo, type Contexte } from "./rendu";
+import { debutsDePages, decalageCourant, decalagePage, type Item } from "./defilement";
 
 const lire = <T>(id: string): T => JSON.parse(document.getElementById(id)?.textContent ?? "null") as T;
 const donnees = lire<DonneesDeSalle>("donnees");
 const medias = lire<Record<string, string>>("medias");
 const plats = donnees.sequences.flatMap((s) => s.blocs.map((b, rang) => ({ s, b, rang })));
+/** Les étapes de chaque bloc : celles du dévoilement, ou les pages d'un contenu statique qui déborde (mesurées au rendu). */
 const etapes = plats.map((x) => x.b.etapes);
 
 let pos: Position = debut();
@@ -16,6 +18,12 @@ let notes = false;
 const debutSeance = Date.now();
 let minuteur: { fin: number; pause: number | null } | null = null;
 let presentateur: Window | null = null;
+/** Le sens du dernier mouvement : un retour arrive sur la dernière page du bloc précédent. */
+let sens: "avant" | "arriere" | "saut" = "saut";
+let blocRendu = -1;
+let etapeRendue = -1;
+/** Les transformations des éléments qui glissent (rail, plan de capture), pour les animer d'une étape à l'autre. */
+const glisses = new Map<string, string>();
 
 const scene = document.getElementById("scene")!;
 const surcouche = document.getElementById("surcouche")!;
@@ -23,7 +31,8 @@ const surcouche = document.getElementById("surcouche")!;
 function depuisAncre(): void {
   const [id, e] = decodeURIComponent(location.hash.slice(1)).split(".");
   const i = plats.findIndex((x) => x.b.id === id);
-  if (i >= 0) pos = { bloc: i, etape: Math.min(Number(e) || 0, etapes[i] ?? 0) };
+  // Un contenu statique n'a ses pages qu'une fois mesuré : son étape se borne au rendu.
+  if (i >= 0) pos = { bloc: i, etape: plats[i]!.b.etapes > 0 ? Math.min(Number(e) || 0, etapes[i] ?? 0) : Number(e) || 0 };
 }
 
 function echelle(): void {
@@ -58,14 +67,101 @@ function rendreSurcouche(): void {
   }
 }
 
-function contexte(doc: Document, z: boolean): Contexte {
-  return { doc, medias, zoom: z };
+function contexte(doc: Document, z: boolean, anime: Contexte["anime"]): Contexte {
+  return { doc, medias, zoom: z, anime };
+}
+
+/**
+ * Mesure les fenêtres défilantes d'une diapositive rendue et décale leurs rails : en dévoilement, la pile suit
+ * l'item courant ; un contenu statique se lit page par page (l'étape vaut la page). Rend le nombre de pages.
+ */
+function ajuster(racine: Element, etapesDuDevoilement: number, etape: number): number {
+  let pages = 1;
+  racine.querySelectorAll<HTMLElement>(".defile").forEach((f, k) => {
+    const rail = f.querySelector<HTMLElement>(".rail");
+    if (!rail) return;
+    const r0 = rail.getBoundingClientRect();
+    const s = r0.height / (rail.offsetHeight || 1) || 1;
+    const items: (Item & { e: Element })[] = [...rail.querySelectorAll("li, tr")].map((e) => {
+      const r = e.getBoundingClientRect();
+      return { haut: (r.top - r0.top) / s, bas: (r.bottom - r0.top) / s, e };
+    });
+    const total = rail.offsetHeight;
+    const fenetre = f.clientHeight;
+    let decalage = 0;
+    if (etapesDuDevoilement > 0) {
+      const courant = items.find((x) => x.e.classList.contains("courant"));
+      decalage = courant ? decalageCourant(courant, total, fenetre) : 0;
+    } else {
+      const debuts = debutsDePages(items, fenetre);
+      if (k === 0) pages = debuts.length;
+      decalage = decalagePage(debuts, etape, total, fenetre);
+      f.classList.toggle("bas", decalage < total - fenetre - 1);
+    }
+    f.classList.toggle("haut", decalage > 1);
+    rail.style.transform = decalage ? `translateY(${-decalage}px)` : "";
+  });
+  return pages;
+}
+
+/** Anime d'une étape à l'autre ce qui glisse (rail, plan zoomé) : de la transformation d'avant vers la nouvelle. */
+function glisser(racine: Element, memeBloc: boolean): void {
+  racine.querySelectorAll<HTMLElement>("[data-glisse]").forEach((e, i) => {
+    const cle = `${e.dataset.glisse}-${i}`;
+    const nouvelle = e.style.transform;
+    const avant = glisses.get(cle) ?? "";
+    if (memeBloc && avant !== nouvelle) {
+      e.style.transition = "none";
+      e.style.transform = avant;
+      void e.offsetWidth;
+      e.style.transition = "";
+      e.style.transform = nouvelle;
+    }
+    glisses.set(cle, nouvelle);
+  });
+}
+
+/** Le volet de la séquence : en quittant sa transition, le panneau navy balaie l'écran et révèle la suite. */
+function volet(x: (typeof plats)[number]): HTMLElement {
+  const v = document.createElement("div");
+  v.className = "volet";
+  const sur = document.createElement("div");
+  sur.className = "surtitre";
+  sur.textContent = x.s.numero !== null ? `Séquence ${x.s.numero}` : "";
+  const titre = document.createElement("div");
+  titre.className = "titre";
+  titre.textContent = x.s.titre;
+  v.append(sur, titre);
+  v.addEventListener("animationend", (e) => { if (e.target === v) v.remove(); });
+  return v;
 }
 
 function rendre(): void {
   const x = plats[pos.bloc];
   if (!x) return;
-  scene.replaceChildren(rendreDiapo(contexte(document, zoom), x.s, x.b, x.rang, pos.etape));
+  const memeBloc = blocRendu === pos.bloc;
+  const avant = plats[blocRendu];
+  const avecVolet = !memeBloc && sens === "avant" && avant?.b.figure === "transition" && avant.s === x.s;
+  const anime = !memeBloc ? "bloc" : etapeRendue !== pos.etape ? "etape" : "aucun";
+  const diapo = rendreDiapo(contexte(document, zoom, anime), x.s, x.b, x.rang, pos.etape);
+  if (avecVolet) diapo.classList.add("apres-volet");
+  scene.replaceChildren(diapo, ...(avecVolet ? [volet(x)] : []));
+  if (!memeBloc) glisses.clear();
+  if (x.b.etapes === 0) {
+    const pages = ajuster(diapo, 0, pos.etape);
+    const mesuree = etapes[pos.bloc] !== pages - 1;
+    etapes[pos.bloc] = pages - 1;
+    const etape = sens === "arriere" && !memeBloc && mesuree ? pages - 1 : Math.min(pos.etape, pages - 1);
+    if (etape !== pos.etape) {
+      pos = { bloc: pos.bloc, etape };
+      ajuster(diapo, 0, pos.etape);
+    }
+  } else {
+    ajuster(diapo, x.b.etapes, pos.etape);
+  }
+  glisser(diapo, memeBloc);
+  blocRendu = pos.bloc;
+  etapeRendue = pos.etape;
   history.replaceState(null, "", `#${x.b.id}.${pos.etape}`);
   rendreSurcouche();
   rendrePresentateur();
@@ -83,9 +179,11 @@ function rendrePresentateur(): void {
     const v = d.getElementById(id)!;
     const c = d.createElement("div");
     c.className = "cadre";
-    c.append(rendreDiapo(contexte(d, false), s.s, s.b, s.rang, etape));
+    const diapo = rendreDiapo(contexte(d, false, "aucun"), s.s, s.b, s.rang, etape);
+    c.append(diapo);
     c.style.transform = `scale(${v.clientWidth / 1920})`;
     v.replaceChildren(c);
+    ajuster(diapo, s.b.etapes, etape);
   };
   cadre("courante", x, pos.etape);
   cadre("suivante", y, ensuite.etape);
@@ -124,11 +222,11 @@ function touche(e: KeyboardEvent): void {
   const avant = pos;
   switch (e.key) {
     case "ArrowRight": case "ArrowDown": case "PageDown": case " ": case "Enter":
-      pos = suivant(pos, etapes); break;
+      pos = suivant(pos, etapes); sens = "avant"; break;
     case "ArrowLeft": case "ArrowUp": case "PageUp": case "Backspace":
-      pos = precedent(pos, etapes); break;
-    case "Home": pos = debut(); break;
-    case "End": pos = fin(etapes); break;
+      pos = precedent(pos, etapes); sens = "arriere"; break;
+    case "Home": pos = debut(); sens = "saut"; break;
+    case "End": pos = fin(etapes); sens = "saut"; break;
     case "b": case "B": case ".": noir = !noir; break;
     case "z": case "Z": zoom = !zoom; break;
     case "n": case "N": notes = !notes; break;
@@ -148,6 +246,7 @@ window.addEventListener("resize", echelle);
 // Une ancre saisie ou suivie (`#b034.2`) mène à ce bloc, à cette étape ; `replaceState` ne déclenche pas cet évènement.
 window.addEventListener("hashchange", () => {
   depuisAncre();
+  sens = "saut";
   rendre();
 });
 setInterval(() => {

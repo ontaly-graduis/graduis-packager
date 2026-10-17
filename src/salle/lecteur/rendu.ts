@@ -7,6 +7,8 @@ export interface Contexte {
   readonly medias: Readonly<Record<string, string>>;
   /** Le zoom sur la zone courante (touche Z). */
   readonly zoom: boolean;
+  /** Ce qui s'anime au rendu : l'entrée du bloc, le seul dévoilement de l'étape, ou rien (présentateur). */
+  readonly anime: "bloc" | "etape" | "aucun";
 }
 
 const LARGEUR = 1920;
@@ -28,9 +30,22 @@ function liste(ctx: Contexte, lignes: readonly string[], etape: number, devoile:
   lignes.forEach((l, i) => {
     const cache = devoile && i >= etape;
     const courant = devoile && i === etape - 1;
-    ul.append(el(ctx.doc, "li", cache ? "cache" : courant ? "courant" : "", l));
+    ul.append(el(ctx.doc, "li", cache ? "cache" : courant ? `courant${ctx.anime === "etape" ? " apparait" : ""}` : "", l));
   });
   return ul;
+}
+
+/**
+ * Une fenêtre défilante : le contenu glisse sur un rail. Le lecteur mesure après rendu et décale le rail —
+ * pour suivre l'item courant d'un dévoilement (la pile monte), ou page par page pour un contenu statique.
+ */
+function defile(ctx: Contexte, ...contenus: HTMLElement[]): HTMLElement {
+  const f = el(ctx.doc, "div", "defile");
+  const rail = el(ctx.doc, "div", "rail");
+  rail.dataset.glisse = "rail";
+  rail.append(...contenus);
+  f.append(rail, el(ctx.doc, "span", "indice", "▾"));
+  return f;
 }
 
 /** Une capture à sa taille d'affichage, rognée comme dans le deck, avec un plan zoomable qui porte image et zones. */
@@ -45,6 +60,7 @@ function capture(ctx: Contexte, v: VisuelDeSalle, maxL: number, maxH: number): {
   boite.style.width = `${l}px`;
   boite.style.height = `${h}px`;
   const plan = el(ctx.doc, "div", "plan");
+  plan.dataset.glisse = "plan";
   const src = ctx.medias[v.media];
   if (src) {
     const img = el(ctx.doc, "img", "", undefined, { src, alt: "" });
@@ -93,7 +109,7 @@ function pasAPas(ctx: Contexte, b: BlocDeSalle, etape: number): HTMLElement {
       }
     } else if (zone) {
       const [x, y, w, h] = zone.z.rect;
-      const z = el(ctx.doc, "div", "zone");
+      const z = el(ctx.doc, "div", `zone${ctx.anime === "etape" ? " apparait" : ""}`);
       Object.assign(z.style, { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` });
       z.append(el(ctx.doc, "span", "num", courant!.id.slice(1)));
       c.plan.append(z);
@@ -104,11 +120,14 @@ function pasAPas(ctx: Contexte, b: BlocDeSalle, etape: number): HTMLElement {
   if (pas.length) {
     const ol = el(ctx.doc, "ol", "consignes");
     pas.forEach((p, i) => {
-      const li = el(ctx.doc, "li", i >= etape && b.etapes > 0 ? "cache" : i === etape - 1 ? "courant" : "");
+      const courant = i === etape - 1;
+      const li = el(ctx.doc, "li", i >= etape && b.etapes > 0 ? "cache" : courant ? `courant${ctx.anime === "etape" ? " apparait" : ""}` : "");
       li.append(el(ctx.doc, "span", "num", p.id.slice(1)), el(ctx.doc, "span", "", p.libelle || "—"));
       ol.append(li);
     });
-    corps.append(ol);
+    const colonne = el(ctx.doc, "div", "colonne-consignes");
+    colonne.append(defile(ctx, ol));
+    corps.append(colonne);
   }
   return corps;
 }
@@ -133,7 +152,7 @@ function puce(ctx: Contexte, texte: string, classe: string): HTMLElement {
 
 /** La diapositive d'un bloc à une étape donnée. */
 export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle, rang: number, etape: number): HTMLElement {
-  const d = el(ctx.doc, "section", `diapo f-${b.figure}`);
+  const d = el(ctx.doc, "section", `diapo f-${b.figure}${ctx.anime === "bloc" ? " entree" : ""}`);
   const devoile = b.etapes > 0;
   const plein = ["couverture", "transition", "ecran-animation", "demonstration"].includes(b.figure);
   if (!plein) {
@@ -150,7 +169,7 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
       break;
     }
     case "transition":
-      corps.append(el(ctx.doc, "div", "numero", seq.numero !== null ? String(seq.numero) : ""), el(ctx.doc, "h1", "", b.titre ?? ""), liste(ctx, b.lignes, 0, false, "sommaire"));
+      corps.append(el(ctx.doc, "div", "numero", seq.numero !== null ? String(seq.numero) : ""), el(ctx.doc, "h1", "", b.titre ?? ""), el(ctx.doc, "div", "filet"), liste(ctx, b.lignes, 0, false, "sommaire"));
       break;
     case "ecran-animation": {
       const [premier, ...reste] = b.lignes;
@@ -163,13 +182,13 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
       corps.append(el(ctx.doc, "div", "etiquette", "Démonstration"), el(ctx.doc, "div", "grand", b.lignes.filter((l) => !/démonstration/i.test(l)).join(" ") || b.titre || ""));
       break;
     case "mise-en-pratique": {
-      corps.append(puce(ctx, "À vous de jouer", "a-vous"), liste(ctx, b.lignes, etape, devoile));
+      corps.append(puce(ctx, "À vous de jouer", "a-vous"), defile(ctx, liste(ctx, b.lignes, etape, devoile)));
       if (b.aide) corps.append(el(ctx.doc, "p", "aide", "Vous pouvez vous aider du pas-à-pas."));
       if (b.duree) corps.append(puce(ctx, `${b.duree} minutes`, "duree"));
       break;
     }
     case "etapes-cles":
-      corps.append(liste(ctx, b.lignes, etape, devoile, "liste numerotee"));
+      corps.append(defile(ctx, liste(ctx, b.lignes, etape, devoile, "liste numerotee")));
       break;
     case "pas-a-pas":
       corps.append(pasAPas(ctx, b, etape));
@@ -180,15 +199,14 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
       corps.append(...visuels(ctx, b, CORPS.largeur, CORPS.hauteur));
       // Les textes d'un schéma sont les étiquettes de son dessin : ils ne se listent pas à côté.
       if (b.figure === "schema" && !b.visuels.length) corps.append(el(ctx.doc, "div", "etiquette", "Schéma dessiné — rendu vectoriel à venir (PKG-B2)"));
-      if (b.figure === "capture" && b.lignes.length) corps.append(liste(ctx, b.lignes, 0, false, "legende"));
+      if (b.figure === "capture" && b.lignes.length) corps.append(liste(ctx, b.lignes, 0, false, "liste legende"));
       break;
     case "processus":
       corps.classList.add("colonne");
-      for (const t of b.tableaux) corps.append(tableau(ctx, t));
-      if (b.lignes.length) corps.append(liste(ctx, b.lignes, 0, false, "legende"));
+      corps.append(defile(ctx, ...b.tableaux.map((t) => tableau(ctx, t)), ...(b.lignes.length ? [liste(ctx, b.lignes, 0, false, "liste legende")] : [])));
       break;
     case "glossaire":
-      corps.append(liste(ctx, b.lignes, 0, false, "glossaire"));
+      corps.append(defile(ctx, liste(ctx, b.lignes, 0, false, "liste glossaire")));
       break;
     case "renvoi":
       corps.classList.add("centre");
@@ -196,8 +214,7 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
       break;
     default: {
       const texte = el(ctx.doc, "div", "texte");
-      texte.append(liste(ctx, b.lignes, etape, devoile));
-      for (const t of b.tableaux) texte.append(tableau(ctx, t));
+      texte.append(defile(ctx, liste(ctx, b.lignes, etape, devoile), ...b.tableaux.map((t) => tableau(ctx, t))));
       corps.append(texte);
       if (b.visuels.length) {
         const colonne = el(ctx.doc, "div", "visuels");

@@ -61,3 +61,45 @@ test("ouvre le présentateur, qui pilote la salle", async ({ page }) => {
   await expect(page).toHaveURL(/#b002\.0$/);
   await expect(presentateur.locator("#position")).toContainText("2 / 3");
 });
+
+test.describe("débordement", () => {
+  let urlLongue = "";
+  test.beforeAll(async () => {
+    const ligne = (i: number) => `Item ${i} — une consigne assez longue pour occuper une ligne entière de la scène projetée`;
+    const bloc = (n: number, figure: "contenu" | "glossaire", lignes: number) => ({
+      id: `b${String(n).padStart(3, "0")}`, figure, source: { diapo: n }, titre: `Bloc ${n}`,
+      textes: [Array.from({ length: lignes }, (_, i) => ligne(i + 1)).join("\n")],
+      visuels: [], tableaux: [], pas: [], notes: "",
+    });
+    const spec = {
+      schema: "graduis/seance-spec@0" as const,
+      source: { nom: "long.pptx", empreinte: "sha256:" + "c".repeat(64) },
+      sequences: [{ id: "s001", blocs: [bloc(1, "contenu", 30), bloc(2, "glossaire", 60), bloc(3, "contenu", 1)] }],
+    };
+    const { html } = await construireSalle(spec, { prise: { devoilement: "pastille" }, theme: chargerTheme("gabarits/theme-onet"), media: () => undefined });
+    const fichier = join(mkdtempSync(join(tmpdir(), "salle-")), "longue.html");
+    writeFileSync(fichier, html);
+    urlLongue = "file://" + fichier;
+  });
+
+  test("en dévoilement, la pile suit l'item courant, qui reste entier dans la fenêtre", async ({ page }) => {
+    await page.goto(urlLongue + "#b001.25");
+    await page.waitForTimeout(700);
+    const fenetre = (await page.locator(".defile").boundingBox())!;
+    const courant = (await page.locator("li.courant").boundingBox())!;
+    expect(courant.y).toBeGreaterThanOrEqual(fenetre.y - 1);
+    expect(courant.y + courant.height).toBeLessThanOrEqual(fenetre.y + fenetre.height + 1);
+    await expect(page.locator(".defile")).toHaveClass(/haut/);
+  });
+
+  test("un contenu statique qui déborde se lit page par page, et le retour arrive sur sa dernière page", async ({ page }) => {
+    await page.goto(urlLongue + "#b002.0");
+    await expect(page.locator(".defile")).toHaveClass(/bas/);
+    await page.keyboard.press("ArrowRight");
+    await expect(page).toHaveURL(/#b002\.1$/);
+    await page.goto(urlLongue + "#b003.0");
+    await page.keyboard.press("ArrowLeft");
+    await expect(page).toHaveURL(/#b002\.[1-9]$/);
+    await expect(page.locator(".defile")).not.toHaveClass(/bas/);
+  });
+});
