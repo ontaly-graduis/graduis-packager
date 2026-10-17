@@ -58,23 +58,28 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 
 ---
 
-## PKG-B3 · Piste : l'organisation des textes et les schémas joués — prototype (branche `lot/piste-structure-schemas`)
+## PKG-B3 · L'organisation des textes et les schémas joués — Sortie atteinte le 17/10
 
-**Demande (David, 17/10)** : avant PKG-C, l'organisation sémantique des diapositives de texte (tout était au même niveau, en énumération) et des schémas qui jouent mieux le thème et l'animation du moteur de figures.
+**Livré** : demandé par David avant PKG-C, prototypé, puis arrêté sur ses cinq réponses (`decisions.md`, 17/10).
+- **Les textes** (`src/qualification/structure.ts`, `bloc.structure`) : rangées et colonnes de cadres ; fiches (cadres empilés) et fiches illustrées (une icône ou un portrait qui touche un cadre) ; intertitres, paragraphes, listes et leurs détails, définitions ; liste numérotée dans l'ordre des pastilles quand l'auteur a numéroté (étapes clés). Lus sur la graisse, le corps, les puces, les niveaux, les deux-points, les numéros ; la graisse en ligne gardée. En salle : fiches au thème, définitions en deux colonnes, dévoilement par niveau 1, resserrement jusqu'à 76 % avant de défiler.
+- **Les schémas** : la manière du thème (`maniere.json` : coins droits, deux traits, trois corps, badges d'étape) ; la partition (`src/qualification/partition.ts`) par colonnes rangées par leurs numéros, ou par étapes numérotées (traits qui suivent le flux, décisions et leurs « Oui / Non ») ; en salle, chaque pas se trace (les traits courent, puis aplats et textes), les pas joués restent pleins.
 
-**Prototype** (non fusionné, à juger sur `out/boost-acheteur/salle-s001-s004-s013-s099-s138-s162.html` et `salle-s013-s030.html`) :
-- **Textes** (`src/qualification/structure.ts`, `bloc.structure`) : rangées et colonnes de cadres (un cadre empilé sur un autre fait une fiche ; une icône ou un portrait qui touche un cadre l'illustre), intertitres, paragraphes, listes et leurs détails, définitions « terme : définition » — lus sur la graisse, le corps, les puces, les niveaux, les deux-points. La graisse en ligne est gardée (`**…**`). En salle : fiches au thème, définitions en deux colonnes, dévoilement unité par unité (l'intertitre paraît avec sa première unité), resserrement jusqu'à 76 % avant de défiler.
-- **Schémas, la manière du thème** (`gabarits/theme-onet/maniere.json`, `src/theme/maniere.ts`) : coins droits (les surfaces du DS Onet sont à angles droits), deux épaisseurs de trait, trois corps, pastilles numérotées en badge d'étape.
-- **Schémas, la partition** (`src/qualification/partition.ts`, `dessin.partition`, `pas` des éléments) : par colonnes (processus en phases, fiches personae : 4 pas) ou par étapes numérotées (logigramme PTP-040-010 : 9 pas, les traits suivent le flux, les décisions et leurs « Oui / Non » suivent leur pas) ; le reste est le décor. En salle, chaque pas **se trace** comme dans le wizard (TRC) : les traits courent, les aplats puis les textes paraissent, sur les jetons de mouvement du thème.
+**Sortie** (45 témoins Vitest — 34 sur le dépôt, 11 sur le corpus — et 8 Playwright, verts)
+- Les 7 schémas : 5 partitionnés (17 à 20 en 4 colonnes, 31 en 9 étapes), 2 d'un bloc (15, 16 : architectures sans colonnes) ; le décor (couloirs, légende) visible dès l'entrée.
+- Les étapes clés dans l'ordre de leurs numéros ; les statuts en définitions ; les rôles S2P en quatre fiches illustrées.
+- Non couvert, nommé : la structure et la partition ne passent pas encore par le PPT de validation (PKG-C) ; le papier ne les rend pas encore (PKG-D).
 
-**À trancher**
-- La structure et la partition sont des lectures heuristiques : par I-PKG-4, elles doivent passer par le PPT de validation. La grammaire de PKG-C les porte-t-elle (intertitres, listes, définitions, fiches ; ordre de dévoilement d'un schéma) ?
-- Le dévoilement d'un texte : unité par unité (prototype) ou section par section sur les diapositives denses.
-- La manière des schémas : coins droits, trois corps, badges — tout, ou en partie ?
-- La partition : les pas passés restent pleins (prototype) ou s'estompent (le verbe `s-estompe` de la pièce) ; le tracé à chaque pas, ou un simple fondu.
-- Plus loin : recomposer certains schémas par les gabarits du wizard (`parcours`, `cas`, `ensembles`) — mise en page calculée, entièrement au thème, au prix de la fidélité au dessin d'origine.
+---
 
-**Sortie** (si adoptée) : témoins de structure et de partition sur la fixture et le corpus ; décisions.
+## PKG-B4 · Les schémas recomposés par les gabarits du wizard
+
+**Livrer** (décision de David, 17/10 : « préférable » à la fidélité au dessin) : quand un schéma relève d'un gabarit du wizard (`parcours`, `cas`, `tableau`, `trame`, `ensembles`), il est **recomposé** : sa structure est lue au pivot, sa mise en page est calculée au thème, son dévoilement suit le phrasé du gabarit. Les autres restent redessinés (PKG-B2, B3).
+
+**Candidats mesurés** : le processus S2P (17, 18) est un `cas` à quatre colonnes numérotées, chacune une suite d'étapes numérotées, chaque étape d'une nature (tâche Oracle, action automatique, action manuelle : la légende) et, en 18, d'une description ; les fiches personae (19, 20) sont une grille couloirs × phases ; le logigramme (31) et les architectures (15, 16) n'ont pas de gabarit et restent redessinés.
+
+**À trancher au démarrage**
+- Le rendu : SVG calculé comme au wizard (le texte se coupe sur des métriques de police), ou composition HTML au thème (le navigateur coupe le texte avec la vraie police) — même structure et même phrasé dans les deux cas.
+- Ce qui s'ajoute aux structures du wizard : la nature d'une étape (et sa légende), la description d'une étape, l'en-tête numéroté d'une colonne.
 
 ---
 
@@ -85,6 +90,7 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 **À trancher au démarrage**
 - Le nom de l'objet : « PPT d'auteur » (spec) ou « PPT de validation » (le mot de David, 17/10).
 - Le dessin des schémas réémis en formes natives : aux couleurs des rôles (valeurs du thème) et en Montserrat, corps compensés ; ce que `lire` en relit doit redonner le même dessin (I-PKG-3).
+- La grammaire des lectures heuristiques (I-PKG-4) : la structure d'un texte (intertitres, listes, définitions, fiches) et la partition d'un schéma (pas et ordre de chaque élément) se montrent et se corrigent dans le PPT de validation.
 - Le support des identifiants : étiquettes OOXML ou nom de diapositive ; le comportement au copier-coller.
 - Le thème dans le PPT : comment la couche sémantique ONET se projette sur les 12 emplacements de couleur et les polices du thème Office.
 - Le repli de police : Montserrat manque sur une partie des postes, et PowerPoint ne l'embarque pas toujours. Police embarquée, police système de repli, ou installation demandée à ONET ?

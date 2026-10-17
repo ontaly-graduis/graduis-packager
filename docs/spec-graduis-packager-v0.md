@@ -157,6 +157,8 @@ pivot₀ ── émettre ──► PPT d'auteur (gabarit à grammaire, thème ON
 - `notes` : verbatim. Leur grammaire (`Durée :`, `Consigne :`, `Vigilance :`, `Corrigé :`) arrive avec le PPT de validation (PKG-C).
 - Le glossaire structuré et les renvois résolus viendront avec leurs consommateurs (H7, modules partagés), pas avant.
 - `dessin` (figure `schema` seulement, PKG-B2) : le schéma redessiné — `cadre` et `elements` dans l'ordre d'empilement, en points : des **formes** (géométrie du catalogue DrawingML et ses ajustements, ou chemins libres ; rotation, retournement ; `fond` et `trait` par **rôle** ; texte mis en forme : paragraphes, fragments, corps, graisse, rôle, police d'origine), des **images** (par hash) et des **tableaux** (colonnes, lignes, cellules). Aucune couleur : un rôle (`marine-fort` … `gris-pale`, `papier`, `encre`) que le thème résout. `textes` et `visuels` restent l'inventaire verbatim du bloc.
+- `dessin.partition` (PKG-B3) : comment le schéma se dévoile — par `colonnes` ou par `etapes` numérotées ; chaque élément porte son `pas` (absent : le décor) et son `ordre` dans le pas (le numéro de sa pastille).
+- `structure` (figures de texte et étapes clés, PKG-B3) : des `rangees` de haut en bas, des `colonnes` de gauche à droite (une colonne peut porter le `visuel` qui l'illustre), des `noeuds` — `titre`, `paragraphe`, `liste` (numérotée ou non, items et leurs `details`), `definitions` (terme, texte, détails). Les textes gardent leur graisse en `**…**`. Le dévoilement s'en dérive, par niveau de hiérarchie 1.
 - La trace de classification (le signal qui a décidé la figure) vit au rapport, jamais au pivot ; la projection des couleurs d'origine sur les rôles aussi (règle DESSIN).
 
 ### 4.2 Les figures de salle
@@ -167,9 +169,9 @@ pivot₀ ── émettre ──► PPT d'auteur (gabarit à grammaire, thème ON
 | `ecran-animation` | animation | « Ecran Votre promotion », Pause, Déjeuner, Météo, et leur texte : émargement, tour de table, météo, questions, remerciement | écran plein, minuteur si une durée est notée | absent (horaires en tête) | idem, consigne en notes |
 | `transition` | — | « Slide transition » (13/13) | carte de séquence, au mode de transition de la prise | intercalaire de chapitre | idem |
 | `objectifs` | E | titre « Objectifs… » | liste dévoilée | encadré | idem |
-| `contenu` | E | texte, avec ou sans visuel | dévoilement par paragraphe | texte intégral | idem |
+| `contenu` | E | texte, avec ou sans visuel | organisé (fiches, sections, listes, définitions), dévoilé par niveau 1 | texte intégral, organisé | idem |
 | `processus` | E | tableau d'étapes (ex. PTP-040-010) | tableau, ligne active | tableau | idem |
-| `schema` | E | groupe dense de formes (fiches personae, architecture S2P) | redessiné en SVG au thème, textes ajustés à leurs formes | le même SVG | formes natives réémises du dessin (PKG-C) |
+| `schema` | E | groupe dense de formes (fiches personae, architecture S2P) | recomposé par un gabarit du wizard quand il en relève (PKG-B4), sinon redessiné en SVG à la manière du thème ; dévoilé pas à pas (colonnes, étapes numérotées), chaque pas se trace | le même SVG, état final | formes natives réémises du dessin (PKG-C) |
 | `demonstration` | E | écran « Démonstration » | écran signal : ce qui va être montré dans Oracle | renvoi au pas-à-pas | idem |
 | `pas-a-pas` | E (aide en R) | capture + pastilles (61) | **dévoilement pastille par pastille**, zoom sur la zone | capture, toutes pastilles, consignes numérotées | capture + pastilles, consignes en liste |
 | `capture` | E | capture sans pastille (39) | image, zoom | image | idem ; diagnostic « capture muette » (H5) |
