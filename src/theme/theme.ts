@@ -3,16 +3,19 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 export interface Theme {
-  /** Primitives, couche sémantique et mouvement, tels quels (le seul endroit où vivent des valeurs hex). */
+  /** Primitives, couche sémantique, mouvement et palette des schémas, tels quels (le seul endroit où vivent des valeurs hex). */
   readonly jetons: string;
   /** `@font-face` des polices du thème, en data-URI woff2. */
   readonly polices: string;
   /** Le logo, en data-URI SVG. */
   readonly logo: string;
+  /** Chasse des polices d'origine rapportée à celle du thème (`chasse.json`). */
+  readonly chasse: Readonly<Record<string, number>>;
 }
 
+
 export function chargerTheme(dossier: string): Theme {
-  const jetons = ["tokens.css", "ds-onet.css", "mouvement.css"].map((f) => readFileSync(join(dossier, f), "utf8")).join("\n");
+  const jetons = ["tokens.css", "ds-onet.css", "mouvement.css", "dessin.css"].map((f) => readFileSync(join(dossier, f), "utf8")).join("\n");
   const polices = readdirSync(join(dossier, "polices"))
     .filter((f) => f.endsWith(".woff2"))
     .sort()
@@ -26,5 +29,6 @@ export function chargerTheme(dossier: string): Theme {
     })
     .join("\n");
   const logo = "data:image/svg+xml;base64," + readFileSync(join(dossier, "logo-onet-bleu.svg")).toString("base64");
-  return { jetons, polices, logo };
+  const chasse = (JSON.parse(readFileSync(join(dossier, "chasse.json"), "utf8")) as { rapports: Record<string, number> }).rapports;
+  return { jetons, polices, logo, chasse };
 }

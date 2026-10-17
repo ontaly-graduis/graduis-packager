@@ -1,0 +1,26 @@
+/* dessin.css — palette des schémas redessinés (graduis-packager, 2026-10-17). Aucune valeur nouvelle : chaque rôle est une
+   primitive du DS Onet ou un mélange de primitives (color-mix). Six familles en trois tons (fort, moyen, pâle), plus le papier
+   et l'encre. Sont sombres (le texte posé dessus passe au papier) : marine fort et moyen, les autres « fort » sauf ciel, l'encre.
+   La famille ciel est claire de bout en bout : son ton fort est le ciel du DS, sous le marine moyen. */
+:root{
+  --dessin-marine-fort:var(--c-navy);
+  --dessin-marine-moyen:color-mix(in srgb,var(--c-navy) 55%,var(--c-sky));
+  --dessin-marine-pale:var(--c-primary-tint);
+  --dessin-ciel-fort:var(--c-sky);
+  --dessin-ciel-moyen:color-mix(in srgb,var(--c-sky) 55%,var(--c-paper));
+  --dessin-ciel-pale:color-mix(in srgb,var(--c-sky) 18%,var(--c-paper));
+  --dessin-vert-fort:var(--c-ok);
+  --dessin-vert-moyen:color-mix(in srgb,var(--c-ok) 55%,var(--c-paper));
+  --dessin-vert-pale:var(--c-success-bg);
+  --dessin-ambre-fort:var(--c-warn);
+  --dessin-ambre-moyen:color-mix(in srgb,var(--c-warn) 55%,var(--c-paper));
+  --dessin-ambre-pale:var(--c-warning-bg);
+  --dessin-rouge-fort:var(--c-red-logo);
+  --dessin-rouge-moyen:var(--c-brick);
+  --dessin-rouge-pale:var(--c-error-bg);
+  --dessin-gris-fort:var(--c-grey);
+  --dessin-gris-moyen:var(--c-disabled);
+  --dessin-gris-pale:var(--c-line);
+  --dessin-papier:var(--c-paper);
+  --dessin-encre:var(--c-ink);
+}

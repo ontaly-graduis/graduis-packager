@@ -38,7 +38,7 @@ async function lecteur(): Promise<string> {
 const jsonInline = (v: unknown) => stringify2(v).replace(/</g, "\\u003c");
 
 export async function construireSalle(spec: SeanceSpec, o: OptionsDeSalle): Promise<{ html: string; nonAffichables: string[] }> {
-  const donnees = mettreEnSalle(spec, o.prise, (h) => o.media(h)?.px ?? null, o.sequences);
+  const donnees = mettreEnSalle(spec, o.prise, (h) => o.media(h)?.px ?? null, o.sequences, o.theme.chasse);
   const medias: Record<string, string> = { logo: o.theme.logo };
   const nonAffichables: string[] = [];
   for (const h of [...new Set(donnees.sequences.flatMap((s) => s.blocs.flatMap((b) => b.visuels.map((v) => v.media))))].sort()) {

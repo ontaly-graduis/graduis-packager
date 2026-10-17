@@ -2,12 +2,15 @@
 import type { DiapositiveReleve, FormeReleve } from "../releve/releve";
 import type { Forme } from "../ooxml/formes";
 import { estCapture, texteDe } from "../releve/geometrie";
+import type { Projection } from "./roles";
 import type { Figure } from "../pivot/seance-spec";
 
 export interface Qualification {
   readonly figure: Figure;
   /** La règle qui a décidé, en clair : elle s'affiche au rapport. */
   readonly signal: string;
+  /** Pour un schéma : la projection de ses couleurs d'origine sur les rôles du thème (pour le rapport). */
+  readonly projection?: Projection;
 }
 
 /** Espaces réservés qui ne portent pas de contenu : numéro, date, pied. */

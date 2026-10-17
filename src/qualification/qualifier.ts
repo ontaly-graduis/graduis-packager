@@ -3,6 +3,7 @@ import type { Boite, Forme } from "../ooxml/formes";
 import type { Releve, DiapositiveReleve, FormeReleve } from "../releve/releve";
 import { POUCE, aCadreTexte, dedans, estCapture, estPastille, estZone, texteDe } from "../releve/geometrie";
 import { SCHEMA_SEANCE, type Bloc, type Pas, type SeanceSpec, type Sequence, type Visuel } from "../pivot/seance-spec";
+import { dessinDe } from "./dessin";
 import { estDeService, qualifier as qualifierDiapo, type Qualification } from "./figures";
 
 /** Tolérance d'une rangée pour l'ordre de lecture : deux boîtes dont les hauts diffèrent de moins sont sur la même ligne. */
@@ -77,7 +78,7 @@ function pasDe(d: DiapositiveReleve, largeur: number): Pas[] {
   return pas.map((x) => x.p);
 }
 
-function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): Bloc {
+function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): { bloc: Bloc; q: Qualification } {
   const { largeur, hauteur } = r.deck;
   const titre = titreDe(d, hauteur);
   const pas = q.figure === "pas-a-pas" ? pasDe(d, largeur) : [];
@@ -90,7 +91,12 @@ function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): Bloc {
   const visuels: Visuel[] = ordreDeLecture(d.formes.filter((f) => f.nature === "image" && f.media), (f) => f.boite)
     .map((f) => ({ media: f.media!, capture: estCapture(f as Forme, largeur), ...(f.rognage ? { rognage: [...f.rognage] as [number, number, number, number] } : {}) }));
   const tableaux = d.formes.filter((f) => f.nature === "tableau").map((f) => (f.lignes ?? []).map((l) => [...l]));
-  return {
+  // Écartés du dessin : le titre, les espaces de service, un numéro de page saisi à la main en bas de diapositive.
+  const numeroSaisi = (f: FormeReleve) => texteDe(f as Forme) === String(d.n) && f.boite[1] > hauteur * 0.85;
+  const ecartees = new Set(d.formes.filter((f) => f === titre || estDeService(f) || numeroSaisi(f)));
+  const schema = q.figure === "schema" ? dessinDe(d, ecartees) : undefined;
+  const dessin = schema?.dessin;
+  const bloc: Bloc = {
     id: `b${trois(d.n)}`,
     figure: q.figure,
     source: { diapo: d.n },
@@ -100,8 +106,10 @@ function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): Bloc {
     visuels,
     tableaux,
     pas,
+    ...(dessin ? { dessin } : {}),
     notes: d.notes,
   };
+  return { bloc, q: schema ? { ...q, projection: schema.projection } : q };
 }
 
 export interface Qualifie {
@@ -115,9 +123,8 @@ export function qualifierReleve(r: Releve): Qualifie {
   const sequences: Sequence[] = [];
   for (const d of r.diapositives) {
     const titre = titreDe(d, r.deck.hauteur);
-    const q = qualifierDiapo(d, r.deck.largeur, titre ? texteDe(titre as Forme) : null);
+    const { bloc, q } = blocDe(d, r, qualifierDiapo(d, r.deck.largeur, titre ? texteDe(titre as Forme) : null));
     qualifications.set(d.n, q);
-    const bloc = blocDe(d, r, q);
     const courante = sequences[sequences.length - 1];
     if (!courante || q.figure === "transition") sequences.push({ id: `s${trois(d.n)}`, blocs: [bloc] });
     else courante.blocs.push(bloc);

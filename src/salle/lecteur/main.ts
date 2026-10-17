@@ -2,6 +2,7 @@
 import type { DonneesDeSalle } from "../donnees";
 import { debut, fin, precedent, suivant, type Position } from "./etat";
 import { rendreDiapo, type Contexte } from "./rendu";
+import { ajusterTextes } from "./textes";
 import { debutsDePages, decalageCourant, decalagePage, type Item } from "./defilement";
 
 const lire = <T>(id: string): T => JSON.parse(document.getElementById(id)?.textContent ?? "null") as T;
@@ -15,6 +16,7 @@ let pos: Position = debut();
 let zoom = false;
 let noir = false;
 let notes = false;
+let aide = false;
 const debutSeance = Date.now();
 let minuteur: { fin: number; pause: number | null } | null = null;
 let presentateur: Window | null = null;
@@ -27,6 +29,67 @@ const glisses = new Map<string, string>();
 
 const scene = document.getElementById("scene")!;
 const surcouche = document.getElementById("surcouche")!;
+
+/** Les commandes de la salle, telles que l'aide les présente. */
+const COMMANDES: readonly (readonly [readonly string[], string])[] = [
+  [["→", "↓", "Espace", "Entrée", "Page ↓"], "Avancer : pas suivant, page suivante, diapositive suivante"],
+  [["←", "↑", "Page ↑", "⌫"], "Reculer"],
+  [["Origine", "Fin"], "Aller au début, à la fin"],
+  [["Z"], "Zoomer sur le pas courant d'une capture (et revenir)"],
+  [["T"], "Minuteur de l'activité : démarrer, mettre en pause"],
+  [["B", "."], "Écran noir"],
+  [["N"], "Notes de l'animateur en surimpression"],
+  [["P"], "Fenêtre du présentateur : diapositive courante, suivante, notes, chrono"],
+  [["F"], "Plein écran"],
+  [["?"], "Cette aide"],
+  [["Échap"], "Tout fermer : zoom, écran noir, notes, aide"],
+];
+
+/** Le bouton « ? » : discret en projection, il paraît quand la souris bouge. */
+const boutonAide = document.createElement("button");
+boutonAide.className = "aide-bouton";
+boutonAide.type = "button";
+boutonAide.textContent = "?";
+boutonAide.setAttribute("aria-label", "Aide : les commandes de la salle (touche ?)");
+boutonAide.addEventListener("click", () => {
+  aide = !aide;
+  rendreSurcouche();
+});
+document.body.append(boutonAide);
+let veille: number | undefined;
+document.addEventListener("mousemove", () => {
+  boutonAide.classList.add("visible");
+  clearTimeout(veille);
+  veille = window.setTimeout(() => boutonAide.classList.remove("visible"), 2500);
+});
+
+function panneauAide(): HTMLElement {
+  const p = document.createElement("div");
+  p.className = "aide-commandes";
+  p.setAttribute("role", "dialog");
+  p.setAttribute("aria-label", "Commandes de la salle");
+  const titre = document.createElement("h2");
+  titre.textContent = "Commandes de la salle";
+  const table = document.createElement("table");
+  for (const [touches, effet] of COMMANDES) {
+    const tr = document.createElement("tr");
+    const k = document.createElement("td");
+    touches.forEach((t, i) => {
+      if (i) k.append(" ");
+      const kbd = document.createElement("kbd");
+      kbd.textContent = t;
+      k.append(kbd);
+    });
+    const e = document.createElement("td");
+    e.textContent = effet;
+    tr.append(k, e);
+    table.append(tr);
+  }
+  const pied = document.createElement("p");
+  pied.textContent = "L'adresse garde la diapositive et l'étape (#b034.2) : on reprend une séance là où on l'a laissée.";
+  p.append(titre, table, pied);
+  return p;
+}
 
 function depuisAncre(): void {
   const [id, e] = decodeURIComponent(location.hash.slice(1)).split(".");
@@ -65,6 +128,8 @@ function rendreSurcouche(): void {
     n.className = "noir";
     surcouche.append(n);
   }
+  if (aide) surcouche.append(panneauAide());
+  boutonAide.classList.toggle("ouvert", aide);
 }
 
 function contexte(doc: Document, z: boolean, anime: Contexte["anime"]): Contexte {
@@ -76,6 +141,7 @@ function contexte(doc: Document, z: boolean, anime: Contexte["anime"]): Contexte
  * l'item courant ; un contenu statique se lit page par page (l'étape vaut la page). Rend le nombre de pages.
  */
 function ajuster(racine: Element, etapesDuDevoilement: number, etape: number): number {
+  ajusterTextes(racine);
   let pages = 1;
   racine.querySelectorAll<HTMLElement>(".defile").forEach((f, k) => {
     const rail = f.querySelector<HTMLElement>(".rail");
@@ -203,7 +269,8 @@ function ouvrirPresentateur(): void {
   w.document.open();
   w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Présentateur — ${document.title}</title><style>${styles}</style></head>`
     + `<body class="presentateur"><div class="colonne-g"><div class="vignette" id="courante"></div><div class="barre"><span id="position"></span><span id="chrono"></span></div></div>`
-    + `<div class="colonne-d"><div class="vignette petite" id="suivante"></div><div class="notes-p" id="notes"></div></div></body></html>`);
+    + `<div class="colonne-d"><div class="vignette petite" id="suivante"></div><div class="notes-p" id="notes"></div>`
+    + `<div class="rappel">→ avancer · ← reculer · Z zoom · T minuteur · B noir · ? aide (dans la salle)</div></div></body></html>`);
   w.document.close();
   w.document.addEventListener("keydown", touche);
   w.addEventListener("resize", rendrePresentateur);
@@ -233,7 +300,8 @@ function touche(e: KeyboardEvent): void {
     case "t": case "T": basculerMinuteur(); break;
     case "p": case "P": ouvrirPresentateur(); break;
     case "f": case "F": void (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()); break;
-    case "Escape": zoom = false; noir = false; notes = false; break;
+    case "?": aide = !aide; rendreSurcouche(); e.preventDefault(); return;
+    case "Escape": zoom = false; noir = false; notes = false; aide = false; break;
     default: return;
   }
   e.preventDefault();
@@ -257,3 +325,5 @@ setInterval(() => {
 depuisAncre();
 echelle();
 rendre();
+// Les polices inline se chargent de façon asynchrone : les textes des schémas se réajustent une fois la police prête.
+void document.fonts?.ready.then(() => ajusterTextes(scene));
