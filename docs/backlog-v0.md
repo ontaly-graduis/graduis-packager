@@ -41,23 +41,20 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 - Aucun hex hors jetons ; aucune ressource distante.
 - Les captures rognées sont rejouées rognées ; le seul média non affichable est l'icône EMF de la diapo 54.
 - Revue visuelle : la diapo 31, un logigramme dessiné avec un petit tableau de légende, passe de « processus » à « schéma » (la règle du dessin précède celle du tableau : processus 1, schémas 7) ; une mise en pratique « À vous de jouer » prend son énoncé pour titre.
-- Non couvert, nommé : Edge et Firefox (seul Chromium est joué) ; les schémas dessinés n'ont pas encore de rendu (PKG-B2) ; les infobulles de glossaire attendent H7.
+- Non couvert, nommé : Edge et Firefox (seul Chromium est joué) ; les schémas dessinés n'ont pas encore de rendu (PKG-B2, depuis livré) ; les infobulles de glossaire attendent H7.
 - **Polish permanent (David, 17/10)**, livré le même jour : le mouvement du thème ONET (entrées en cascade, dévoilement de l'item courant, apparition des zones et des encadrés, volet de séquence) ; le défilement des contenus qui débordent (la pile suit l'item courant d'un dévoilement ; un contenu statique se lit page par page, avec fondus et indice de suite ; le présentateur s'aligne). 28 témoins Vitest, 5 Playwright.
 
 ---
 
-## PKG-B2 · Les schémas au thème
+## PKG-B2 · Les schémas au thème — Sortie atteinte le 17/10
 
-**Livrer** : le rendu vectoriel des schémas dessinés en formes (7 diapositives du deck acheteur : architecture S2P, fiches personae, logigramme PTP-040-010) en SVG à **classes de rôle**, comme le veut le principe PE2 du wizard (« un SVG composé ne porte ni couleur ni fonte ») : le thème ONET les résout. Le SVG entre au pivot comme un média hashé, servi tel quel à la salle, au papier et au PPT de validation.
+**Livré** : les schémas dessinés en formes sont **redessinés au pivot** (`bloc.dessin` : formes du catalogue DrawingML et leurs ajustements, chemins libres, traits fléchés et tiretés, textes mis en forme, images, tableaux ; en points ; couleurs en **rôles** du thème) et rendus en SVG par la salle. Le relevé lit les styles (`src/ooxml/styles.ts`, `couleurs.ts` : propriétés directes, références `p:style` au thème du deck, défauts du masque, `clrMap`, modificateurs) ; la qualification projette les couleurs (`src/qualification/roles.ts`, `dessin.ts`) ; le rendu est un module pur (`src/dessin/` : géométries, SVG) ; le thème ONET gagne sa palette de schéma (`dessin.css`) et sa table de chasse (`chasse.json`). Avec ce lot : l'aide de la salle (bouton « ? », touche ?), demandée par David.
 
-**À trancher au démarrage**
-- Les styles à lire au relevé : remplissage, trait, texte (taille, graisse, couleur, alignement), y compris les couleurs du thème Office et leurs modificateurs (`lumMod`, `lumOff`).
-- La projection des couleurs du deck sur les rôles du thème ONET : c'est de l'harmonisation, donc une règle validée une fois.
-- Les formes libres (`custGeom`) : chemin redessiné, ou boîte englobante ?
-- L'alternative écartée a priori : rasteriser la diapositive avec LibreOffice (installation requise, rendu non déterministe d'une version à l'autre).
-
-**Sortie**
-- Les 7 schémas rendus, lisibles à 1920 px, au thème ; déterministes ; aucun hex hors jetons.
+**Sortie** (40 témoins Vitest — 31 sur le dépôt, 9 sur le corpus — et 7 Playwright, verts)
+- Les 7 schémas du deck acheteur (diapositives 15 à 20, 31) redessinés : 24 à 144 éléments chacun, toutes leurs géométries prises en charge, aucun texte hors de sa forme à 1920 px, aucune requête réseau.
+- Aucune couleur au pivot ni hex hors jetons dans la salle ; deux constructions identiques à l'octet.
+- Les couleurs d'origine se fondent ou se distinguent selon la règle du 17/10 ; le rapport le dit schéma par schéma (règle DESSIN : 7 constats d'information, aucune confusion restante sur le deck acheteur).
+- Non couvert, nommé : les styles de tableau nommés, les ombres, la rotation et le retournement d'un groupe (absents du corpus), les chemins libres à formules (absents du corpus : dessinés en rectangle et signalés), les puces des textes de formes. La relecture visuelle des 7 schémas par ONET se fera dans le PPT de validation (PKG-C), qui réémettra le dessin en formes natives.
 
 ---
 
@@ -67,6 +64,7 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 
 **À trancher au démarrage**
 - Le nom de l'objet : « PPT d'auteur » (spec) ou « PPT de validation » (le mot de David, 17/10).
+- Le dessin des schémas réémis en formes natives : aux couleurs des rôles (valeurs du thème) et en Montserrat, corps compensés ; ce que `lire` en relit doit redonner le même dessin (I-PKG-3).
 - Le support des identifiants : étiquettes OOXML ou nom de diapositive ; le comportement au copier-coller.
 - Le thème dans le PPT : comment la couche sémantique ONET se projette sur les 12 emplacements de couleur et les polices du thème Office.
 - Le repli de police : Montserrat manque sur une partie des postes, et PowerPoint ne l'embarque pas toujours. Police embarquée, police système de repli, ou installation demandée à ONET ?

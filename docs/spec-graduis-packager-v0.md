@@ -90,7 +90,7 @@ Le rapport d'anomalies et d'équilibrage est un sous-produit de la chaîne, et i
 - le rapport d'anomalies et d'équilibrage sur les 166 diapositives ;
 - une capture Oracle remplacée dans le PPT d'auteur, la chaîne rejouée, le diff et les trois sorties à jour.
 
-**Anti-scope v0** : UI de production (au-delà des rapports), libre-service ONET (horizon : l'outil vendu), génération de schémas (figés en image), animations PowerPoint générées (option), `.mfapx`, autoformation, SCORM, LMS, multi-utilisateurs.
+**Anti-scope v0** : UI de production (au-delà des rapports), libre-service ONET (horizon : l'outil vendu), génération de schémas nouveaux (les schémas existants sont redessinés au thème, PKG-B2), animations PowerPoint générées (option), `.mfapx`, autoformation, SCORM, LMS, multi-utilisateurs.
 
 ---
 
@@ -156,7 +156,8 @@ pivot₀ ── émettre ──► PPT d'auteur (gabarit à grammaire, thème ON
 - `pas` : zone en pourcentage de la capture (contrat `RegionMap`, arrondi au centième) ; `ancrage` ∈ `repere` · `legende` · `proposee` (zone attribuée par ordre de lecture, à valider dans le PPT de validation) ; `null` si aucune zone.
 - `notes` : verbatim. Leur grammaire (`Durée :`, `Consigne :`, `Vigilance :`, `Corrigé :`) arrive avec le PPT de validation (PKG-C).
 - Le glossaire structuré et les renvois résolus viendront avec leurs consommateurs (H7, modules partagés), pas avant.
-- La trace de classification (le signal qui a décidé la figure) vit au rapport, jamais au pivot.
+- `dessin` (figure `schema` seulement, PKG-B2) : le schéma redessiné — `cadre` et `elements` dans l'ordre d'empilement, en points : des **formes** (géométrie du catalogue DrawingML et ses ajustements, ou chemins libres ; rotation, retournement ; `fond` et `trait` par **rôle** ; texte mis en forme : paragraphes, fragments, corps, graisse, rôle, police d'origine), des **images** (par hash) et des **tableaux** (colonnes, lignes, cellules). Aucune couleur : un rôle (`marine-fort` … `gris-pale`, `papier`, `encre`) que le thème résout. `textes` et `visuels` restent l'inventaire verbatim du bloc.
+- La trace de classification (le signal qui a décidé la figure) vit au rapport, jamais au pivot ; la projection des couleurs d'origine sur les rôles aussi (règle DESSIN).
 
 ### 4.2 Les figures de salle
 
@@ -168,7 +169,7 @@ pivot₀ ── émettre ──► PPT d'auteur (gabarit à grammaire, thème ON
 | `objectifs` | E | titre « Objectifs… » | liste dévoilée | encadré | idem |
 | `contenu` | E | texte, avec ou sans visuel | dévoilement par paragraphe | texte intégral | idem |
 | `processus` | E | tableau d'étapes (ex. PTP-040-010) | tableau, ligne active | tableau | idem |
-| `schema` | E | groupe dense de formes (fiches personae, architecture S2P) | image figée, zoom | image figée | image figée |
+| `schema` | E | groupe dense de formes (fiches personae, architecture S2P) | redessiné en SVG au thème, textes ajustés à leurs formes | le même SVG | formes natives réémises du dessin (PKG-C) |
 | `demonstration` | E | écran « Démonstration » | écran signal : ce qui va être montré dans Oracle | renvoi au pas-à-pas | idem |
 | `pas-a-pas` | E (aide en R) | capture + pastilles (61) | **dévoilement pastille par pastille**, zoom sur la zone | capture, toutes pastilles, consignes numérotées | capture + pastilles, consignes en liste |
 | `capture` | E | capture sans pastille (39) | image, zoom | image | idem ; diagnostic « capture muette » (H5) |

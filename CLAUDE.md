@@ -30,15 +30,16 @@ graduis-packager/
   docs/        spec, decisions, backlog ; sources/ (decks client, hors dépôt)
   scripts/     relevés de mesure (releve_pptx.py, référence de parité)
   src/         TypeScript strict
-    ooxml/         lecteur PPTX (paquet, formes aplaties) — servira aussi `lire`
+    ooxml/         lecteur PPTX (paquet, formes aplaties, couleurs et styles résolus) — servira aussi `lire`
     releve/        ingestion héritée : relevé, appariement des pas, mesures
     pivot/         schéma `graduis/seance-spec@0` (Zod)
-    qualification/ relevé → pivot₀ (figures par règles, zones proposées)
+    qualification/ relevé → pivot₀ (figures par règles, zones proposées, schémas redessinés, couleurs en rôles)
     diagnostic/    règles H1–H9 → rapport (JSON + HTML au thème ONET)
-    theme/         chargement du thème repris
+    theme/         chargement du thème repris, compensation de chasse
+    dessin/        dessin du pivot → SVG à classes de rôle (géométries DrawingML), module pur : salle et papier
     salle/         pivot → salle.html : données de salle, RegionMap, assemblage ; lecteur/ (navigateur, sans framework)
     cli/           `npm run packager -- relever|qualifier|salle <deck>`
-    (à venir : schémas SVG, emission/ et lecture/ du PPT de validation, papier/)
+    (à venir : emission/ et lecture/ du PPT de validation, papier/)
   tests-navigateur/ Playwright : la salle jouée en file:// (`npm run test:navigateur`)
   gabarits/    theme-onet/ (thème DS Onet repris, PROVENANCE.md) ; le gabarit d'auteur PPT se génère de ce thème
   golden/      séquence de référence : pivot + sorties (anonymisé ou hors dépôt)
