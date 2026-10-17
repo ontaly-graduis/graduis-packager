@@ -4,7 +4,7 @@ import type { Releve, DiapositiveReleve, FormeReleve } from "../releve/releve";
 import { POUCE, aCadreTexte, dedans, estCapture, estPastille, estZone, texteDe } from "../releve/geometrie";
 import { SCHEMA_SEANCE, type Bloc, type Pas, type SeanceSpec, type Sequence, type Visuel } from "../pivot/seance-spec";
 import { dessinDe } from "./dessin";
-import { composerCas } from "./gabarits";
+import { composerCas, composerTableau } from "./gabarits";
 import { structurer } from "./structure";
 import { estDeService, qualifier as qualifierDiapo, type Qualification } from "./figures";
 
@@ -108,7 +108,7 @@ function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): { bloc: Bloc
     )
     : null;
   const dessin = schema?.dessin;
-  const composition = dessin ? composerCas(dessin) : null;
+  const composition = dessin ? composerCas(dessin) ?? composerTableau(dessin) : null;
   const bloc: Bloc = {
     id: `b${trois(d.n)}`,
     figure: q.figure,

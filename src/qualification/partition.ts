@@ -38,7 +38,7 @@ export function numeroDePastille(e: ElementDeDessin): number | null {
 }
 
 /** Les colonnes d'un schéma : de grandes formes côte à côte, hautes, qui en contiennent d'autres. */
-function colonnes(d: Dessin): Boite[] {
+export function colonnes(d: Dessin): Boite[] {
   const S = SEUILS_PARTITION;
   const [, , w, h] = d.cadre;
   const candidates = d.elements

@@ -63,6 +63,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     const aValider = rapport.constats.filter((x) => x.regle === "DESSIN" && x.niveau === "a-valider");
     expect(aValider.filter((x) => /^(Couleurs|Dessinées)/.test(x.message))).toHaveLength(0);
     expect(aValider.filter((x) => x.message.startsWith("Dévoilement")).map((x) => x.diapo)).toEqual([17, 18, 19, 20, 31]);
+    expect(aValider.filter((x) => x.message.startsWith("Recomposé")).map((x) => x.diapo)).toEqual([17, 18, 19, 20]);
   });
 
   it("organise les textes : étapes clés dans l'ordre de leurs numéros, définitions, fiches illustrées (PKG-B3)", () => {
@@ -94,7 +95,29 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     expect(lu(18)).toEqual({ phases: [[1, 6, 6], [2, 6, 6], [3, 5, 5], [4, 6, 6]], legende: 4 });
     // Les personae (couloirs × phases) et le logigramme ne sont pas des cas.
     expect([19, 20, 31].map(lu)).toEqual([null, null, null]);
-    expect(rapport.constats.filter((c) => c.regle === "DESSIN" && c.message.startsWith("Recomposé")).map((c) => c.diapo)).toEqual([17, 18]);
+    expect(rapport.constats.filter((c) => c.regle === "DESSIN" && c.message.startsWith("Recomposé au gabarit « cas »")).map((c) => c.diapo)).toEqual([17, 18]);
+  });
+
+  it("recompose les fiches personae au gabarit « tableau » du wizard (PKG-B5)", () => {
+    const bloc = (n: number) => spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === n)!;
+    const lu = (n: number) => {
+      const t = bloc(n).composition;
+      if (t?.gabarit !== "tableau") return null;
+      const parPhase = t.colonnes.map((_, j) => t.etapes.filter((e) => e.colonne === j).map((e) => e.numero ?? 0));
+      return { phases: t.colonnes.length, couloirs: t.lignes.length, signes: t.lignes.filter((l) => l.signe).length, parPhase, legende: t.legende?.length ?? 0, portrait: !!t.illustration };
+    };
+    expect(lu(19)).toEqual({ phases: 4, couloirs: 8, signes: 8, parPhase: [[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3]], legende: 6, portrait: true });
+    expect(lu(20)).toEqual({ phases: 4, couloirs: 8, signes: 8, parPhase: [[1, 2], [1, 2, 3, 4], [1, 2], [1, 2, 3, 4, 0]], legende: 6, portrait: true });
+    // L'étape 1 de la création fournisseur : soumise par le demandeur (un tiers), sur la demande de création, impact fort.
+    const t19 = bloc(19).composition;
+    if (t19?.gabarit === "tableau") {
+      expect(t19.lignes[t19.etapes[0]!.ligne]!.titre).toBe("Demande création (ERP)");
+      expect(t19.etapes[0]).toMatchObject({ numero: 1, bord: "tirets", signal: "rouge-fort" });
+    }
+    expect([15, 16, 17, 18, 31].map((n) => bloc(n).composition?.gabarit ?? null)).toEqual([null, null, "cas", "cas", null]);
+    // La fiche 20 mêle des manières que sa légende ne nomme pas : le rapport le dit, la salle les garde.
+    const hors = rapport.constats.filter((c) => c.regle === "DESSIN" && /que la légende ne nomme pas/.test(c.message)).map((c) => c.diapo);
+    expect(hors).toEqual([20, 20]);
   });
 
   it("qualifie de façon déterministe", () => {

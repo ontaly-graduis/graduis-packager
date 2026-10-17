@@ -211,13 +211,26 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
         const autres = [...new Set(b.dessin.elements.flatMap((e) => (e.type === "forme" && !prises.has(e.geometrie) ? [e.geometrie] : [])))].sort();
         if (autres.length) c("DESSIN", "a-valider", n, s.id, `Dessinées en rectangle : ${autres.join(", ")}.`);
         const partition = b.dessin.partition;
-        if (partition) c("DESSIN", "a-valider", n, s.id, `Dévoilement proposé en ${partition.pas} pas, ${partition.mode === "colonnes" ? "par colonnes ordonnées sur leurs numéros" : "par étapes numérotées"}.`);
+        if (partition) c("DESSIN", "a-valider", n, s.id, `Dévoilement proposé en ${partition.pas} pas, ${partition.mode === "colonnes" ? "colonne par colonne" : "par étapes numérotées"}.`);
       }
       if (b.composition?.gabarit === "cas") {
         const etapes = b.composition.cas.flatMap((k) => k.etapes);
         const details = etapes.filter((e) => e.detail).length;
         const legende = b.composition.legende?.length ?? 0;
         c("DESSIN", "a-valider", n, s.id, `Recomposé au gabarit « cas » : ${b.composition.cas.length} colonnes, ${etapes.length} étapes${details ? ` (dont ${details} avec détail)` : ""}${legende ? `, légende de ${legende} entrées` : ""}.`);
+      }
+      if (b.composition?.gabarit === "tableau") {
+        const t = b.composition;
+        const sans = t.etapes.filter((e) => e.numero === undefined).length;
+        c("DESSIN", "a-valider", n, s.id, `Recomposé au gabarit « tableau » : ${t.colonnes.length} phases, ${t.lignes.length} couloirs, ${t.etapes.length} étapes${sans ? ` (dont ${sans} sans numéro)` : ""}${t.legende?.length ? `, légende de ${t.legende.length} entrées` : ""}.`);
+        // Ce que la légende nomme : des manières (une case) et des signaux (un triangle). Ce qu'elle ne nomme pas se signale.
+        const cle = (x: { fond?: string | undefined; bord: string }) => `${x.fond ?? "sans fond"} ${x.bord === "aucun" ? "sans bord" : x.bord === "tirets" ? "en tirets" : "bord plein"}`;
+        const manieres = new Set((t.legende ?? []).filter((l) => !l.forme).map(cle));
+        const signaux = new Set((t.legende ?? []).filter((l) => l.forme === "triangle").map((l) => l.fond));
+        const hors = t.etapes.filter((e) => manieres.size && !manieres.has(cle(e)));
+        if (hors.length) c("DESSIN", "a-valider", n, s.id, `${hors.length} étapes d'une manière que la légende ne nomme pas (${[...new Set(hors.map(cle))].join(" ; ")}) : gardée telle quelle.`);
+        const horsSignal = t.etapes.filter((e) => e.signal && signaux.size && !signaux.has(e.signal));
+        if (horsSignal.length) c("DESSIN", "a-valider", n, s.id, `${horsSignal.length} signaux d'une couleur que la légende ne nomme pas (${[...new Set(horsSignal.map((e) => e.signal))].join(", ")}).`);
       }
       // VIDE
       if (b.figure === "contenu" && !b.titre && !b.textes.length && !b.visuels.length && !b.tableaux.length) {

@@ -5,8 +5,8 @@ import { qualifierReleve } from "../src/qualification/qualifier";
 import { relever } from "../src/releve/releve";
 import { planDeDevoilement } from "../src/salle/unites";
 import { habiller, type Maniere } from "../src/theme/maniere";
-import { composerCas } from "../src/qualification/gabarits";
-import { deckDeCas, deckDeSchema } from "./fixture";
+import { composerCas, composerTableau } from "../src/qualification/gabarits";
+import { deckDeCas, deckDeSchema, deckDeTableau } from "./fixture";
 
 describe("le dévoilement par niveau de hiérarchie 1", () => {
   it("une fiche paraît entière, une section avec son intertitre, hors section chaque élément seul", () => {
@@ -79,6 +79,44 @@ describe("le processus en phases recomposé au gabarit « cas » du wizard (PKG-
     const b = qualifierReleve(r).spec.sequences.flatMap((s) => s.blocs).find((x) => x.source.diapo === 2)!;
     expect(b.composition).toBeUndefined();
     expect(composerCas(b.dessin!)).toBeNull();
+  });
+});
+
+describe("la fiche persona en couloirs recomposée au gabarit « tableau » du wizard (PKG-B5)", async () => {
+  const { releve } = relever(await deckDeTableau(), "tableau.pptx");
+  const bloc = qualifierReleve(releve).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
+  const t = bloc.composition;
+
+  it("lit les phases à leur couleur et les couloirs avec leur signe", () => {
+    expect(t?.gabarit).toBe("tableau");
+    if (t?.gabarit !== "tableau") return;
+    expect(t.colonnes.map((k) => k.titre)).toEqual(["Réception", "Traitement", "Validation"]);
+    expect(t.colonnes.every((k) => k.couleur)).toBe(true);
+    expect(t.lignes.map((l) => [l.titre, l.signe?.elements.length])).toEqual([["Système A", 1], ["Système B", 1], ["Système C", 1], ["Messagerie", 1]]);
+    expect(t.illustration?.elements.map((e) => e.type)).toEqual(["image"]);
+  });
+
+  it("place chaque étape par la pastille qu'elle désigne, avec son numéro, sa manière et son signal", () => {
+    if (t?.gabarit !== "tableau") return;
+    expect(t.etapes.map((e) => [e.colonne, e.ligne, e.numero ?? null, e.texte])).toEqual([
+      [0, 2, 1, "Demande soumise"], [0, 0, 2, "Données enrichies"],
+      [1, 1, 1, "Analyse de la fiche"], [1, 1, 2, "Complétion de la fiche"],
+      [2, 3, 1, "Information du demandeur"], [2, 0, 2, "Contrôle bancaire"], [2, 2, null, "Provisions générées"],
+    ]);
+    expect(t.etapes[0]).toMatchObject({ bord: "tirets", signal: "rouge-fort" });
+    expect(t.etapes[1]).toMatchObject({ bord: "aucun", signal: "vert-moyen" });
+    // Les cases d'abord, puis les signaux ; et chaque entrée nomme une manière ou un signal des étapes.
+    expect(t.legende?.map((l) => [l.texte, l.forme ?? "case"])).toEqual([
+      ["Tâche automatique", "case"], ["Tâche d'un tiers", "case"], ["Impact léger", "triangle"], ["Impact fort", "triangle"],
+    ]);
+  });
+
+  it("ne lit en tableau ni un cas ni un logigramme, ni en cas une fiche en couloirs", async () => {
+    expect(composerCas(bloc.dessin!)).toBeNull();
+    const cas = qualifierReleve(relever(await deckDeCas(), "cas.pptx").releve).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
+    expect(composerTableau(cas.dessin!)).toBeNull();
+    const schema = qualifierReleve(relever(await deckDeSchema(), "schema.pptx").releve).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
+    expect(composerTableau(schema.dessin!)).toBeNull();
   });
 });
 
