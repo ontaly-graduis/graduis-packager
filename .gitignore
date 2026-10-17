@@ -1,0 +1,5 @@
+node_modules/
+out/
+docs/sources/
+docs/.analyse-tmp/
+.DS_Store

@@ -1,0 +1,113 @@
+/* ds-onet.css — Couche sémantique DS Onet (recréée).
+ *
+ * POURQUOI CE FICHIER. Le bundle figé n'expose que les primitives `--c-*`
+ * (theme/tokens.css) ; le set sémantique complet du DS Onet vivait dans
+ * `_ds/onet-design-system-3ae46495/tokens/*.css`, NON livré dans ce handoff.
+ * On le reconstitue ici à partir des valeurs documentées dans le handoff
+ * (design_handoff_module_ndf_jade/README.md § « Design tokens »).
+ *
+ * RÈGLE ANTI-FORK. Les couleurs pointent toutes vers `var(--c-*)` du bundle.
+ * Les seules valeurs hex ajoutées sont les dérivés DS (tints, hovers, fonds
+ * sémantiques, gris désactivé) absents des primitives figées — confinés à ce
+ * fichier de thème. Aucun hex ne doit apparaître hors de `theme/`.
+ */
+:root {
+  /* primitives complémentaires DS Onet (handoff README ; absentes du tokens.css figé) */
+  --c-primary-tint: #eaf0f5;
+  --c-accent-hover: #b00016;
+  --c-disabled: #9a9a9a;
+  --c-success-bg: #e8f3e9;
+  --c-warning-bg: #fbf1e3;
+  --c-error-bg: #fbe9ea;
+  --c-info-bg: #eaf0f5;
+
+  /* ---- couleurs sémantiques (→ primitives bundle) ---- */
+  --color-background: var(--c-paper);
+  --color-surface: var(--c-surface);
+  --color-primary: var(--c-navy);
+  --color-primary-hover: var(--c-navy-700);
+  --color-primary-tint: var(--c-primary-tint);
+  --color-accent: var(--c-red-logo);
+  --color-accent-hover: var(--c-accent-hover);
+  --color-border: var(--c-line);
+  --color-info: var(--c-info);
+  --color-info-bg: var(--c-info-bg);
+  --color-success: var(--c-ok);
+  --color-success-bg: var(--c-success-bg);
+  --color-warning: var(--c-warn);
+  --color-warning-bg: var(--c-warning-bg);
+  --color-error: var(--c-red-logo);
+  --color-error-bg: var(--c-error-bg);
+
+  /* ---- texte ---- */
+  --text-strong: var(--c-navy);
+  --text-body: var(--c-ink);
+  --text-secondary: var(--c-grey);
+  --text-on-primary: var(--c-paper);
+  --text-disabled: var(--c-disabled);
+
+  /* ---- typographie (Montserrat, échelle DS Onet) ---- */
+  --font-base: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs-h1: 30px;
+  --fs-h2: 22px;
+  --fs-h3: 18px;
+  --fs-chapo: 20px;
+  --fs-body: 17px;
+  --fs-label: 14px;
+  --fs-meta: 13px;
+  --fw-light: 200;
+  --fw-regular: 400;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-heading: 1.2;
+  --lh-chapo: 1.4;
+  --lh-body: 1.65;
+  --ls-label: 0.3px;
+
+  /* ---- espacement (grille 8-pt, plafond 64) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-inline: 8px;
+  --space-inline-lg: 12px;
+  --space-block: 16px;
+  --space-component-pad: 24px;
+  --space-block-gap: 24px;
+  --space-block-gap-lg: 32px;
+  --space-section: 48px;
+  --space-zone: 64px;
+
+  /* ---- largeurs ---- */
+  --content-max: 720px;
+  --content-max-wide: 760px;
+  --rail-width: 260px;
+  --canvas-max: 1040px;
+
+  /* ---- forme ---- */
+  --radius-static: 0;
+  --radius-interactive: 4px;
+  --radius-pill: 999px;
+  --border-hairline: 1px solid var(--color-border);
+  --filet-width: 4px;
+  --rule-top: 3px;
+  --touch-min: 44px;
+
+  /* ---- ombres (navy, restreintes) ---- */
+  --shadow-card: 0 1px 3px rgba(0, 48, 88, 0.08);
+  --shadow-raised: 0 4px 16px rgba(0, 48, 88, 0.12);
+  --shadow-overlay: 0 12px 40px rgba(0, 48, 88, 0.18);
+
+  /* ---- palette étendue (recette Karim 2026-07 — corporate Onet) ---- */
+  --c-sky: #6ec1e4;          /* bleu clair boutons */
+  --c-brick: #ba6868;        /* rouge atténué : badges d'étape + hover boutons */
+  --c-navy-deep: #003871;    /* navy foncé : barre de nav / fonds contrastés */
+  --color-button: var(--c-sky);
+  --color-button-hover: var(--c-brick);
+  --color-nav-bg: var(--c-navy-deep);
+  --color-badge-step: var(--c-brick);
+  --radius-button: 40px;
+}

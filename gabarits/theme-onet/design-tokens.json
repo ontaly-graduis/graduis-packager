@@ -1,0 +1,65 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "_meta": {
+    "name": "ONET — thème effecteur (NDF)",
+    "pipeline": "Graduis Agency · Temps 5 · sp-tokens",
+    "statut": "FIGÉ — G-tokens VALIDÉE (2026-06-30)",
+    "version": "1.0.0",
+    "derived_from": "DS Onet live (Claude Design 3ae46495-a853-470d-ae63-de4f76c7e3f9), tel que rendu par le layout etape-5/design_handoff_module_ndf_jade",
+    "note": "Charte = DS Onet uniquement. Palette + typographie alignées sur les valeurs DS effectivement consommées par le layout (navy #003058, accent #D2001A, Montserrat). Thème = override fin du core DS neutre (--dsx-*) ; le set sémantique complet (tints, hovers, bg sémantiques) vit dans le DS et est pioché directement par l'effecteur/layout.",
+    "registre": "Clair, corporate sobre ; navy Onet structurant ; rouge = logo/alerte réservé ; RGAA AA",
+    "destination": "web-autonome · FR · RGAA AA"
+  },
+  "color": {
+    "navy": {
+      "$type": "color",
+      "$value": "#003058"
+    },
+    "navy-700": {
+      "$type": "color",
+      "$value": "#00243f"
+    },
+    "red-logo": {
+      "$type": "color",
+      "$value": "#D2001A"
+    },
+    "grey": {
+      "$type": "color",
+      "$value": "#666666"
+    },
+    "ink": {
+      "$type": "color",
+      "$value": "#444444"
+    },
+    "paper": {
+      "$type": "color",
+      "$value": "#ffffff"
+    },
+    "surface": {
+      "$type": "color",
+      "$value": "#f6f6f6"
+    },
+    "line": {
+      "$type": "color",
+      "$value": "#eaeaea"
+    },
+    "ok": {
+      "$type": "color",
+      "$value": "#2e7d32"
+    },
+    "info": {
+      "$type": "color",
+      "$value": "#003058"
+    },
+    "warn": {
+      "$type": "color",
+      "$value": "#b26a00"
+    }
+  },
+  "font": {
+    "family-base": {
+      "$type": "fontFamily",
+      "$value": "Montserrat, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    }
+  }
+}

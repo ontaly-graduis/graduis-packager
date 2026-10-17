@@ -1,0 +1,14 @@
+/* tokens.css — ONET (DS) — G-tokens FIGÉE 2026-06-30. Aligné sur le DS Onet live (Claude Design 3ae46495) tel que rendu par le layout. Surcharge les --dsx-* du core DS neutre. Charte = DS Onet uniquement ; typo définitive = DS Onet (Montserrat). */
+:root{
+  /* primitives ONET (DS live) */
+  --c-navy:#003058; --c-navy-700:#00243f; --c-red-logo:#D2001A; --c-grey:#666666;
+  --c-ink:#444444; --c-paper:#ffffff; --c-surface:#f6f6f6; --c-line:#eaeaea;
+  --c-ok:#2e7d32; --c-info:#003058; --c-warn:#b26a00;
+  /* mapping core DS neutre (--dsx-*) */
+  --dsx-color-bg:var(--c-paper); --dsx-color-surface:var(--c-surface); --dsx-color-fg:var(--c-ink);
+  --dsx-color-primary:var(--c-navy); --dsx-color-primary-emphasis:var(--c-navy-700);
+  --dsx-color-danger:var(--c-red-logo); --dsx-color-muted:var(--c-grey); --dsx-color-line:var(--c-line);
+  --dsx-color-success:var(--c-ok); --dsx-color-info:var(--c-info); --dsx-color-warning:var(--c-warn);
+  --dsx-font-base:"Montserrat",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --dsx-radius:10px;
+}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
