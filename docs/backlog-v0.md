@@ -71,15 +71,17 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 
 ---
 
-## PKG-B4 · Les schémas recomposés par les gabarits du wizard
+## PKG-B4 · Les schémas recomposés par les gabarits du wizard — Sortie atteinte le 17/10
 
-**Livrer** (décision de David, 17/10 : « préférable » à la fidélité au dessin) : quand un schéma relève d'un gabarit du wizard (`parcours`, `cas`, `tableau`, `trame`, `ensembles`), il est **recomposé** : sa structure est lue au pivot, sa mise en page est calculée au thème, son dévoilement suit le phrasé du gabarit. Les autres restent redessinés (PKG-B2, B3).
+**Livré** (décision de David, 17/10 : « préférable » à la fidélité au dessin) : un schéma qui relève d'un gabarit du wizard est **recomposé** — sa structure est lue au pivot (`bloc.composition`), sa mise en page est calculée au thème, son dévoilement suit le phrasé du gabarit ; les autres restent redessinés (PKG-B2, B3).
+- **Le gabarit `cas`** (`src/qualification/gabarits.ts`) : lu sur un dessin partitionné en colonnes dont chaque colonne a son bandeau numéroté et au moins deux étapes numérotées ; chaque étape garde sa manière (fond, bord plein, en tirets ou sans) et sa description (un texte nu à sa hauteur) ; la légende se lit dans le décor (échantillon et libellé, ou libellé encadré), dans l'ordre de lecture.
+- **En salle** : composition HTML au thème (colonnes en regard, chevrons d'accent, badges d'étape, angles droits) ; une colonne par pas, ses étapes en cascade ; le cas occupe sa page (de 130 % à 70 % de ses corps).
+- **Au rapport** : chaque dévoilement proposé et chaque recomposition est un constat à valider (règle DESSIN).
 
-**Candidats mesurés** : le processus S2P (17, 18) est un `cas` à quatre colonnes numérotées, chacune une suite d'étapes numérotées, chaque étape d'une nature (tâche Oracle, action automatique, action manuelle : la légende) et, en 18, d'une description ; les fiches personae (19, 20) sont une grille couloirs × phases ; le logigramme (31) et les architectures (15, 16) n'ont pas de gabarit et restent redessinés.
-
-**À trancher au démarrage**
-- Le rendu : SVG calculé comme au wizard (le texte se coupe sur des métriques de police), ou composition HTML au thème (le navigateur coupe le texte avec la vraie police) — même structure et même phrasé dans les deux cas.
-- Ce qui s'ajoute aux structures du wizard : la nature d'une étape (et sa légende), la description d'une étape, l'en-tête numéroté d'une colonne.
+**Sortie** (49 témoins Vitest — 37 sur le dépôt, 12 sur le corpus — et 9 Playwright, verts ; fumée sur les 164 blocs : 0 erreur, 0 requête)
+- Le processus S2P (17, 18) recomposé en quatre phases de 6, 6, 5 et 6 étapes ; en 18, chaque étape avec sa description ; légendes de 3 et 4 entrées.
+- Les personae (19, 20), le logigramme (31) et les architectures (15, 16) restent redessinés.
+- Non couvert, nommé : les fiches personae, grille couloirs × phases, attendent un gabarit `grille` (candidat, non ouvert) ; la recomposition ne passe pas encore par le PPT de validation (PKG-C) ni par le papier (PKG-D).
 
 ---
 
@@ -90,7 +92,7 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 **À trancher au démarrage**
 - Le nom de l'objet : « PPT d'auteur » (spec) ou « PPT de validation » (le mot de David, 17/10).
 - Le dessin des schémas réémis en formes natives : aux couleurs des rôles (valeurs du thème) et en Montserrat, corps compensés ; ce que `lire` en relit doit redonner le même dessin (I-PKG-3).
-- La grammaire des lectures heuristiques (I-PKG-4) : la structure d'un texte (intertitres, listes, définitions, fiches) et la partition d'un schéma (pas et ordre de chaque élément) se montrent et se corrigent dans le PPT de validation.
+- La grammaire des lectures heuristiques (I-PKG-4) : la structure d'un texte (intertitres, listes, définitions, fiches), la partition d'un schéma (pas et ordre de chaque élément) et sa recomposition en gabarit (le `cas` : phases, étapes, manières, descriptions, légende) se montrent et se corrigent dans le PPT de validation.
 - Le support des identifiants : étiquettes OOXML ou nom de diapositive ; le comportement au copier-coller.
 - Le thème dans le PPT : comment la couche sémantique ONET se projette sur les 12 emplacements de couleur et les polices du thème Office.
 - Le repli de police : Montserrat manque sur une partie des postes, et PowerPoint ne l'embarque pas toujours. Police embarquée, police système de repli, ou installation demandée à ONET ?

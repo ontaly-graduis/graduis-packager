@@ -195,6 +195,26 @@ export const Structure = z.object({
   }).strict()),
 }).strict();
 
+/** La manière d'une étape ou d'un échantillon de légende : son fond (un rôle) et son bord. */
+const maniereDEtape = { fond: role.optional(), bord: z.enum(["plein", "tirets", "aucun"]) };
+
+/**
+ * Un schéma recomposé par un gabarit du wizard (PKG-B4). `cas` : des colonnes en regard, chacune annoncée par son bandeau
+ * (numéro, titre, couleur), faite d'étapes numérotées (texte, description, manière) ; la légende nomme les manières.
+ */
+export const Composition = z.discriminatedUnion("gabarit", [
+  z.object({
+    gabarit: z.literal("cas"),
+    cas: z.array(z.object({
+      numero: z.number().int(),
+      titre: z.string(),
+      couleur: role.optional(),
+      etapes: z.array(z.object({ numero: z.number().int(), texte: z.string(), detail: z.string().optional(), ...maniereDEtape }).strict()),
+    }).strict()),
+    legende: z.array(z.object({ texte: z.string(), ...maniereDEtape }).strict()).optional(),
+  }).strict(),
+]);
+
 export const Bloc = z.object({
   id: z.string().regex(/^b\d{3}$/),
   figure: z.enum(FIGURES),
@@ -209,6 +229,8 @@ export const Bloc = z.object({
   dessin: Dessin.optional(),
   /** L'organisation du texte (figures de texte). */
   structure: Structure.optional(),
+  /** Le schéma recomposé par un gabarit, quand il en relève (le dessin reste, source et repli). */
+  composition: Composition.optional(),
   notes: z.string(),
 }).strict();
 
@@ -234,4 +256,5 @@ export type FormeDeDessin = z.infer<typeof FormeDeDessin>;
 export type TraitDeDessin = z.infer<typeof TraitDeDessin>;
 export type Corps = z.infer<typeof Corps>;
 export type Structure = z.infer<typeof Structure>;
+export type Composition = z.infer<typeof Composition>;
 export type Noeud = z.infer<typeof Noeud>;

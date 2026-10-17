@@ -1,6 +1,6 @@
 // Le rendu d'un bloc de salle en diapositive 1920 × 1080, au thème : une composition par figure.
 import { dessinEnSvg } from "../../dessin/svg";
-import type { Structure } from "../../pivot/seance-spec";
+import type { Composition, Structure } from "../../pivot/seance-spec";
 import type { BlocDeSalle, SequenceDeSalle, VisuelDeSalle } from "../donnees";
 import { planDeDevoilement } from "../unites";
 
@@ -253,6 +253,48 @@ function schema(ctx: Contexte, b: BlocDeSalle, etape: number): HTMLElement {
   return conteneur;
 }
 
+/**
+ * Le gabarit `cas` du wizard, composé au thème : des colonnes en regard, chacune annoncée par son bandeau numéroté, faites
+ * d'étapes numérotées gardant leur manière (fond, bord) ; la légende dit ce que les manières veulent dire. Le dévoilement
+ * joue « cas en entier » : une colonne par étape, ses étapes en cascade dans l'ordre de leurs numéros.
+ */
+function cas(ctx: Contexte, c: Extract<Composition, { gabarit: "cas" }>, etape: number, devoile: boolean): HTMLElement {
+  const racine = el(ctx.doc, "div", "cas");
+  const colonnes = el(ctx.doc, "div", "cas-colonnes");
+  colonnes.style.setProperty("--n", String(c.cas.length));
+  const maniere = (x: { fond?: string | undefined; bord: string }) => `${x.fond ? `b-${x.fond}` : "b-aucun"} bord-${x.bord}`;
+  c.cas.forEach((k, i) => {
+    const col = el(ctx.doc, "section", "cas-colonne");
+    if (devoile && i >= etape) col.classList.add("cache");
+    if (devoile && i === etape - 1 && ctx.anime === "etape") col.classList.add("apparait");
+    const tete = el(ctx.doc, "header", `cas-tete ${k.couleur ? `b-${k.couleur}` : "b-aucun"}`);
+    tete.append(el(ctx.doc, "span", "cas-numero", String(k.numero)), el(ctx.doc, "span", "cas-titre", k.titre));
+    const ol = el(ctx.doc, "ol", "cas-etapes");
+    k.etapes.forEach((e, j) => {
+      const li = el(ctx.doc, "li", `cas-etape ${maniere(e)}`);
+      li.style.setProperty("--i", String(j));
+      const texte = el(ctx.doc, "div", "cas-texte");
+      texte.append(el(ctx.doc, "span", "libelle", e.texte));
+      if (e.detail) texte.append(el(ctx.doc, "span", "detail", e.detail));
+      li.append(el(ctx.doc, "span", "cas-numero", String(e.numero)), texte);
+      ol.append(li);
+    });
+    col.append(tete, ol);
+    colonnes.append(col);
+  });
+  racine.append(colonnes);
+  if (c.legende?.length) {
+    const leg = el(ctx.doc, "ul", "cas-legende");
+    for (const l of c.legende) {
+      const li = el(ctx.doc, "li");
+      li.append(el(ctx.doc, "span", `echantillon ${maniere(l)}`), ctx.doc.createTextNode(l.texte));
+      leg.append(li);
+    }
+    racine.append(leg);
+  }
+  return racine;
+}
+
 function puce(ctx: Contexte, texte: string, classe: string): HTMLElement {
   return el(ctx.doc, "span", `puce ${classe}`, texte);
 }
@@ -303,7 +345,8 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
     case "schema":
       // Les textes d'un schéma sont les étiquettes de son dessin : ils ne se listent pas à côté.
       corps.classList.add("centre");
-      if (b.dessin) corps.append(schema(ctx, b, etape));
+      if (b.composition) corps.append(cas(ctx, b.composition, etape, b.etapes > 0));
+      else if (b.dessin) corps.append(schema(ctx, b, etape));
       else corps.append(...visuels(ctx, b, CORPS.largeur, CORPS.hauteur));
       break;
     case "capture":

@@ -5,7 +5,8 @@ import { qualifierReleve } from "../src/qualification/qualifier";
 import { relever } from "../src/releve/releve";
 import { planDeDevoilement } from "../src/salle/unites";
 import { habiller, type Maniere } from "../src/theme/maniere";
-import { deckDeSchema } from "./fixture";
+import { composerCas } from "../src/qualification/gabarits";
+import { deckDeCas, deckDeSchema } from "./fixture";
 
 describe("le dévoilement par niveau de hiérarchie 1", () => {
   it("une fiche paraît entière, une section avec son intertitre, hors section chaque élément seul", () => {
@@ -48,3 +49,36 @@ describe("le schéma synthétique joué par ses pastilles", async () => {
     expect(corps.size).toBeLessThanOrEqual(3);
   });
 });
+
+describe("le processus en phases recomposé au gabarit « cas » du wizard (PKG-B4)", async () => {
+  const { releve } = relever(await deckDeCas(), "cas.pptx");
+  const bloc = qualifierReleve(releve).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
+
+  it("se partitionne en colonnes rangées par les numéros de leurs bandeaux, la pastille débordante comprise", () => {
+    expect(bloc.figure).toBe("schema");
+    expect(bloc.dessin?.partition).toEqual({ mode: "colonnes", pas: 3 });
+  });
+
+  it("se lit en cas : bandeaux, étapes numérotées à leur manière, description, légende", () => {
+    const c = bloc.composition;
+    expect(c?.gabarit).toBe("cas");
+    if (c?.gabarit !== "cas") return;
+    expect(c.cas.map((k) => [k.numero, k.titre])).toEqual([[1, "Fournisseur"], [2, "Contrat"], [3, "Commande"]]);
+    expect(c.cas.every((k) => k.couleur)).toBe(true);
+    for (const [i, k] of c.cas.entries()) {
+      expect(k.etapes.map((e) => [e.numero, e.texte])).toEqual([1, 2, 3].map((j) => [j, `Étape ${i + 1}.${j}`]));
+      expect(k.etapes.map((e) => e.bord)).toEqual(["plein", "tirets", "plein"]);
+      expect(k.etapes.map((e) => e.detail)).toEqual([undefined, undefined, `Ce que fait l'étape ${i + 1}.3`]);
+    }
+    expect(c.legende?.map((l) => [l.texte, l.bord])).toEqual([["Tâche réalisée dans l'ERP", "aucun"], ["Actions automatiques", "tirets"]]);
+    expect(c.legende?.[0]?.fond).toBe(c.cas[2]!.couleur);
+  });
+
+  it("ne recompose pas un logigramme joué par étapes", async () => {
+    const { releve: r } = relever(await deckDeSchema(), "schema.pptx");
+    const b = qualifierReleve(r).spec.sequences.flatMap((s) => s.blocs).find((x) => x.source.diapo === 2)!;
+    expect(b.composition).toBeUndefined();
+    expect(composerCas(b.dessin!)).toBeNull();
+  });
+});
+

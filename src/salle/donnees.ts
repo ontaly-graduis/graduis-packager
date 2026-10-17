@@ -1,5 +1,5 @@
 // Le pivot mis en salle : blocs projetés, étapes de dévoilement, durées, numéros dérivés, zones en `RegionMap`.
-import type { Bloc, Dessin, Figure, SeanceSpec, Structure, Visuel } from "../pivot/seance-spec";
+import type { Bloc, Composition, Dessin, Figure, SeanceSpec, Structure, Visuel } from "../pivot/seance-spec";
 import { compenserChasse, type TableDeChasse } from "../theme/chasse";
 import { habiller, type Maniere } from "../theme/maniere";
 import { regionMap, type RegionMap } from "./region-map";
@@ -37,6 +37,8 @@ export interface BlocDeSalle {
   readonly dessin?: Dessin;
   /** L'organisation du texte (rangées, colonnes, intertitres, listes, définitions) ; ses unités se dévoilent une à une. */
   readonly structure?: Structure;
+  /** Le schéma recomposé par un gabarit : la salle le compose au thème au lieu de redessiner. */
+  readonly composition?: Composition;
 }
 
 
@@ -84,7 +86,7 @@ function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, h: Habillage)
   }
   const pastille = prise.devoilement === "pastille";
   const etapes = !pastille ? 0 : b.figure === "pas-a-pas" ? b.pas.length
-    : b.figure === "schema" ? b.dessin?.partition?.pas ?? 0
+    : b.figure === "schema" ? (b.composition ? b.composition.cas.length : b.dessin?.partition?.pas ?? 0)
       : DEVOILEES.has(b.figure) ? (b.structure ? planDeDevoilement(b.structure).total : lignes.length) : 0;
   const dessin = b.dessin ? compenserChasse(b.dessin, h.chasse ?? {}) : undefined;
   const minutes = MINUTEES.has(b.figure) ? lignes.join(" ").match(/(\d{1,3})\s*min/i) : null;
@@ -102,6 +104,7 @@ function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, h: Habillage)
     ...(b.figure === "pas-a-pas" ? { regionMap: regionMap(b) } : {}),
     ...(dessin ? { dessin: h.maniere ? habiller(dessin, h.maniere) : dessin } : {}),
     ...(b.structure ? { structure: b.structure } : {}),
+    ...(b.composition ? { composition: b.composition } : {}),
   };
 }
 
