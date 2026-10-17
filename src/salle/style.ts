@@ -51,13 +51,38 @@ ${ROLES.map((r) => `.dessin .f-${r}{fill:var(--dessin-${r})}.dessin .s-${r}{stro
 .cas-legende{list-style:none;margin:0 0 auto;padding:calc(12px * var(--k)) 0 0;display:flex;flex-wrap:wrap;gap:10px 40px;font-size:calc(17px * var(--k));color:var(--text-secondary);border-top:var(--border-hairline)}
 .cas-legende li{display:flex;align-items:center;gap:10px}
 .cas-legende .echantillon{display:inline-block;width:2.2em;height:1.15em;border:2px solid transparent}
-.cas .bord-tirets{border-style:dashed;border-color:var(--text-strong)}
-.cas .bord-plein{border-style:solid}
-.cas .b-aucun.bord-plein{border-color:var(--text-strong)}
-.cas .b-aucun{background:var(--color-background);color:var(--text-strong)}
+.compo .bord-tirets{border-style:dashed;border-color:var(--text-strong)}
+.compo .bord-plein{border-style:solid}
+.compo .b-aucun.bord-plein{border-color:var(--text-strong)}
+.compo .b-aucun{background:var(--color-background);color:var(--text-strong)}
 .cas-colonne.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both}
 .cas-colonne.apparait .cas-etape{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:calc(var(--mvt-decalage-depart) + var(--i) * var(--mvt-decalage))}
-${ROLES.map((r) => `.cas .b-${r}{background:var(--dessin-${r});color:${ROLES_SOMBRES.has(r) ? "var(--text-on-primary)" : "var(--text-strong)"}}`).join("\n")}
+/* Le gabarit « tableau » : des couloirs (bandes nommées, leur signe) sous des phases (cadres à leur couleur) ; dans les cases,
+   les étapes à leur manière, numérotées, avec leur signal ; des liens suivent les numéros. Tout se dimensionne sur --echelle. */
+.tab{--k:var(--echelle,1);flex:1 1 auto;display:flex;flex-direction:column;gap:calc(18px * var(--k));width:100%;min-height:0;min-width:0}
+.tab-grille{position:relative;margin-top:auto;display:grid;grid-template-columns:calc(220px * var(--k)) repeat(var(--n),minmax(0,1fr));grid-template-rows:auto repeat(var(--m),minmax(calc(58px * var(--k)),auto));column-gap:calc(14px * var(--k));row-gap:calc(8px * var(--k))}
+.tab-coin{display:flex;align-items:end;justify-content:center;padding-bottom:calc(6px * var(--k))}
+.tab-illustration{display:block;width:calc(72px * var(--k));height:calc(72px * var(--k))}
+.tab-phase{z-index:1;border:2px solid var(--phase,var(--text-strong));margin:calc(-6px * var(--k)) 0}
+.tab-phase-titre{z-index:2;align-self:end;padding:calc(8px * var(--k)) calc(10px * var(--k));text-align:center;font-size:calc(19px * var(--k));line-height:1.2;font-weight:var(--fw-bold);color:var(--text-strong)}
+.tab-couloir{z-index:0;background:var(--dessin-gris-pale)}
+.tab-ligne{z-index:1;display:grid;grid-template-columns:calc(40px * var(--k)) minmax(0,1fr);gap:calc(12px * var(--k));align-items:center;padding-right:calc(8px * var(--k));font-size:calc(16px * var(--k));line-height:1.2;font-weight:var(--fw-semibold);color:var(--text-strong)}
+.tab-signe{display:block;width:calc(40px * var(--k));height:calc(40px * var(--k))}
+.tab-flux{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible}
+.tab-lien{fill:none;stroke:var(--dessin-gris-fort);stroke-width:2}
+.tab-lien.cache{visibility:hidden}
+.tab-lien.trace{stroke-dasharray:1;animation:traitIn calc(var(--mvt-entree) * 1.2) linear both;animation-delay:calc(var(--mvt-decalage-depart) + (var(--i) + 1) * var(--mvt-decalage) * 2)}
+.tab-case{z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:calc(8px * var(--k));padding:calc(5px * var(--k)) calc(6px * var(--k));min-width:0}
+.tab-case.cache,.tab-phase.cache,.tab-phase-titre.cache{visibility:hidden}
+.tab-etape{position:relative;display:flex;align-items:center;gap:.5em;max-width:100%;padding:.4em .6em .4em 0;font-size:calc(15px * var(--k));line-height:1.25;border:2px solid transparent;margin-left:.8em}
+.tab-etape:not(:has(.cas-numero)){padding-left:.6em}
+.tab-etape .cas-numero{flex:none;width:1.6em;height:1.6em;margin-left:-.8em;font-size:.82em}
+.tab-texte{min-width:0;font-weight:var(--fw-semibold)}
+.compo .signal{flex:none;display:inline-block;width:1em;height:.9em;clip-path:polygon(50% 0,100% 100%,0 100%)}
+.cas-legende .echantillon.signal{width:1.2em;height:1.05em;border:0}
+.tab-case.apparait .tab-etape{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:calc(var(--mvt-decalage-depart) + var(--i) * var(--mvt-decalage) * 2)}
+.tab-phase.apparait,.tab-phase-titre.apparait{animation:fonduIn var(--mvt-temps) var(--courbe-douce) both}
+${ROLES.map((r) => `.compo .b-${r}{background:var(--dessin-${r});color:${ROLES_SOMBRES.has(r) ? "var(--text-on-primary)" : "var(--text-strong)"}}.compo .sig-${r}{background:var(--dessin-${r})}`).join("\n")}
 @keyframes aplatIn{from{fill-opacity:0}to{fill-opacity:1}}
 @keyframes fonduIn{from{opacity:0}to{opacity:1}}
 `;

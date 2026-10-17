@@ -86,7 +86,7 @@ function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, h: Habillage)
   }
   const pastille = prise.devoilement === "pastille";
   const etapes = !pastille ? 0 : b.figure === "pas-a-pas" ? b.pas.length
-    : b.figure === "schema" ? (b.composition ? b.composition.cas.length : b.dessin?.partition?.pas ?? 0)
+    : b.figure === "schema" ? (b.composition ? (b.composition.gabarit === "cas" ? b.composition.cas.length : b.composition.colonnes.length) : b.dessin?.partition?.pas ?? 0)
       : DEVOILEES.has(b.figure) ? (b.structure ? planDeDevoilement(b.structure).total : lignes.length) : 0;
   const dessin = b.dessin ? compenserChasse(b.dessin, h.chasse ?? {}) : undefined;
   const minutes = MINUTEES.has(b.figure) ? lignes.join(" ").match(/(\d{1,3})\s*min/i) : null;

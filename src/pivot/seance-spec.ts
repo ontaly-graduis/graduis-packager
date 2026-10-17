@@ -198,9 +198,19 @@ export const Structure = z.object({
 /** La manière d'une étape ou d'un échantillon de légende : son fond (un rôle) et son bord. */
 const maniereDEtape = { fond: role.optional(), bord: z.enum(["plein", "tirets", "aucun"]) };
 
+/** Une entrée de légende : un échantillon (une case, ou un triangle de signal) à la manière qu'il nomme. */
+const EntreeDeLegende = z.object({ texte: z.string(), forme: z.literal("triangle").optional(), ...maniereDEtape }).strict();
+
+/** Une vignette : un petit dessin repris tel quel (l'icône d'un couloir, le portrait d'un persona), en points. */
+export const Vignette = z.object({ cadre: boite, elements: z.array(ElementDeDessin) }).strict();
+
 /**
- * Un schéma recomposé par un gabarit du wizard (PKG-B4). `cas` : des colonnes en regard, chacune annoncée par son bandeau
- * (numéro, titre, couleur), faite d'étapes numérotées (texte, description, manière) ; la légende nomme les manières.
+ * Un schéma recomposé par un gabarit du wizard (PKG-B4, B5).
+ * `cas` : des colonnes en regard, chacune annoncée par son bandeau (numéro, titre, couleur), faite d'étapes numérotées
+ * (texte, description, manière) ; la légende nomme les manières.
+ * `tableau` : des lignes nommées (et leur signe) sous des colonnes nommées ; dans ses cases, des étapes placées par
+ * (ligne, colonne), numérotées dans leur colonne, chacune à sa manière et, s'il y a lieu, avec le signal (le triangle
+ * d'alerte du wizard, dont la couleur dit le degré) ; une illustration (le persona) et la légende.
  */
 export const Composition = z.discriminatedUnion("gabarit", [
   z.object({
@@ -211,7 +221,22 @@ export const Composition = z.discriminatedUnion("gabarit", [
       couleur: role.optional(),
       etapes: z.array(z.object({ numero: z.number().int(), texte: z.string(), detail: z.string().optional(), ...maniereDEtape }).strict()),
     }).strict()),
-    legende: z.array(z.object({ texte: z.string(), ...maniereDEtape }).strict()).optional(),
+    legende: z.array(EntreeDeLegende).optional(),
+  }).strict(),
+  z.object({
+    gabarit: z.literal("tableau"),
+    colonnes: z.array(z.object({ titre: z.string(), couleur: role.optional() }).strict()),
+    lignes: z.array(z.object({ titre: z.string(), signe: Vignette.optional() }).strict()),
+    etapes: z.array(z.object({
+      ligne: z.number().int().nonnegative(),
+      colonne: z.number().int().nonnegative(),
+      numero: z.number().int().optional(),
+      texte: z.string(),
+      signal: role.optional(),
+      ...maniereDEtape,
+    }).strict()),
+    illustration: Vignette.optional(),
+    legende: z.array(EntreeDeLegende).optional(),
   }).strict(),
 ]);
 
@@ -257,4 +282,5 @@ export type TraitDeDessin = z.infer<typeof TraitDeDessin>;
 export type Corps = z.infer<typeof Corps>;
 export type Structure = z.infer<typeof Structure>;
 export type Composition = z.infer<typeof Composition>;
+export type Vignette = z.infer<typeof Vignette>;
 export type Noeud = z.infer<typeof Noeud>;

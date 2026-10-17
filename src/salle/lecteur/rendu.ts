@@ -1,6 +1,6 @@
 // Le rendu d'un bloc de salle en diapositive 1920 × 1080, au thème : une composition par figure.
 import { dessinEnSvg } from "../../dessin/svg";
-import type { Composition, Structure } from "../../pivot/seance-spec";
+import type { Composition, Structure, Vignette } from "../../pivot/seance-spec";
 import type { BlocDeSalle, SequenceDeSalle, VisuelDeSalle } from "../donnees";
 import { planDeDevoilement } from "../unites";
 
@@ -259,10 +259,10 @@ function schema(ctx: Contexte, b: BlocDeSalle, etape: number): HTMLElement {
  * joue « cas en entier » : une colonne par étape, ses étapes en cascade dans l'ordre de leurs numéros.
  */
 function cas(ctx: Contexte, c: Extract<Composition, { gabarit: "cas" }>, etape: number, devoile: boolean): HTMLElement {
-  const racine = el(ctx.doc, "div", "cas");
+  const racine = el(ctx.doc, "div", "cas compo");
   const colonnes = el(ctx.doc, "div", "cas-colonnes");
   colonnes.style.setProperty("--n", String(c.cas.length));
-  const maniere = (x: { fond?: string | undefined; bord: string }) => `${x.fond ? `b-${x.fond}` : "b-aucun"} bord-${x.bord}`;
+  const maniere = maniereDe;
   c.cas.forEach((k, i) => {
     const col = el(ctx.doc, "section", "cas-colonne");
     if (devoile && i >= etape) col.classList.add("cache");
@@ -283,15 +283,103 @@ function cas(ctx: Contexte, c: Extract<Composition, { gabarit: "cas" }>, etape: 
     colonnes.append(col);
   });
   racine.append(colonnes);
-  if (c.legende?.length) {
-    const leg = el(ctx.doc, "ul", "cas-legende");
-    for (const l of c.legende) {
-      const li = el(ctx.doc, "li");
-      li.append(el(ctx.doc, "span", `echantillon ${maniere(l)}`), ctx.doc.createTextNode(l.texte));
-      leg.append(li);
-    }
-    racine.append(leg);
+  if (c.legende?.length) racine.append(legendeDeComposition(ctx, c.legende));
+  return racine;
+}
+
+type EntreeDeLegende = NonNullable<Extract<Composition, { gabarit: "cas" }>["legende"]>[number];
+const maniereDe = (x: { fond?: string | undefined; bord: string }) => `${x.fond ? `b-${x.fond}` : "b-aucun"} bord-${x.bord}`;
+
+/** La légende d'une composition : un échantillon (case à la manière, ou triangle de signal) et ce qu'il nomme. */
+function legendeDeComposition(ctx: Contexte, entrees: readonly EntreeDeLegende[]): HTMLElement {
+  const leg = el(ctx.doc, "ul", "cas-legende");
+  for (const l of entrees) {
+    const li = el(ctx.doc, "li");
+    const echantillon = l.forme === "triangle" ? el(ctx.doc, "span", `echantillon signal sig-${l.fond ?? "encre"}`) : el(ctx.doc, "span", `echantillon ${maniereDe(l)}`);
+    li.append(echantillon, ctx.doc.createTextNode(l.texte));
+    leg.append(li);
   }
+  return leg;
+}
+
+/** Une vignette (icône, portrait) dessinée en SVG, ses images résolues. */
+function vignette(ctx: Contexte, v: Vignette, prefixe: string, classe: string): HTMLElement {
+  const e = el(ctx.doc, "span", classe);
+  e.innerHTML = dessinEnSvg({ cadre: v.cadre, elements: v.elements }, prefixe);
+  e.querySelectorAll("image[data-media]").forEach((i) => i.setAttribute("href", ctx.medias[i.getAttribute("data-media") ?? ""] ?? ""));
+  return e;
+}
+
+/**
+ * Le gabarit `tableau` du wizard, composé au thème : des couloirs nommés (et leur signe) sous des phases ; dans chaque case,
+ * les étapes à leur manière, numérotées dans leur phase, avec leur signal ; des liens suivent les numéros d'une étape à la
+ * suivante (le lecteur les trace une fois la mise en page faite). Le dévoilement joue phase par phase, ses étapes en
+ * cascade dans l'ordre de leurs numéros.
+ */
+function composerTableau(ctx: Contexte, t: Extract<Composition, { gabarit: "tableau" }>, etape: number, devoile: boolean, prefixe: string): HTMLElement {
+  const racine = el(ctx.doc, "div", "tab compo");
+  const grille = el(ctx.doc, "div", "tab-grille");
+  grille.style.setProperty("--n", String(t.colonnes.length));
+  grille.style.setProperty("--m", String(t.lignes.length));
+  const etat = (j: number) => (!devoile ? "" : j >= etape ? " cache" : j === etape - 1 && ctx.anime === "etape" ? " apparait" : "");
+  const place = (e: HTMLElement, ligne: string, colonne: string) => { e.style.gridRow = ligne; e.style.gridColumn = colonne; return e; };
+  // Le coin : l'illustration (le persona).
+  const coin = place(el(ctx.doc, "div", "tab-coin"), "1", "1");
+  if (t.illustration) coin.append(vignette(ctx, t.illustration, `${prefixe}-i`, "tab-illustration"));
+  grille.append(coin);
+  // Les phases : un cadre à leur couleur sur toute la hauteur, leur titre en tête.
+  t.colonnes.forEach((k, j) => {
+    const cadre = place(el(ctx.doc, "div", `tab-phase${etat(j)}`), "1 / -1", String(j + 2));
+    if (k.couleur) cadre.style.setProperty("--phase", `var(--dessin-${k.couleur})`);
+    const titre = place(el(ctx.doc, "div", `tab-phase-titre${etat(j)}`, k.titre), "1", String(j + 2));
+    grille.append(cadre, titre);
+  });
+  // Les couloirs : une bande sous les phases, leur nom et leur signe à gauche.
+  t.lignes.forEach((l, i) => {
+    const tete = place(el(ctx.doc, "div", "tab-ligne"), String(i + 2), "1");
+    if (l.signe) tete.append(vignette(ctx, l.signe, `${prefixe}-l${i}`, "tab-signe"));
+    tete.append(el(ctx.doc, "span", "tab-ligne-titre", l.titre));
+    grille.append(place(el(ctx.doc, "div", "tab-couloir"), String(i + 2), "2 / -1"), tete);
+  });
+  // Les liens d'une étape numérotée à la suivante, dans sa phase ; le lecteur en calcule le tracé.
+  const svg = ctx.doc.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "tab-flux");
+  grille.append(svg);
+  // Les cases et leurs étapes.
+  const cases = new Map<string, HTMLElement>();
+  const rang = new Map<number, number>();
+  t.etapes.forEach((e, k) => {
+    const cle = `${e.ligne}:${e.colonne}`;
+    let c = cases.get(cle);
+    if (!c) {
+      c = place(el(ctx.doc, "div", `tab-case${etat(e.colonne)}`), String(e.ligne + 2), String(e.colonne + 2));
+      cases.set(cle, c);
+      grille.append(c);
+    }
+    const r = rang.get(e.colonne) ?? 0;
+    rang.set(e.colonne, r + 1);
+    const carte = el(ctx.doc, "div", `tab-etape ${maniereDe(e)}`, undefined, { "data-colonne": String(e.colonne), "data-k": String(k) });
+    carte.style.setProperty("--i", String(r));
+    if (e.numero !== undefined) carte.append(el(ctx.doc, "span", "cas-numero", String(e.numero)));
+    carte.append(el(ctx.doc, "span", "tab-texte", e.texte));
+    if (e.signal) carte.append(el(ctx.doc, "span", `signal sig-${e.signal}`));
+    c.append(carte);
+  });
+  t.colonnes.forEach((_, j) => {
+    const numerotees = t.etapes.map((e, k) => ({ e, k })).filter(({ e }) => e.colonne === j && e.numero !== undefined)
+      .sort((a, b) => a.e.numero! - b.e.numero!);
+    numerotees.slice(1).forEach(({ k }, n) => {
+      const lien = ctx.doc.createElementNS("http://www.w3.org/2000/svg", "path");
+      lien.setAttribute("class", `tab-lien${etat(j)}${etat(j).includes("apparait") ? " trace" : ""}`);
+      lien.setAttribute("data-de", String(numerotees[n]!.k));
+      lien.setAttribute("data-a", String(k));
+      lien.setAttribute("pathLength", "1");
+      lien.style.setProperty("--i", String(n));
+      svg.append(lien);
+    });
+  });
+  racine.append(grille);
+  if (t.legende?.length) racine.append(legendeDeComposition(ctx, t.legende));
   return racine;
 }
 
@@ -345,7 +433,8 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
     case "schema":
       // Les textes d'un schéma sont les étiquettes de son dessin : ils ne se listent pas à côté.
       corps.classList.add("centre");
-      if (b.composition) corps.append(cas(ctx, b.composition, etape, b.etapes > 0));
+      if (b.composition?.gabarit === "cas") corps.append(cas(ctx, b.composition, etape, b.etapes > 0));
+      else if (b.composition?.gabarit === "tableau") corps.append(composerTableau(ctx, b.composition, etape, b.etapes > 0, b.id));
       else if (b.dessin) corps.append(schema(ctx, b, etape));
       else corps.append(...visuels(ctx, b, CORPS.largeur, CORPS.hauteur));
       break;

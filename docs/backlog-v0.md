@@ -81,7 +81,21 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 **Sortie** (49 témoins Vitest — 37 sur le dépôt, 12 sur le corpus — et 9 Playwright, verts ; fumée sur les 164 blocs : 0 erreur, 0 requête)
 - Le processus S2P (17, 18) recomposé en quatre phases de 6, 6, 5 et 6 étapes ; en 18, chaque étape avec sa description ; légendes de 3 et 4 entrées.
 - Les personae (19, 20), le logigramme (31) et les architectures (15, 16) restent redessinés.
-- Non couvert, nommé : les fiches personae, grille couloirs × phases, attendent un gabarit `grille` (candidat, non ouvert) ; la recomposition ne passe pas encore par le PPT de validation (PKG-C) ni par le papier (PKG-D).
+- Non couvert, nommé : les fiches personae (grille couloirs × phases) → PKG-B5 ; la recomposition ne passe pas encore par le PPT de validation (PKG-C) ni par le papier (PKG-D).
+
+---
+
+## PKG-B5 · Les fiches personae recomposées au gabarit `tableau` — Sortie atteinte le 17/10
+
+**Livré** (demandé par David avant PKG-C, prototypé, arrêté sur ses quatre réponses, `decisions.md`, 17/10) : le `tableau` du wizard — des lignes nommées et leur signe sous des colonnes nommées, un triangle d'alerte —, étendu aux couloirs des processus ONET.
+- **La lecture** (`composerTableau`, `src/qualification/gabarits.ts`) : les phases (hautes colonnes titrées, à la couleur de leur cadre), les couloirs (bandes nommées qui les traversent, l'icône dessinée à leur gauche), les étapes placées par le point qu'elles désignent — la pastille qui les numérote, sinon la pointe de leur bulle —, leur manière, leur signal (le triangle posé dessus, le plus haut s'ils s'empilent), le portrait du persona, la légende (cases puis signaux).
+- **L'harmonisation** (`harmoniser`) : une manière ou un signal que la légende ne nomme pas est ramené au plus proche qu'elle nomme — le bord d'abord (il dit qui agit), puis le fond ; chaque changement est un constat « à valider ».
+- **En salle** : grille HTML au thème, phase par phase (4 pas), les étapes en cascade dans l'ordre de leurs numéros ; un lien se trace d'une étape numérotée à la suivante, mesuré après la mise en page ; la grille occupe sa page.
+
+**Sortie** (54 témoins Vitest — 41 sur le dépôt, 13 sur le corpus — et 10 Playwright, verts ; fumée sur les 164 blocs : 0 erreur, 0 requête)
+- 19 : 4 phases × 8 couloirs, 12 étapes (3 par phase), toutes à une manière de la légende.
+- 20 : 13 étapes dont une sans numéro ; 12 manières et 2 signaux harmonisés (les tirets → tâche d'un tiers, les bords pleins → tâche du persona).
+- Non couvert, nommé : la recomposition ne passe pas encore par le PPT de validation (PKG-C) ni par le papier (PKG-D) ; un signal noir sans équivalent en légende va au plus proche (« impact fort ») — à confirmer à la validation.
 
 ---
 
@@ -92,7 +106,7 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 **À trancher au démarrage**
 - Le nom de l'objet : « PPT d'auteur » (spec) ou « PPT de validation » (le mot de David, 17/10).
 - Le dessin des schémas réémis en formes natives : aux couleurs des rôles (valeurs du thème) et en Montserrat, corps compensés ; ce que `lire` en relit doit redonner le même dessin (I-PKG-3).
-- La grammaire des lectures heuristiques (I-PKG-4) : la structure d'un texte (intertitres, listes, définitions, fiches), la partition d'un schéma (pas et ordre de chaque élément) et sa recomposition en gabarit (le `cas` : phases, étapes, manières, descriptions, légende) se montrent et se corrigent dans le PPT de validation.
+- La grammaire des lectures heuristiques (I-PKG-4) : la structure d'un texte (intertitres, listes, définitions, fiches), la partition d'un schéma (pas et ordre de chaque élément) et sa recomposition en gabarit (le `cas` : phases, étapes, manières, descriptions, légende ; le `tableau` : phases, couloirs, étapes placées, signaux, harmonisations) se montrent et se corrigent dans le PPT de validation.
 - Le support des identifiants : étiquettes OOXML ou nom de diapositive ; le comportement au copier-coller.
 - Le thème dans le PPT : comment la couche sémantique ONET se projette sur les 12 emplacements de couleur et les polices du thème Office.
 - Le repli de police : Montserrat manque sur une partie des postes, et PowerPoint ne l'embarque pas toujours. Police embarquée, police système de repli, ou installation demandée à ONET ?
