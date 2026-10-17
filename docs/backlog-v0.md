@@ -42,6 +42,7 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 - Les captures rognées sont rejouées rognées ; le seul média non affichable est l'icône EMF de la diapo 54.
 - Revue visuelle : la diapo 31, un logigramme dessiné avec un petit tableau de légende, passe de « processus » à « schéma » (la règle du dessin précède celle du tableau : processus 1, schémas 7) ; une mise en pratique « À vous de jouer » prend son énoncé pour titre.
 - Non couvert, nommé : Edge et Firefox (seul Chromium est joué) ; les schémas dessinés n'ont pas encore de rendu (PKG-B2) ; les infobulles de glossaire attendent H7.
+- **Polish permanent (David, 17/10)**, livré le même jour : le mouvement du thème ONET (entrées en cascade, dévoilement de l'item courant, apparition des zones et des encadrés, volet de séquence) ; le défilement des contenus qui débordent (la pile suit l'item courant d'un dévoilement ; un contenu statique se lit page par page, avec fondus et indice de suite ; le présentateur s'aligne). 28 témoins Vitest, 5 Playwright.
 
 ---
 
