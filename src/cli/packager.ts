@@ -1,4 +1,4 @@
-// CLI du packager — `packager relever <deck.pptx> [--sortie <dossier>]` : relevé, médias hashés, mesures.
+// CLI du packager — relever, qualifier, émettre le PPT de validation, le lire, construire la salle.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { sha256, stringify2 } from "../lib/json";
@@ -11,6 +11,8 @@ import { rapportHtml } from "../diagnostic/rapport-html";
 import { chargerTheme } from "../theme/theme";
 import { construireSalle } from "../salle/construire";
 import type { Devoilement } from "../salle/donnees";
+import { emettre } from "../emission/emettre";
+import { estUnPptDeValidation, lire } from "../lecture/lire";
 
 /** Relève un deck et écrit `releve.json` et les médias hashés dans le dossier de sortie. */
 function ecrireReleve(deck: string, sortie: string | undefined) {
@@ -24,10 +26,61 @@ function ecrireReleve(deck: string, sortie: string | undefined) {
   return { nom, releve, medias, dossier, texte };
 }
 
-async function salleCommande(deck: string, sortie: string | undefined, dossierTheme: string, sequences: string[] | undefined, devoilement: Devoilement): Promise<void> {
-  const { releve, medias, dossier } = ecrireReleve(deck, sortie);
+/**
+ * Le pivot d'où dérivent les sorties : lu dans le PPT de validation (la lecture grammaticale, seule livrable, I-PKG-4), ou
+ * qualifié d'un deck hérité (la lecture heuristique : un aperçu, à valider).
+ */
+function pivotDe(fichier: string, sortie: string | undefined) {
+  const octets = new Uint8Array(readFileSync(fichier));
+  if (estUnPptDeValidation(octets)) {
+    const { spec, ecarts } = lire(octets);
+    const { releve, medias } = relever(octets, basename(fichier));
+    const dossier = sortie ?? join("out", basename(fichier, extname(fichier)));
+    mkdirSync(dossier, { recursive: true });
+    return { spec, releve, medias, dossier, grammaticale: true, ecarts };
+  }
+  const { releve, medias, dossier } = ecrireReleve(fichier, sortie);
   const { spec } = qualifierReleve(releve);
-  SeanceSpec.parse(spec);
+  return { spec: SeanceSpec.parse(spec), releve, medias, dossier, grammaticale: false, ecarts: [] };
+}
+
+function emettreCommande(deck: string, sortie: string | undefined, dossierTheme: string): void {
+  const { spec, releve, medias, dossier } = pivotDe(deck, sortie);
+  const octets = emettre(spec, {
+    jetons: chargerTheme(dossierTheme).jetons,
+    media: (h) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; },
+  });
+  writeFileSync(join(dossier, "validation.pptx"), octets);
+  const blocs = spec.sequences.flatMap((s) => s.blocs);
+  console.log([
+    `# PPT de validation — ${spec.source.nom}`,
+    `${dossier}/validation.pptx · ${(octets.length / 1e6).toFixed(1)} Mo · empreinte ${sha256(octets)}`,
+    `${blocs.length} diapositives · ${spec.sequences.length} séquences · ${blocs.reduce((n, b) => n + b.pas.length, 0)} pas`,
+    "à relire et corriger dans PowerPoint, puis : packager lire validation.pptx",
+  ].join("\n"));
+}
+
+function lireCommande(fichier: string, sortie: string | undefined): void {
+  const octets = new Uint8Array(readFileSync(fichier));
+  if (!estUnPptDeValidation(octets)) {
+    console.error(`${fichier} n'est pas un PPT de validation (il ne dit pas de quel deck il procède).`);
+    process.exit(2);
+  }
+  const { spec, ecarts } = lire(octets);
+  const dossier = sortie ?? join("out", basename(fichier, extname(fichier)));
+  mkdirSync(dossier, { recursive: true });
+  const texte = stringify2(spec);
+  writeFileSync(join(dossier, "seance-spec.json"), texte);
+  console.log([
+    `# Lecture — ${fichier}`,
+    `pivot ${sha256(texte)} → ${dossier}/seance-spec.json`,
+    ecarts.length ? `écarts à la grammaire (${ecarts.length}) :` : "aucun écart à la grammaire",
+    ...ecarts.map((e) => `  diapositive ${e.diapo} : ${e.message}`),
+  ].join("\n"));
+}
+
+async function salleCommande(deck: string, sortie: string | undefined, dossierTheme: string, sequences: string[] | undefined, devoilement: Devoilement): Promise<void> {
+  const { spec, releve, medias, dossier, grammaticale } = pivotDe(deck, sortie);
   const { html, nonAffichables } = await construireSalle(spec, {
     prise: { devoilement },
     theme: chargerTheme(dossierTheme),
@@ -40,7 +93,7 @@ async function salleCommande(deck: string, sortie: string | undefined, dossierTh
   const nom = sequences ? `salle-${sequences.join("-")}.html` : "salle.html";
   writeFileSync(join(dossier, nom), html);
   console.log([
-    `# Salle — ${releve.deck.nom}`,
+    `# Salle — ${spec.source.nom}${grammaticale ? " (lue dans le PPT de validation)" : " (lecture heuristique : un aperçu, à valider)"}`,
     `${dossier}/${nom} · ${(Buffer.byteLength(html) / 1e6).toFixed(1)} Mo · empreinte ${sha256(html)}`,
     `dévoilement ${devoilement}${sequences ? ` · séquences ${sequences.join(", ")}` : " · toutes les séquences"}`,
     nonAffichables.length ? `médias non affichables (à convertir) : ${nonAffichables.length}` : "tous les médias sont affichables",
@@ -108,10 +161,12 @@ const option = (nom: string) => {
 };
 if (commande === "relever" && args[0]) releverCommande(args[0], option("--sortie"));
 else if (commande === "qualifier" && args[0]) qualifierCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet");
+else if (commande === "emettre" && args[0]) emettreCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet");
+else if (commande === "lire" && args[0]) lireCommande(args[0], option("--sortie"));
 else if (commande === "salle" && args[0]) {
   const devoilement = option("--devoilement") === "ecran" ? "ecran" : "pastille";
   await salleCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", option("--sequences")?.split(","), devoilement);
 } else {
-  console.error("usage : packager relever|qualifier|salle <deck.pptx> [--sortie <dossier>] [--theme <dossier>] [--sequences s030,…] [--devoilement pastille|ecran]");
+  console.error("usage : packager relever|qualifier|emettre|lire|salle <deck.pptx | validation.pptx> [--sortie <dossier>] [--theme <dossier>] [--sequences s030,…] [--devoilement pastille|ecran]");
   process.exit(2);
 }

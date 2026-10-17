@@ -2,7 +2,7 @@
 import type { Boite, Forme } from "../ooxml/formes";
 import type { Releve, DiapositiveReleve, FormeReleve } from "../releve/releve";
 import { POUCE, aCadreTexte, dedans, estCapture, estPastille, estZone, texteDe } from "../releve/geometrie";
-import { SCHEMA_SEANCE, type Bloc, type Pas, type SeanceSpec, type Sequence, type Visuel } from "../pivot/seance-spec";
+import { SCHEMA_SEANCE, SeanceSpec, type Bloc, type Pas, type Sequence, type Visuel } from "../pivot/seance-spec";
 import { dessinDe } from "./dessin";
 import { composerCas, composerTableau, harmoniser } from "./gabarits";
 import { structurer } from "./structure";
@@ -147,7 +147,8 @@ export function qualifierReleve(r: Releve): Qualifie {
     else courante.blocs.push(bloc);
   }
   return {
-    spec: { schema: SCHEMA_SEANCE, source: { nom: r.deck.nom, empreinte: r.deck.empreinte }, sequences },
+    // Le pivot sort normalisé par son schéma (ordre des clés compris) : lu dans le PPT de validation, il a le même hash.
+    spec: SeanceSpec.parse({ schema: SCHEMA_SEANCE, source: { nom: r.deck.nom, empreinte: r.deck.empreinte }, sequences }),
     qualifications,
   };
 }

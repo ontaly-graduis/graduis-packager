@@ -39,7 +39,9 @@ graduis-packager/
     dessin/        dessin du pivot → SVG à classes de rôle (géométries DrawingML), module pur : salle et papier
     salle/         pivot → salle.html : données de salle, RegionMap, assemblage ; lecteur/ (navigateur, sans framework)
     cli/           `npm run packager -- relever|qualifier|salle <deck>`
-    (à venir : emission/ et lecture/ du PPT de validation, papier/)
+    emission/      pivot → PPT de validation : grammaire (un seul endroit), gabarit du thème ONET, écrivain OOXML
+    lecture/       PPT de validation → pivot : la lecture grammaticale (lire)
+    (à venir : papier/)
   tests-navigateur/ Playwright : la salle jouée en file:// (`npm run test:navigateur`)
   gabarits/    theme-onet/ (thème DS Onet repris, PROVENANCE.md) ; le gabarit d'auteur PPT se génère de ce thème
   golden/      séquence de référence : pivot + sorties (anonymisé ou hors dépôt)

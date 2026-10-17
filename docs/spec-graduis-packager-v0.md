@@ -184,7 +184,9 @@ pivot₀ ── émettre ──► PPT d'auteur (gabarit à grammaire, thème ON
 
 `pas-a-pas` reprend l'identifiant et le contrat de `figure-pas-a-pas`. La route de salle le joue en mode `reveal` (dévoiler, sans gate, l'animateur avance), la route papier en état final.
 
-### 4.3 Le PPT d'auteur : la grammaire
+### 4.3 Le PPT d'auteur (« PPT de validation ») : la grammaire
+
+*Mise en œuvre en PKG-C1 (17/10) : `src/emission/grammaire.ts` la tient en un seul endroit ; `emettre` l'écrit, `lire` la lit ; `lire(émettre(pivot₀)) ≡ pivot₀` sur les 166 diapositives du deck acheteur. Les identifiants sont des étiquettes OOXML (`GRADUIS.BLOC`, `GRADUIS.SOURCE`), le deck hérité une propriété du document ; la structure des textes (C2), le dessin, la partition et les recompositions (C3) voyagent provisoirement en étiquette JSON.*
 
 - **Un gabarit d'auteur généré du thème ONET**, sans reprendre le masque des decks hérités : une disposition par figure, nommée par elle (`G · Pas-à-pas`, `G · Mise en pratique`…). La disposition est le contrat : `lire` ne devine rien.
 - **Les pastilles et les zones** : une forme de pastille unique au gabarit, numérotée par son texte ; une zone est un cadre sans remplissage, au style « zone ». `lire` apparie pastille n, zone voisine et ligne n des consignes.
