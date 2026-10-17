@@ -110,10 +110,16 @@ export function partitionner(d: Dessin): Dessin {
       return dansLaColonne || enTete ? k : -1;
     };
     const k = elements.map(colonneDe);
-    // La forme qu'une pastille annonce est de la colonne de sa pastille.
-    for (const p of paires) if (p.forme !== null && k[p.pastille]! >= 0) k[p.forme] = k[p.pastille]!;
-    // L'en-tête numéroté d'une colonne : sa pastille la plus haute, au-dessus de la colonne ou sur son bord.
-    const entetes = cols.map((c, j) => paires.filter((p) => k[p.pastille] === j && centre(elements[p.pastille]!.boite)[1] < c[1] + 0.08 * c[3])
+    // Une pastille et la forme qu'elle annonce vont ensemble, dans la colonne de la forme (la plus grande des deux, la plus
+    // sûre : une pastille posée au bord d'un bandeau déborde souvent sur la colonne voisine) ; à défaut, de la pastille.
+    for (const p of paires) {
+      if (p.forme === null) continue;
+      const j = k[p.forme]! >= 0 ? k[p.forme]! : k[p.pastille]!;
+      k[p.forme] = j;
+      k[p.pastille] = j;
+    }
+    // L'en-tête numéroté d'une colonne : la pastille dont la forme est au-dessus de la colonne (son bandeau).
+    const entetes = cols.map((c, j) => paires.filter((p) => k[p.pastille] === j && p.forme !== null && centre(elements[p.forme]!.boite)[1] < c[1])
       .sort((a, b) => elements[a.pastille]!.boite[1] - elements[b.pastille]!.boite[1])[0]);
     const numerotees = entetes.every((e) => e) && new Set(entetes.map((e) => e!.n)).size === cols.length
       && entetes.every((e) => e!.n >= 1 && e!.n <= cols.length);

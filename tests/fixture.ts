@@ -79,3 +79,37 @@ export async function deckDeSchema(): Promise<Uint8Array> {
   s.addShape(pptx.ShapeType.rect, { x: 0.3, y: 1.2, w: 9.4, h: 1.7, fill: { color: "DCF4CE" }, line: { color: "A3A7AF", width: 0.5, dashType: "sysDot" } });
   return new Uint8Array((await pptx.write({ outputType: "nodebuffer" })) as Buffer);
 }
+
+/**
+ * Un processus en trois phases (PKG-B4) : chaque colonne a son bandeau numéroté (la pastille 3 déborde sur sa voisine,
+ * comme dans les decks), trois étapes numérotées dont une en tirets et une avec sa description ; une légende dessous.
+ */
+export async function deckDeCas(): Promise<Uint8Array> {
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_16x9";
+  pptx.defineSlideMaster({ title: "Disposition personnalisée", background: { color: "FFFFFF" }, objects: [] });
+  pptx.addSlide({ masterName: "Disposition personnalisée" }).addText("Ouverture", { x: 1, y: 2, w: 8, h: 1 });
+  const s = pptx.addSlide({ masterName: "Disposition personnalisée" });
+  s.addText("Processus achat", { x: 0.4, y: 0.15, w: 9, h: 0.6, fontSize: 24, bold: true });
+  const phases = [["Fournisseur", "6FBFE5"], ["Contrat", "2E7D32"], ["Commande", "2F6E96"]] as const;
+  // L'ordre d'empilement mêle les phases : 2, 3, 1 — ce sont les numéros qui rangent.
+  for (const i of [1, 2, 0]) {
+    const [titre, couleur] = phases[i]!;
+    const x = 0.4 + i * 3.1;
+    s.addShape(pptx.ShapeType.rect, { x, y: 1.45, w: 2.8, h: 3.2, fill: { color: "F2F2F2" } });
+    s.addText(titre, { shape: pptx.ShapeType.rect, x, y: 0.95, w: 2.8, h: 0.42, fill: { color: couleur }, color: "FFFFFF", fontSize: 12, bold: true, fontFace: "Calibri", valign: "middle" });
+    s.addText(String(i + 1), { shape: pptx.ShapeType.ellipse, x: i === 2 ? x - 0.24 : x - 0.1, y: 1.03, w: 0.26, h: 0.26, fill: { color: "C55A5A" }, color: "FFFFFF", fontSize: 9, align: "center" });
+    for (let j = 0; j < 3; j++) {
+      const y = 1.65 + j * 0.95;
+      const tirets = j === 1;
+      s.addText(`Étape ${i + 1}.${j + 1}`, { shape: pptx.ShapeType.rect, x: x + 0.25, y, w: 2.4, h: 0.7, fill: { color: tirets ? "DEEBF7" : couleur }, line: { color: "002060", width: 1, ...(tirets ? { dashType: "dash" as const } : {}) }, color: tirets ? "002060" : "FFFFFF", fontSize: 10, fontFace: "Calibri", valign: "top" });
+      s.addText(String(j + 1), { shape: pptx.ShapeType.ellipse, x: x + 0.1, y: y + 0.05, w: 0.24, h: 0.24, fill: { color: "C55A5A" }, color: "FFFFFF", fontSize: 8, align: "center" });
+      if (j === 2) s.addText(`Ce que fait l'étape ${i + 1}.3`, { x: x + 0.5, y: y + 0.36, w: 2.1, h: 0.28, fontSize: 8, color: "FFFFFF", fontFace: "Calibri" });
+    }
+  }
+  s.addShape(pptx.ShapeType.rect, { x: 0.4, y: 4.95, w: 0.4, h: 0.2, fill: { color: "2F6E96" } });
+  s.addText("Tâche réalisée dans l'ERP", { x: 0.85, y: 4.9, w: 2.5, h: 0.3, fontSize: 9, color: "404040" });
+  s.addText("Actions automatiques", { x: 3.6, y: 4.9, w: 2.2, h: 0.3, fontSize: 9, color: "404040", line: { color: "002060", width: 1, dashType: "dash" } });
+  return new Uint8Array((await pptx.write({ outputType: "nodebuffer" })) as Buffer);
+}
+

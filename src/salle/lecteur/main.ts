@@ -142,6 +142,13 @@ function contexte(doc: Document, z: boolean, anime: Contexte["anime"]): Contexte
  */
 function ajuster(racine: Element, etapesDuDevoilement: number, etape: number): number {
   ajusterTextes(racine);
+  // Un cas recomposé occupe sa page : il part grand (130 %) et se resserre jusqu'à tenir (au plus serré, 70 %).
+  racine.querySelectorAll<HTMLElement>(".cas").forEach((c) => {
+    for (let k = 1.3; k >= 0.7; k -= 0.03) {
+      c.style.setProperty("--echelle", k.toFixed(2));
+      if (c.scrollHeight <= c.clientHeight + 1) break;
+    }
+  });
   // Un texte organisé tient d'abord dans sa page en se resserrant (jusqu'à 76 %), puis défile.
   racine.querySelectorAll<HTMLElement>(".defile").forEach((f) => {
     const s = f.querySelector<HTMLElement>(".structure");

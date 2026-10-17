@@ -1,5 +1,6 @@
 // La feuille de la salle : scène 1920 × 1080, compositions par figure, présentateur — jetons du thème seulement.
 import { ROLES } from "../pivot/seance-spec";
+import { ROLES_SOMBRES } from "../qualification/roles";
 
 /** Les schémas redessinés : un rôle de couleur → remplissage (f-), trait (s-), texte (c-), d'après `--dessin-<rôle>` du thème. */
 const STYLE_DESSIN = `
@@ -31,6 +32,32 @@ ${ROLES.map((r) => `.dessin .f-${r}{fill:var(--dessin-${r})}.dessin .s-${r}{stro
 .dessin .trace path[pathLength]{stroke-dasharray:1;animation:traitIn calc(var(--mvt-entree) * 1.4) linear both,aplatIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--r) * var(--mvt-decalage)),calc(var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .45)}
 .dessin .trace foreignObject,.dessin .trace image{animation:fonduIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .7)}
 @keyframes traitIn{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+/* Le gabarit « cas » : colonnes en regard, bandeau numéroté, étapes numérotées à leur manière, légende. Angles droits (DS Onet).
+   Tout se dimensionne sur --echelle, que le lecteur resserre (jusqu'à 70 %) pour que le cas tienne dans sa page. */
+.cas{--k:var(--echelle,1);flex:1 1 auto;display:flex;flex-direction:column;gap:calc(22px * var(--k));width:100%;min-height:0}
+.cas-colonnes{margin-top:auto;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:calc(40px * var(--k));align-items:start}
+.cas-colonne{position:relative;display:flex;flex-direction:column;gap:calc(10px * var(--k));min-height:0}
+.cas-colonne:not(:last-child)::after{content:"";position:absolute;right:-27px;top:calc(26px * var(--k));width:14px;height:14px;border-top:4px solid var(--color-accent);border-right:4px solid var(--color-accent);transform:rotate(45deg)}
+.cas-colonne.cache{visibility:hidden}
+.cas-tete{display:flex;align-items:center;gap:calc(14px * var(--k));min-height:calc(66px * var(--k));padding:calc(10px * var(--k)) calc(16px * var(--k));font-size:calc(23px * var(--k));line-height:1.2;font-weight:var(--fw-bold)}
+.cas-numero{flex:none;display:grid;place-items:center;border-radius:50%;background:var(--color-badge-step);color:var(--text-on-primary);font-weight:var(--fw-bold)}
+.cas-tete .cas-numero{width:1.8em;height:1.8em;font-size:.92em}
+.cas-etapes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:calc(8px * var(--k))}
+.cas-etape{display:grid;grid-template-columns:1.55em minmax(0,1fr);gap:.65em;align-items:start;padding:.5em .65em;font-size:calc(18px * var(--k));line-height:1.28;border:2px solid transparent}
+.cas-etape .cas-numero{width:1.55em;height:1.55em;font-size:.8em;margin-top:.05em}
+.cas-texte{min-width:0}
+.cas-texte .libelle{display:block;font-weight:var(--fw-semibold)}
+.cas-texte .detail{display:block;margin-top:.3em;font-size:.84em;font-weight:var(--fw-regular);opacity:.92}
+.cas-legende{list-style:none;margin:0 0 auto;padding:calc(12px * var(--k)) 0 0;display:flex;flex-wrap:wrap;gap:10px 40px;font-size:calc(17px * var(--k));color:var(--text-secondary);border-top:var(--border-hairline)}
+.cas-legende li{display:flex;align-items:center;gap:10px}
+.cas-legende .echantillon{display:inline-block;width:2.2em;height:1.15em;border:2px solid transparent}
+.cas .bord-tirets{border-style:dashed;border-color:var(--text-strong)}
+.cas .bord-plein{border-style:solid}
+.cas .b-aucun.bord-plein{border-color:var(--text-strong)}
+.cas .b-aucun{background:var(--color-background);color:var(--text-strong)}
+.cas-colonne.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both}
+.cas-colonne.apparait .cas-etape{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:calc(var(--mvt-decalage-depart) + var(--i) * var(--mvt-decalage))}
+${ROLES.map((r) => `.cas .b-${r}{background:var(--dessin-${r});color:${ROLES_SOMBRES.has(r) ? "var(--text-on-primary)" : "var(--text-strong)"}}`).join("\n")}
 @keyframes aplatIn{from{fill-opacity:0}to{fill-opacity:1}}
 @keyframes fonduIn{from{opacity:0}to{opacity:1}}
 `;

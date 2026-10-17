@@ -33,7 +33,7 @@ graduis-packager/
     ooxml/         lecteur PPTX (paquet, formes aplaties, couleurs et styles résolus) — servira aussi `lire`
     releve/        ingestion héritée : relevé, appariement des pas, mesures
     pivot/         schéma `graduis/seance-spec@0` (Zod)
-    qualification/ relevé → pivot₀ (figures par règles, zones proposées, schémas redessinés, couleurs en rôles)
+    qualification/ relevé → pivot₀ (figures par règles, zones proposées, schémas redessinés, couleurs en rôles, structure des textes, partition, gabarits du wizard)
     diagnostic/    règles H1–H9 → rapport (JSON + HTML au thème ONET)
     theme/         chargement du thème repris, compensation de chasse
     dessin/        dessin du pivot → SVG à classes de rôle (géométries DrawingML), module pur : salle et papier

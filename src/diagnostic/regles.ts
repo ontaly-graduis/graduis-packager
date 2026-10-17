@@ -63,7 +63,7 @@ export const REGLES: Readonly<Record<string, { readonly libelle: string; readonl
   H9: { libelle: "Des séquences comparables", action: "Signalé au-delà du double, ou en deçà de la moitié, de la médiane des séquences opératoires." },
   PAS: { libelle: "Les pas à ancrer dans le PPT de validation", action: "Confirmer les zones proposées par ordre de lecture ; compléter les zones et consignes manquantes." },
   VIDE: { libelle: "Les diapositives sans contenu", action: "À supprimer ou à compléter." },
-  DESSIN: { libelle: "Les schémas redessinés au thème", action: "Relire chaque schéma dans le PPT de validation : les couleurs d'origine regroupées sur un même rôle y perdent leur distinction ; une géométrie non prise en charge est dessinée en rectangle." },
+  DESSIN: { libelle: "Les schémas redessinés au thème", action: "Relire chaque schéma dans le PPT de validation : les couleurs d'origine regroupées sur un même rôle y perdent leur distinction ; une géométrie non prise en charge est dessinée en rectangle ; le dévoilement proposé et la recomposition en gabarit sont des lectures à confirmer." },
 };
 
 const INACHEVE = [/\ba rédiger\b/i, /\ba supprimer\b/i, /\binsérer\b/i, /xxx/i] as const;
@@ -210,6 +210,14 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
         const prises = new Set<string>([...GEOMETRIES, "libre"]);
         const autres = [...new Set(b.dessin.elements.flatMap((e) => (e.type === "forme" && !prises.has(e.geometrie) ? [e.geometrie] : [])))].sort();
         if (autres.length) c("DESSIN", "a-valider", n, s.id, `Dessinées en rectangle : ${autres.join(", ")}.`);
+        const partition = b.dessin.partition;
+        if (partition) c("DESSIN", "a-valider", n, s.id, `Dévoilement proposé en ${partition.pas} pas, ${partition.mode === "colonnes" ? "par colonnes ordonnées sur leurs numéros" : "par étapes numérotées"}.`);
+      }
+      if (b.composition?.gabarit === "cas") {
+        const etapes = b.composition.cas.flatMap((k) => k.etapes);
+        const details = etapes.filter((e) => e.detail).length;
+        const legende = b.composition.legende?.length ?? 0;
+        c("DESSIN", "a-valider", n, s.id, `Recomposé au gabarit « cas » : ${b.composition.cas.length} colonnes, ${etapes.length} étapes${details ? ` (dont ${details} avec détail)` : ""}${legende ? `, légende de ${legende} entrées` : ""}.`);
       }
       // VIDE
       if (b.figure === "contenu" && !b.titre && !b.textes.length && !b.visuels.length && !b.tableaux.length) {

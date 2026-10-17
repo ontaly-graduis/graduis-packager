@@ -59,7 +59,10 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     for (const g of geometries) expect([...GEOMETRIES, "libre"]).toContain(g);
     expect(JSON.stringify(schemas.map((b) => b.dessin))).not.toMatch(/"[0-9A-Fa-f]{6}"/);
     expect(rapport.constats.filter((x) => x.regle === "DESSIN" && x.niveau === "info")).toHaveLength(7);
-    expect(rapport.constats.filter((x) => x.regle === "DESSIN" && x.niveau === "a-valider")).toHaveLength(0);
+    // Aucune couleur confondue, aucune géométrie de repli ; à valider : les dévoilements proposés et les recompositions.
+    const aValider = rapport.constats.filter((x) => x.regle === "DESSIN" && x.niveau === "a-valider");
+    expect(aValider.filter((x) => /^(Couleurs|Dessinées)/.test(x.message))).toHaveLength(0);
+    expect(aValider.filter((x) => x.message.startsWith("Dévoilement")).map((x) => x.diapo)).toEqual([17, 18, 19, 20, 31]);
   });
 
   it("organise les textes : étapes clés dans l'ordre de leurs numéros, définitions, fiches illustrées (PKG-B3)", () => {
@@ -79,6 +82,19 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
       { mode: "colonnes", pas: 4 }, { mode: "colonnes", pas: 4 }, { mode: "colonnes", pas: 4 }, { mode: "colonnes", pas: 4 },
       { mode: "etapes", pas: 9 },
     ]);
+  });
+
+  it("recompose les processus en phases au gabarit « cas » du wizard (PKG-B4)", () => {
+    const bloc = (n: number) => spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === n)!;
+    const lu = (n: number) => {
+      const c = bloc(n).composition;
+      return c?.gabarit === "cas" ? { phases: c.cas.map((k) => [k.numero, k.etapes.length, k.etapes.filter((e) => e.detail).length]), legende: c.legende?.length ?? 0 } : null;
+    };
+    expect(lu(17)).toEqual({ phases: [[1, 6, 0], [2, 6, 0], [3, 5, 0], [4, 6, 0]], legende: 3 });
+    expect(lu(18)).toEqual({ phases: [[1, 6, 6], [2, 6, 6], [3, 5, 5], [4, 6, 6]], legende: 4 });
+    // Les personae (couloirs × phases) et le logigramme ne sont pas des cas.
+    expect([19, 20, 31].map(lu)).toEqual([null, null, null]);
+    expect(rapport.constats.filter((c) => c.regle === "DESSIN" && c.message.startsWith("Recomposé")).map((c) => c.diapo)).toEqual([17, 18]);
   });
 
   it("qualifie de façon déterministe", () => {
