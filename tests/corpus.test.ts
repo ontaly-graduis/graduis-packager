@@ -7,6 +7,7 @@ import { medianeMots, medianeResolution, mesurer, type Mesures } from "../src/re
 import { qualifierReleve } from "../src/qualification/qualifier";
 import { diagnostiquer, type Rapport } from "../src/diagnostic/regles";
 import type { SeanceSpec } from "../src/pivot/seance-spec";
+import { GEOMETRIES } from "../src/dessin/geometries";
 
 const DECK = process.env.PKG_CORPUS ?? "docs/sources/boost acheteur areprendre v1.pptx";
 const NOM = "boost acheteur areprendre v1.pptx";
@@ -48,6 +49,17 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     expect(de("H6").map((k) => k.diapo)).toEqual([95]);
     expect(de("H4")).toHaveLength(1);
     expect(de("H1").filter((k) => k.niveau === "info")).toHaveLength(6);
+  });
+
+  it("redessine les 7 schémas : un dessin chacun, géométries prises en charge, aucune couleur au pivot (PKG-B2)", () => {
+    const schemas = spec.sequences.flatMap((s) => s.blocs).filter((b) => b.figure === "schema");
+    expect(schemas.map((b) => b.source.diapo)).toEqual([15, 16, 17, 18, 19, 20, 31]);
+    expect(schemas.every((b) => (b.dessin?.elements.length ?? 0) >= 20)).toBe(true);
+    const geometries = new Set(schemas.flatMap((b) => b.dessin!.elements.flatMap((e) => (e.type === "forme" ? [e.geometrie] : []))));
+    for (const g of geometries) expect([...GEOMETRIES, "libre"]).toContain(g);
+    expect(JSON.stringify(schemas.map((b) => b.dessin))).not.toMatch(/"[0-9A-Fa-f]{6}"/);
+    expect(rapport.constats.filter((x) => x.regle === "DESSIN" && x.niveau === "info")).toHaveLength(7);
+    expect(rapport.constats.filter((x) => x.regle === "DESSIN" && x.niveau === "a-valider")).toHaveLength(0);
   });
 
   it("qualifie de façon déterministe", () => {

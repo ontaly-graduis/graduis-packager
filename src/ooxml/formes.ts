@@ -1,6 +1,8 @@
 // Aplatit l'arbre de formes d'une diapositive : boîtes absolues (groupes, espaces réservés hérités), textes, images.
 import type { Element } from "@xmldom/xmldom";
+import { couleurDeRemplissage } from "./couleurs";
 import { NS, type Paquet, chemin, elementsEnfants, enfant, enfants, entier, paragraphes } from "./paquet";
+import { type Fond, type Style, type StylesDuMasque, grilleDe, styleDe, stylesDuMasque } from "./styles";
 
 /** [x, y, largeur, hauteur] en EMU, entiers. */
 export type Boite = readonly [number, number, number, number];
@@ -29,6 +31,8 @@ export interface Forme {
   readonly graphique?: string;
   /** Les cellules d'un tableau, ligne par ligne (paragraphes d'une cellule joints par « \n »). */
   readonly lignes?: readonly (readonly string[])[];
+  /** Remplissage, trait, texte mis en forme, géométrie fine : ce qu'il faut pour redessiner (lu si le contexte porte le masque). */
+  readonly style?: Style;
 }
 
 interface Espace {
@@ -40,6 +44,8 @@ interface Espace {
 export interface Contexte {
   readonly heritage: (espace: Espace) => Boite | undefined;
   readonly media: (rId: string) => string | undefined;
+  /** Les styles du masque : sans eux, l'aplatissement ne lit pas les styles. */
+  readonly styles?: StylesDuMasque;
 }
 
 type Transformation = (b: Boite) => Boite;
@@ -70,8 +76,9 @@ function identite(nv: Element | undefined): { id: number; nom: string } {
 }
 
 /** Aplatit un `p:spTree` (ou un `p:grpSp`) en formes à boîte absolue, dans l'ordre du document. */
-export function aplatir(arbre: Element, ctx: Contexte, tf: Transformation = IDENTITE, groupe?: number): Forme[] {
+export function aplatir(arbre: Element, ctx: Contexte, tf: Transformation = IDENTITE, groupe?: number, fondDeGroupe?: Fond): Forme[] {
   const out: Forme[] = [];
+  const style = (el: Element, espace: boolean) => (ctx.styles ? { style: styleDe(el, { masque: ctx.styles, ...(fondDeGroupe ? { fondDeGroupe } : {}) }, espace) } : {});
   for (const el of elementsEnfants(arbre)) {
     if (el.namespaceURI !== NS.p) continue;
     const dansGroupe = groupe === undefined ? {} : { groupe };
@@ -89,7 +96,9 @@ export function aplatir(arbre: Element, ctx: Contexte, tf: Transformation = IDEN
       const sx = ex / cex;
       const sy = ey / cey;
       const enfantTf: Transformation = (b) => tf([ox + (b[0] - cx) * sx, oy + (b[1] - cy) * sy, b[2] * sx, b[3] * sy]);
-      out.push(...aplatir(el, ctx, enfantTf, groupe ?? id));
+      const grpSpPr = enfant(el, NS.p, "grpSpPr");
+      const fond = ctx.styles && grpSpPr && !enfant(grpSpPr, NS.a, "grpFill") ? couleurDeRemplissage(grpSpPr, ctx.styles.palette) : undefined;
+      out.push(...aplatir(el, ctx, enfantTf, groupe ?? id, fond ?? fondDeGroupe));
       continue;
     }
     if (el.localName === "sp") {
@@ -111,6 +120,7 @@ export function aplatir(arbre: Element, ctx: Contexte, tf: Transformation = IDEN
         ...(espace ? { espace } : {}),
         texte: corps ? paragraphes(corps) : [],
         ...dansGroupe,
+        ...style(el, espace !== undefined),
       });
       continue;
     }
@@ -125,12 +135,15 @@ export function aplatir(arbre: Element, ctx: Contexte, tf: Transformation = IDEN
       const media = blip ? ctx.media(blip.getAttributeNS(NS.r, "embed") ?? "") : undefined;
       const src = blipFill && enfant(blipFill, NS.a, "srcRect");
       const rognage = src ? ([entier(src, "l") ?? 0, entier(src, "t") ?? 0, entier(src, "r") ?? 0, entier(src, "b") ?? 0] as const) : undefined;
+      const prst = chemin(el, ["p:spPr", "a:prstGeom"])?.getAttribute("prst");
       out.push({
         id, nom, nature: "image", boite: arrondie(tf(boite)),
+        ...(prst ? { geometrie: prst } : {}),
         ...(espace ? { espace } : {}),
         ...(media ? { media } : {}),
         ...(rognage && rognage.some((v) => v !== 0) ? { rognage } : {}),
         ...dansGroupe,
+        ...style(el, false),
       });
       continue;
     }
@@ -148,7 +161,8 @@ export function aplatir(arbre: Element, ctx: Contexte, tf: Transformation = IDEN
             return corps ? paragraphes(corps).join("\n").trim() : "";
           }),
         );
-        out.push({ id, nom, nature: "tableau", boite: arrondie(tf(boite)), lignes, ...dansGroupe });
+        const grille = ctx.styles ? { style: { fond: "aucun" as const, trait: null, grille: grilleDe(tbl, { masque: ctx.styles }) } } : {};
+        out.push({ id, nom, nature: "tableau", boite: arrondie(tf(boite)), lignes, ...dansGroupe, ...grille });
       } else {
         out.push({ id, nom, nature: "graphique", boite: arrondie(tf(boite)), graphique: uri.split("/").pop() ?? "", ...dansGroupe });
       }
@@ -157,7 +171,8 @@ export function aplatir(arbre: Element, ctx: Contexte, tf: Transformation = IDEN
     if (el.localName === "cxnSp") {
       const { id, nom } = identite(enfant(el, NS.p, "nvCxnSpPr"));
       const boite = boiteXfrm(chemin(el, ["p:spPr", "a:xfrm"]));
-      if (boite) out.push({ id, nom, nature: "trait", boite: arrondie(tf(boite)), ...dansGroupe });
+      const prst = chemin(el, ["p:spPr", "a:prstGeom"])?.getAttribute("prst");
+      if (boite) out.push({ id, nom, nature: "trait", boite: arrondie(tf(boite)), ...(prst ? { geometrie: prst } : {}), ...dansGroupe, ...style(el, false) });
     }
   }
   return out;
@@ -208,5 +223,6 @@ export function formesDeDiapositive(paquet: Paquet, diapo: string): Forme[] {
       return base.boite ?? dMasque.parType.get(typeDeMasque(base.type));
     },
     media: (rId) => medias.get(rId),
+    styles: stylesDuMasque(paquet, masque),
   });
 }

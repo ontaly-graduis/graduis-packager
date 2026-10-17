@@ -1,0 +1,15 @@
+{
+  "police": "Montserrat",
+  "mesure": "2026-10-17 — Chromium 1194 ; texte de référence français (vocabulaire achats, 300 caractères) à 100 px, sans retour ; rapport = largeur dans la police d'origine ÷ largeur en Montserrat, à graisse égale (régulière). Polices d'origine mesurées par leurs équivalents métriques libres : Carlito pour Calibri, Arimo pour Arial (fontsource 5.3.0).",
+  "rapports": {
+    "Montserrat": 1,
+    "Calibri": 0.816,
+    "Calibri Light": 0.816,
+    "Carlito": 0.816,
+    "Asap Condensed": 0.722,
+    "Arial": 0.893,
+    "Arimo": 0.893,
+    "Liberation Sans": 0.893,
+    "Poppins": 1
+  }
+}

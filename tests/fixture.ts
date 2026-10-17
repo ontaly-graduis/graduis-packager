@@ -55,3 +55,27 @@ export async function deckSynthetique(): Promise<Uint8Array> {
 
   return new Uint8Array((await pptx.write({ outputType: "nodebuffer" })) as Buffer);
 }
+
+/**
+ * Un schéma synthétique (deuxième diapositive) : six étapes en boîtes pleines, une décision, des connecteurs fléchés
+ * (dont un en tirets), des pastilles et des étiquettes — couleurs directes, couleur du thème et opacité.
+ */
+export async function deckDeSchema(): Promise<Uint8Array> {
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_16x9";
+  pptx.defineSlideMaster({ title: "Disposition personnalisée", background: { color: "FFFFFF" }, objects: [] });
+  pptx.addSlide({ masterName: "Disposition personnalisée" }).addText("Ouverture", { x: 1, y: 2, w: 8, h: 1 });
+  const s = pptx.addSlide({ masterName: "Disposition personnalisée" });
+  s.addText("Circuit de validation", { x: 0.4, y: 0.2, w: 9, h: 0.6, fontSize: 24, bold: true });
+  const couleurs = ["2E75B6", "00B3C3", "A5C715", "F28E00", "C00418", "002060"];
+  couleurs.forEach((c, i) => {
+    const x = 0.4 + i * 1.6;
+    s.addText(`Étape ${i + 1}`, { shape: pptx.ShapeType.roundRect, x, y: 1.5, w: 1.2, h: 0.7, fill: { color: c }, color: "FFFFFF", fontSize: 10, fontFace: "Calibri", align: "center", valign: "middle", rectRadius: 0.1 });
+    s.addText(String(i + 1), { shape: pptx.ShapeType.ellipse, x: x - 0.12, y: 1.38, w: 0.26, h: 0.26, fill: { color: "FFFFFF" }, line: { color: "002060", width: 0.75 }, color: "002060", fontSize: 8, align: "center" });
+    s.addText(`Détail ${i + 1}`, { x, y: 2.3, w: 1.2, h: 0.4, fontSize: 8, color: "404040", fontFace: "Calibri", align: "center" });
+    if (i < couleurs.length - 1) s.addShape(pptx.ShapeType.line, { x: x + 1.2, y: 1.85, w: 0.4, h: 0, line: { color: "A3A7AF", width: 1, endArrowType: "triangle", ...(i === 2 ? { dashType: "dash" as const } : {}) } });
+  });
+  s.addText("Montant > seuil ?", { shape: pptx.ShapeType.diamond, x: 3.6, y: 3.1, w: 1.8, h: 1.1, fill: { color: pptx.SchemeColor.accent1, transparency: 50 }, color: "002060", fontSize: 9, align: "center", valign: "middle" });
+  s.addShape(pptx.ShapeType.rect, { x: 0.3, y: 1.2, w: 9.4, h: 1.7, fill: { color: "DCF4CE" }, line: { color: "A3A7AF", width: 0.5, dashType: "sysDot" } });
+  return new Uint8Array((await pptx.write({ outputType: "nodebuffer" })) as Buffer);
+}

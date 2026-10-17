@@ -5,6 +5,7 @@ import type { Releve } from "../releve/releve";
 import { estCapture } from "../releve/geometrie";
 import { FIGURES, TEMPS_DE_FIGURE, type Bloc, type Figure, type SeanceSpec, type Temps } from "../pivot/seance-spec";
 import type { Qualification } from "../qualification/figures";
+import { GEOMETRIES } from "../dessin/geometries";
 
 export const SCHEMA_RAPPORT = "graduis/rapport@0";
 
@@ -62,6 +63,7 @@ export const REGLES: Readonly<Record<string, { readonly libelle: string; readonl
   H9: { libelle: "Des séquences comparables", action: "Signalé au-delà du double, ou en deçà de la moitié, de la médiane des séquences opératoires." },
   PAS: { libelle: "Les pas à ancrer dans le PPT de validation", action: "Confirmer les zones proposées par ordre de lecture ; compléter les zones et consignes manquantes." },
   VIDE: { libelle: "Les diapositives sans contenu", action: "À supprimer ou à compléter." },
+  DESSIN: { libelle: "Les schémas redessinés au thème", action: "Relire chaque schéma dans le PPT de validation : les couleurs d'origine regroupées sur un même rôle y perdent leur distinction ; une géométrie non prise en charge est dessinée en rectangle." },
 };
 
 const INACHEVE = [/\ba rédiger\b/i, /\ba supprimer\b/i, /\binsérer\b/i, /xxx/i] as const;
@@ -195,6 +197,20 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
       if (sansZone.length) c("PAS", "avis", n, s.id, `Sans zone sur la capture : pas ${sansZone.join(", ")}.`);
       const sansConsigne = b.pas.filter((p) => !p.consigne).map((p) => p.numero);
       if (sansConsigne.length) c("PAS", "avis", n, s.id, `Sans consigne : pas ${sansConsigne.join(", ")}.`);
+      // DESSIN — la projection des couleurs d'origine sur les rôles, les géométries non prises en charge.
+      const projection = qualifications.get(n)?.projection;
+      if (b.dessin && projection) {
+        const nb = projection.roles.size;
+        const roles = new Set(projection.roles.values()).size;
+        const fondues = projection.fusions.map((f) => `${f.role} ← ${f.origines.join(", ")}`);
+        c("DESSIN", "info", n, s.id, `${b.dessin.elements.length} éléments ; ${nb} couleurs d'origine sur ${roles} rôles${fondues.length ? ` (fondues : ${fondues.join(" ; ")})` : ""}.`);
+        for (const f of projection.fusions.filter((x) => x.distinctes)) {
+          c("DESSIN", "a-valider", n, s.id, `Couleurs nettement distinctes sur un même rôle, faute de ton libre : ${f.role} ← ${f.origines.join(", ")}.`);
+        }
+        const prises = new Set<string>([...GEOMETRIES, "libre"]);
+        const autres = [...new Set(b.dessin.elements.flatMap((e) => (e.type === "forme" && !prises.has(e.geometrie) ? [e.geometrie] : [])))].sort();
+        if (autres.length) c("DESSIN", "a-valider", n, s.id, `Dessinées en rectangle : ${autres.join(", ")}.`);
+      }
       // VIDE
       if (b.figure === "contenu" && !b.titre && !b.textes.length && !b.visuels.length && !b.tableaux.length) {
         c("VIDE", "avis", n, s.id, "Diapositive sans contenu.");

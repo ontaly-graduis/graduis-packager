@@ -1,4 +1,5 @@
 // Le rendu d'un bloc de salle en diapositive 1920 × 1080, au thème : une composition par figure.
+import { dessinEnSvg } from "../../dessin/svg";
 import type { BlocDeSalle, SequenceDeSalle, VisuelDeSalle } from "../donnees";
 
 export interface Contexte {
@@ -146,6 +147,15 @@ function tableau(ctx: Contexte, lignes: readonly (readonly string[])[]): HTMLEle
   return t;
 }
 
+/** Le schéma redessiné : le SVG du dessin, ses images résolues depuis les médias inline. */
+function schema(ctx: Contexte, b: BlocDeSalle): HTMLElement {
+  const conteneur = el(ctx.doc, "div", "schema");
+  if (!b.dessin) return conteneur;
+  conteneur.innerHTML = dessinEnSvg(b.dessin, b.id);
+  conteneur.querySelectorAll("image[data-media]").forEach((i) => i.setAttribute("href", ctx.medias[i.getAttribute("data-media") ?? ""] ?? ""));
+  return conteneur;
+}
+
 function puce(ctx: Contexte, texte: string, classe: string): HTMLElement {
   return el(ctx.doc, "span", `puce ${classe}`, texte);
 }
@@ -193,13 +203,16 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
     case "pas-a-pas":
       corps.append(pasAPas(ctx, b, etape));
       break;
-    case "capture":
     case "schema":
+      // Les textes d'un schéma sont les étiquettes de son dessin : ils ne se listent pas à côté.
+      corps.classList.add("centre");
+      if (b.dessin) corps.append(schema(ctx, b));
+      else corps.append(...visuels(ctx, b, CORPS.largeur, CORPS.hauteur));
+      break;
+    case "capture":
       corps.classList.add("centre");
       corps.append(...visuels(ctx, b, CORPS.largeur, CORPS.hauteur));
-      // Les textes d'un schéma sont les étiquettes de son dessin : ils ne se listent pas à côté.
-      if (b.figure === "schema" && !b.visuels.length) corps.append(el(ctx.doc, "div", "etiquette", "Schéma dessiné — rendu vectoriel à venir (PKG-B2)"));
-      if (b.figure === "capture" && b.lignes.length) corps.append(liste(ctx, b.lignes, 0, false, "liste legende"));
+      if (b.lignes.length) corps.append(liste(ctx, b.lignes, 0, false, "liste legende"));
       break;
     case "processus":
       corps.classList.add("colonne");

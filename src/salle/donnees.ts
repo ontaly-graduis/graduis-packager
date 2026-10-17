@@ -1,5 +1,6 @@
 // Le pivot mis en salle : blocs projetés, étapes de dévoilement, durées, numéros dérivés, zones en `RegionMap`.
-import type { Bloc, Figure, SeanceSpec, Visuel } from "../pivot/seance-spec";
+import type { Bloc, Dessin, Figure, SeanceSpec, Visuel } from "../pivot/seance-spec";
+import { compenserChasse, type TableDeChasse } from "../theme/chasse";
 import { regionMap, type RegionMap } from "./region-map";
 
 export const SCHEMA_SALLE = "graduis/salle@0";
@@ -30,6 +31,8 @@ export interface BlocDeSalle {
   /** Mise en pratique : rappeler que le pas-à-pas peut servir d'aide (« Vous pouvez vous aider du pas à pas »). */
   readonly aide?: true;
   readonly regionMap?: RegionMap;
+  /** Le schéma redessiné, rendu en SVG par le lecteur. */
+  readonly dessin?: Dessin;
 }
 
 export interface SequenceDeSalle {
@@ -57,7 +60,7 @@ function lignesDe(b: Bloc): string[] {
 
 type Dimensions = (media: string) => readonly [number, number] | null;
 
-function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions): BlocDeSalle {
+function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, chasse: TableDeChasse): BlocDeSalle {
   let lignes = lignesDe(b);
   let titre = b.titre;
   let aide = false;
@@ -82,18 +85,19 @@ function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions): BlocDeSalle 
     duree: minutes ? Number(minutes[1]) : null,
     ...(aide ? { aide: true as const } : {}),
     ...(b.figure === "pas-a-pas" ? { regionMap: regionMap(b) } : {}),
+    ...(b.dessin ? { dessin: compenserChasse(b.dessin, chasse) } : {}),
   };
 }
 
-/** Met un pivot en salle : séquences retenues (toutes par défaut), blocs masqués écartés. */
-export function mettreEnSalle(spec: SeanceSpec, prise: PriseDeSalle, px: Dimensions, retenues?: readonly string[]): DonneesDeSalle {
+/** Met un pivot en salle : séquences retenues (toutes par défaut), blocs masqués écartés, textes des schémas à la chasse du thème. */
+export function mettreEnSalle(spec: SeanceSpec, prise: PriseDeSalle, px: Dimensions, retenues?: readonly string[], chasse: TableDeChasse = {}): DonneesDeSalle {
   let rang = 0;
   const sequences: SequenceDeSalle[] = [];
   for (const s of spec.sequences) {
     const transition = s.blocs.find((b) => b.figure === "transition");
     if (transition) rang += 1;
     if (retenues && !retenues.includes(s.id)) continue;
-    const blocs = s.blocs.filter((b) => !b.masquee).map((b) => blocDeSalle(b, prise, px));
+    const blocs = s.blocs.filter((b) => !b.masquee).map((b) => blocDeSalle(b, prise, px, chasse));
     if (blocs.length) sequences.push({ id: s.id, numero: transition ? rang : null, titre: transition?.titre ?? "Ouverture", blocs });
   }
   return { schema: SCHEMA_SALLE, source: spec.source, prise, sequences };

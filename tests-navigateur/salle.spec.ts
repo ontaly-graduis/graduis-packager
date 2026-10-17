@@ -103,3 +103,16 @@ test.describe("débordement", () => {
     await expect(page.locator(".defile")).not.toHaveClass(/bas/);
   });
 });
+
+test("affiche l'aide des commandes par la touche ? et par le bouton", async ({ page }) => {
+  await page.goto(url + "#b001.0");
+  await expect(page.locator(".aide-commandes")).toHaveCount(0);
+  await page.keyboard.press("?");
+  await expect(page.locator(".aide-commandes h2")).toHaveText("Commandes de la salle");
+  await expect(page.locator(".aide-commandes kbd", { hasText: "Z" })).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".aide-commandes")).toHaveCount(0);
+  await page.mouse.move(200, 200);
+  await page.locator(".aide-bouton").click();
+  await expect(page.locator(".aide-commandes")).toHaveCount(1);
+});

@@ -1,4 +1,31 @@
 // La feuille de la salle : scène 1920 × 1080, compositions par figure, présentateur — jetons du thème seulement.
+import { ROLES } from "../pivot/seance-spec";
+
+/** Les schémas redessinés : un rôle de couleur → remplissage (f-), trait (s-), texte (c-), d'après `--dessin-<rôle>` du thème. */
+const STYLE_DESSIN = `
+.f-schema .corps.centre{justify-content:center;align-items:stretch}
+.schema{flex:1;min-height:0;width:100%;display:flex}
+.dessin{width:100%;height:100%;overflow:visible;font-family:var(--font-base)}
+.dessin .sans-fond{fill:none}
+.dessin .sans-trait{stroke:none}
+.dessin path{stroke-linejoin:round}
+.dessin foreignObject{overflow:visible}
+.dessin .bt{width:100%;height:100%;display:flex;flex-direction:column;justify-content:flex-start;font-size:0;line-height:1.18;--ajuste:1}
+.dessin .bt.a-milieu{justify-content:center}
+.dessin .bt.a-bas{justify-content:flex-end}
+.dessin .bt p{margin:0}
+.dessin .bt.coupe p{overflow-wrap:anywhere}
+.dessin .bt.sans-retour p{white-space:pre}
+.dessin .bt span{font-size:calc(var(--t) * var(--ajuste) * 1px);font-weight:var(--fw-regular)}
+.dessin .bt .g{font-weight:var(--fw-bold)}
+.dessin .bt .i{font-style:italic}
+.dessin .bt .u{text-decoration:underline}
+.dessin .al-centre{text-align:center}
+.dessin .al-droite{text-align:right}
+.dessin .al-justifie{text-align:justify}
+${ROLES.map((r) => `.dessin .f-${r}{fill:var(--dessin-${r})}.dessin .s-${r}{stroke:var(--dessin-${r})}.dessin .c-${r}{color:var(--dessin-${r})}`).join("\n")}
+`;
+
 export const STYLE_SALLE = `
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--color-nav-bg);font-family:var(--font-base)}
@@ -95,6 +122,16 @@ li.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both}
 .volet .surtitre{font-size:26px;font-weight:var(--fw-bold);letter-spacing:3px;text-transform:uppercase;opacity:.85;animation:voletLabel var(--mvt-entree) ease forwards}
 .volet .titre{font-size:64px;font-weight:var(--fw-bold);line-height:1.1;max-width:24ch;animation:voletLabel var(--mvt-entree) ease forwards}
 #surcouche{position:fixed;inset:0;pointer-events:none}
+.aide-bouton{position:fixed;right:20px;bottom:20px;z-index:3;width:44px;height:44px;border-radius:50%;border:none;background:var(--color-primary);color:var(--text-on-primary);font:var(--fw-bold) 22px var(--font-base);cursor:pointer;box-shadow:var(--shadow-raised);opacity:0;transition:opacity var(--mvt-moyen) var(--courbe-standard)}
+.aide-bouton.visible,.aide-bouton.ouvert,.aide-bouton:focus-visible{opacity:1}
+.aide-commandes{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,92vw);max-height:88vh;overflow:auto;pointer-events:auto;padding:28px 36px 24px;background:var(--color-background);color:var(--text-body);border-top:var(--rule-top) solid var(--color-primary);box-shadow:var(--shadow-overlay);font-size:16px;line-height:1.45;animation:popIn var(--mvt-entree) var(--courbe-ressort) both}
+.aide-commandes h2{margin:0 0 16px;font-size:var(--fs-h2);color:var(--text-strong)}
+.aide-commandes table{border-collapse:collapse;width:100%}
+.aide-commandes td{padding:7px 0;border-bottom:var(--border-hairline);vertical-align:middle}
+.aide-commandes td:first-child{width:46%;padding-right:16px}
+.aide-commandes kbd{display:inline-block;min-width:34px;margin:2px 0;padding:3px 9px;border:1px solid var(--color-border);border-bottom-width:3px;border-radius:var(--radius-interactive);background:var(--color-surface);color:var(--text-strong);font:var(--fw-semibold) 14px var(--font-base);text-align:center}
+.aide-commandes p{margin:14px 0 0;font-size:var(--fs-meta);color:var(--text-secondary)}
+.presentateur .rappel{font-size:15px;opacity:.8}
 .minuteur{position:absolute;top:24px;right:24px;padding:10px 22px;border-radius:var(--radius-pill);background:var(--color-background);color:var(--text-strong);font:var(--fw-bold) 28px var(--font-base);box-shadow:var(--shadow-raised);font-variant-numeric:tabular-nums}
 .minuteur.bientot{background:var(--color-warning-bg);color:var(--color-warning)}
 .minuteur.pause{opacity:.6}
@@ -107,4 +144,4 @@ body.presentateur{display:grid;grid-template-columns:3fr 2fr;gap:24px;padding:24
 .presentateur .barre{display:flex;justify-content:space-between;font-size:22px;font-weight:var(--fw-semibold)}
 .presentateur #chrono{font-variant-numeric:tabular-nums}
 .presentateur .notes-p{flex:1;overflow:auto;padding:20px;background:var(--color-background);color:var(--text-body);font-size:20px;line-height:1.5;white-space:pre-wrap}
-`;
+`+ STYLE_DESSIN;
