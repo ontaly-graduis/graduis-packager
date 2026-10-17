@@ -6,8 +6,12 @@ import { relever, type Releve } from "../src/releve/releve";
 import { medianeMots, medianeResolution, mesurer, type Mesures } from "../src/releve/mesures";
 import { qualifierReleve } from "../src/qualification/qualifier";
 import { diagnostiquer, type Rapport } from "../src/diagnostic/regles";
-import type { SeanceSpec } from "../src/pivot/seance-spec";
+
 import { GEOMETRIES } from "../src/dessin/geometries";
+import { emettre } from "../src/emission/emettre";
+import { lire } from "../src/lecture/lire";
+import { SeanceSpec } from "../src/pivot/seance-spec";
+import { chargerTheme } from "../src/theme/theme";
 
 const DECK = process.env.PKG_CORPUS ?? "docs/sources/boost acheteur areprendre v1.pptx";
 const NOM = "boost acheteur areprendre v1.pptx";
@@ -127,6 +131,14 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     }
     const harmonisees = rapport.constats.filter((c) => c.regle === "DESSIN" && /harmonisé/.test(c.message)).map((c) => [c.diapo, c.message.split(" ")[0]]);
     expect(harmonisees).toEqual([[20, "12"], [20, "2"]]);
+  });
+
+  it("se relit à l'identique depuis le PPT de validation : lire(émettre(pivot₀)) ≡ pivot₀ sur les 166 diapositives (PKG-C1)", () => {
+    const { medias } = relever(octets, NOM);
+    const pptx = emettre(spec, { jetons: chargerTheme("gabarits/theme-onet").jetons, media: (h) => { const x = medias.get(h); return x ? { ext: x.ext, octets: x.octets, px: releve.medias[h]?.px ?? null } : undefined; } });
+    const { spec: relu, ecarts } = lire(pptx);
+    expect(ecarts).toEqual([]);
+    expect(stringify2(relu)).toBe(stringify2(SeanceSpec.parse(spec)));
   });
 
   it("qualifie de façon déterministe", () => {

@@ -99,23 +99,41 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 
 ---
 
-## PKG-C · Le PPT d'auteur et l'aller-retour
+## PKG-C · Le PPT de validation et l'aller-retour
 
-**Livrer** : le gabarit d'auteur, généré du thème ONET (dispositions `G · …`, pastille, zone, espaces réservés « Consignes ») ; `emettre` (pivot → PPTX) ; `lire` (PPTX → pivot) ; les identifiants en étiquettes OOXML ; les propositions ✦ en notes. Mesuré en PKG-0 : pptxgenjs n'écrit `<a:noFill/>` que par `addText` ; une zone s'émet donc en `addText("")` avec un trait.
+Découpé en trois sessions : C1, la grammaire des figures et l'aller-retour (faite) ; C2, la structure des textes en
+grammaire ; C3, les schémas, leur partition et leurs recompositions en grammaire.
+
+### PKG-C1 · La grammaire des figures et l'aller-retour — Sortie atteinte le 17/10
+
+**Livré** : le gabarit de validation généré du thème ONET (`src/emission/gabarit.ts` : un thème Office aux douze emplacements tirés des jetons du DS, Montserrat ; un masque ; une disposition `G · <Figure>` par figure, avec ses espaces Titre, Contenu, Consignes) ; `emettre` (`src/emission/emettre.ts`, écrivain OOXML propre, paquet déterministe) ; `lire` (`src/lecture/lire.ts`, sur le lecteur OOXML du relevé) ; la grammaire en un seul endroit (`src/emission/grammaire.ts`) ; les commandes `packager emettre` et `packager lire` ; `packager salle` lit un PPT de validation quand on le lui donne.
+- **Sur la diapositive** : le titre ; un paragraphe par texte (ses retours à la ligne en sauts de ligne) ; captures et visuels rognés comme à l'origine (`G·capture`, `G·visuel`) ; une pastille par pas (`G·pastille`, numérotée par son texte), la zone dont elle touche le coin (`G·zone`, son ancrage dans son nom : « · légende », « · proposée ✦ » en tirets ambre), la consigne de son rang dans la liste des Consignes ; les tableaux natifs ; la diapositive masquée en masquée ; les notes.
+- **Hors de la vue** : l'identifiant du bloc et sa diapositive source en étiquettes OOXML (`GRADUIS.BLOC`, `GRADUIS.SOURCE`), dupliquées avec la diapositive ; le deck hérité dans les propriétés du document ; provisoirement, les lectures heuristiques sans grammaire encore (dessin, structure, composition) en JSON dans une étiquette (`GRADUIS.LECTURES`, → C2, C3).
+
+**Sortie** (61 témoins Vitest — 47 sur le dépôt, 14 sur le corpus — et 10 Playwright, verts)
+- `lire(émettre(pivot₀)) ≡ pivot₀` sur les 166 diapositives, à l'octet : même hash de pivot (`sha256:0a33b0…`), et la salle construite depuis le PPT est identique à l'octet à celle construite depuis le deck.
+- Une diapositive dupliquée est relue sans collision : la copie reçoit un identifiant neuf (au-delà du plus grand), garde sa source, et l'écart est dit.
+- Une consigne retouchée ⇒ un seul bloc change, et seulement cette consigne.
+- Le paquet valide contre les schémas ISO/IEC 29500 (875 parties, 0 erreur ; `scripts/valider_pptx.py`), s'ouvre dans python-pptx et se rend dans LibreOffice ; aucune couleur hors du thème (I-PKG-6).
+- Non couvert, nommé : l'ouverture dans PowerPoint lui-même (à faire sur un poste) ; les notes structurées (`Durée :`, `Consigne :`…) et les propositions ✦, faute de consommateur encore.
+
+### PKG-C2 · La structure des textes en grammaire
+
+**Livrer** : la structure d'un texte (`bloc.structure` : rangées, colonnes, fiches, intertitres, listes et leurs détails, définitions, graisse) montrée dans le PPT de validation dans les formes natives de PowerPoint, et relue par `lire` ; l'étiquette provisoire `GRADUIS.LECTURES` n'en porte plus.
 
 **À trancher au démarrage**
-- Le nom de l'objet : « PPT d'auteur » (spec) ou « PPT de validation » (le mot de David, 17/10).
-- Le dessin des schémas réémis en formes natives : aux couleurs des rôles (valeurs du thème) et en Montserrat, corps compensés ; ce que `lire` en relit doit redonner le même dessin (I-PKG-3).
-- La grammaire des lectures heuristiques (I-PKG-4) : la structure d'un texte (intertitres, listes, définitions, fiches), la partition d'un schéma (pas et ordre de chaque élément) et sa recomposition en gabarit (le `cas` : phases, étapes, manières, descriptions, légende ; le `tableau` : phases, couloirs, étapes placées, signaux, harmonisations) se montrent et se corrigent dans le PPT de validation.
-- Le support des identifiants : étiquettes OOXML ou nom de diapositive ; le comportement au copier-coller.
-- Le thème dans le PPT : comment la couche sémantique ONET se projette sur les 12 emplacements de couleur et les polices du thème Office.
-- Le repli de police : Montserrat manque sur une partie des postes, et PowerPoint ne l'embarque pas toujours. Police embarquée, police système de repli, ou installation demandée à ONET ?
-- Les animations de dévoilement dans le PPT d'animation (XML de minutage brut) : en v0 ou en option ?
+- La grammaire : un cadre par fiche, un paragraphe par nœud, le niveau de paragraphe pour les détails, la puce ou la numérotation pour les listes, « **terme** : texte » pour une définition, la graisse pour un intertitre ?
+- `textes` (l'inventaire verbatim) et `structure` (l'organisation) : l'un se dérive-t-il de l'autre à la lecture (I-PKG-1) ?
 
-**Sortie**
-- `lire(émettre(pivot₀)) ≡ pivot₀` sur les 166 diapositives.
-- Une diapositive dupliquée dans PowerPoint est relue sans collision d'identifiant.
-- Une consigne modifiée à la main dans PowerPoint ⇒ un diff d'un seul bloc.
+### PKG-C3 · Les schémas, leur partition et leurs recompositions en grammaire
+
+**Livrer** : le dessin réémis en formes natives (géométries, chemins libres, rôles en couleurs du thème, Montserrat aux corps compensés) ; la partition et les recompositions (`cas`, `tableau`, harmonisations) montrées et corrigibles ; `lire` les relit (I-PKG-3) ; l'étiquette provisoire disparaît.
+
+**À trancher au démarrage**
+- Ce que montre une diapositive recomposée : la composition (ce qui sera livré) en formes natives, le dessin d'origine en repli (masqué, ou sur une diapositive annexe) ?
+- La grammaire du dévoilement : les animations natives de PowerPoint (l'ordre des clics est la partition, il se joue au diaporama et se corrige dans le volet Animation) ou le nom des formes (« pas 2 ») ?
+- Le repli de police : Montserrat manque sur une partie des postes, et PowerPoint ne l'embarque pas toujours. Police embarquée, police système de repli, ou installation demandée à ONET ?
+- Les animations de dévoilement dans le PPT d'animation : en v0 ou en option ? (Liées à la grammaire du dévoilement.)
 
 ---
 
