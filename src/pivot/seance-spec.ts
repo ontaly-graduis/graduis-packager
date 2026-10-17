@@ -127,6 +127,8 @@ export const FormeDeDessin = z.object({
   marque: z.literal("pastille").optional(),
   /** Le pas de la partition où l'élément paraît (absent : il est là dès l'entrée, c'est le décor). */
   pas: z.number().int().positive().optional(),
+  /** Son rang dans le pas : le numéro de la pastille qui l'annonce (les indications numérales priment). */
+  ordre: z.number().int().nonnegative().optional(),
 }).strict();
 
 export const ImageDeDessin = z.object({

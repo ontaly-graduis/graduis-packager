@@ -103,12 +103,14 @@ function forme(e: FormeDeDessin): string {
 export function dessinEnSvg(d: Dessin, prefixe: string): string {
   const [x0, y0, w0, h0] = d.cadre;
   const tout: string[] = [];
-  // Dans un pas, les éléments paraissent dans l'ordre de lecture (`data-r`, borné : un pas ne fait pas attendre).
+  // Dans un pas, les éléments paraissent dans l'ordre de leurs numéros puis de lecture (`--r`, borné : un pas ne fait pas attendre).
   const rangs = new Map<number, number>();
   const parPas = new Map<number, number[]>();
   d.elements.forEach((e, i) => { if (e.pas) parPas.set(e.pas, [...(parPas.get(e.pas) ?? []), i]); });
   for (const ids of parPas.values()) {
-    [...ids].sort((a, b) => d.elements[a]!.boite[1] - d.elements[b]!.boite[1] || d.elements[a]!.boite[0] - d.elements[b]!.boite[0])
+    // Les numéros d'abord (l'ordre des pastilles), puis l'ordre de lecture.
+    const ordre = (i: number) => { const e = d.elements[i]!; return e.type === "forme" ? e.ordre ?? 99 : 99; };
+    [...ids].sort((a, b) => ordre(a) - ordre(b) || d.elements[a]!.boite[1] - d.elements[b]!.boite[1] || d.elements[a]!.boite[0] - d.elements[b]!.boite[0])
       .forEach((i, r) => rangs.set(i, Math.min(r, 10)));
   }
   d.elements.forEach((e, i) => {

@@ -13,7 +13,7 @@ const RANGEE = 0.15 * POUCE;
 const trois = (n: number) => String(n).padStart(3, "0");
 
 /** Les figures de texte, dont la qualification lit l'organisation (`structure`). */
-const TEXTUELLES: ReadonlySet<string> = new Set(["contenu", "objectifs", "synthese"]);
+const TEXTUELLES: ReadonlySet<string> = new Set(["contenu", "objectifs", "synthese", "etapes-cles"]);
 const normal = (s: string) => s.replace(/\s+/g, " ").trim();
 const centieme = (v: number) => Math.round(v * 100) / 100;
 
@@ -103,6 +103,7 @@ function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): { bloc: Bloc
     ? structurer(
       d.formes.filter((f) => f !== titre && aCadreTexte(f as Forme) && !estDeService(f) && !estPastille(f as Forme) && texteDe(f as Forme)),
       d.formes.filter((f) => f.nature === "image" && f.media && !estCapture(f as Forme, largeur)),
+      d.formes.filter((f) => estPastille(f as Forme)),
     )
     : null;
   const dessin = schema?.dessin;

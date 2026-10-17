@@ -62,6 +62,25 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     expect(rapport.constats.filter((x) => x.regle === "DESSIN" && x.niveau === "a-valider")).toHaveLength(0);
   });
 
+  it("organise les textes : étapes clés dans l'ordre de leurs numéros, définitions, fiches illustrées (PKG-B3)", () => {
+    const bloc = (n: number) => spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === n)!;
+    const noeuds = (n: number) => bloc(n).structure!.rangees.flatMap((r) => r.colonnes.flatMap((c) => c.noeuds));
+    const etapes = noeuds(58)[0]!;
+    expect(etapes.type === "liste" && etapes.numerotee && etapes.items.map((i) => i.texte.split(" ")[0])).toEqual(["Accéder", "Vérifier", "Consolider/transformer", "Soumettre"]);
+    expect(noeuds(140).map((x) => x.type)).toEqual(["definitions"]);
+    expect(bloc(7).structure!.rangees.map((r) => r.colonnes.length)).toEqual([1, 2, 1]);
+    expect(bloc(21).structure!.rangees.map((r) => r.colonnes.map((c) => !!c.visuel))).toEqual([[true], [true], [true], [true]]);
+  });
+
+  it("partitionne les schémas : colonnes rangées par leurs numéros, logigramme par ses étapes (PKG-B3)", () => {
+    const partition = (n: number) => spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === n)!.dessin!.partition;
+    expect([15, 16, 17, 18, 19, 20, 31].map(partition)).toEqual([
+      undefined, undefined,
+      { mode: "colonnes", pas: 4 }, { mode: "colonnes", pas: 4 }, { mode: "colonnes", pas: 4 }, { mode: "colonnes", pas: 4 },
+      { mode: "etapes", pas: 9 },
+    ]);
+  });
+
   it("qualifie de façon déterministe", () => {
     expect(stringify2(qualifierReleve(relever(octets, NOM).releve).spec)).toBe(stringify2(spec));
   });

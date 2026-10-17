@@ -2,6 +2,7 @@
 import { dessinEnSvg } from "../../dessin/svg";
 import type { Structure } from "../../pivot/seance-spec";
 import type { BlocDeSalle, SequenceDeSalle, VisuelDeSalle } from "../donnees";
+import { planDeDevoilement } from "../unites";
 
 export interface Contexte {
   readonly doc: Document;
@@ -54,53 +55,60 @@ function riche(ctx: Contexte, parent: HTMLElement, texte: string): HTMLElement {
  */
 function structure(ctx: Contexte, s: Structure, etape: number, devoile: boolean): HTMLElement {
   const racine = el(ctx.doc, "div", "structure");
-  let rang = 0;
-  const etat = (i: number) => (devoile && i >= etape ? "cache" : devoile && i === etape - 1 ? `courant${ctx.anime === "etape" ? " apparait" : ""}` : "");
-  const unite = (classe: string) => {
-    const li = el(ctx.doc, "li", `${classe} ${etat(rang)}`.trim());
-    rang += 1;
+  const plan = planDeDevoilement(s);
+  let a = 0;
+  let dansFiche = false;
+  const cache = (u: number) => devoile && u >= etape;
+  // Dans une fiche, c'est la fiche qui paraît ; ses lignes ne s'animent pas une à une.
+  const etat = (u: number) => (cache(u) ? "cache" : devoile && u === etape - 1 ? `courant${ctx.anime === "etape" && !dansFiche ? " apparait" : ""}` : "");
+  /** L'atome suivant, dans l'ordre du plan : un `li` à l'état de son unité. */
+  const atome = (classe: string) => {
+    const li = el(ctx.doc, "li", `${classe} ${etat(plan.atomes[a] ?? 0)}`.trim());
+    a += 1;
     return li;
+  };
+  const details = (parent: HTMLElement, lignes: readonly string[] | undefined) => {
+    if (!lignes?.length) return;
+    const d = el(ctx.doc, "div", "details");
+    lignes.forEach((t, j) => { if (j) d.append(el(ctx.doc, "br")); riche(ctx, d, t); });
+    parent.append(d);
   };
   for (const r of s.rangees) {
     const rangee = el(ctx.doc, "div", "rangee");
     rangee.style.setProperty("--n", String(r.colonnes.length));
     for (const c of r.colonnes) {
-      const flux = el(ctx.doc, "ul", `flux${r.colonnes.length > 1 || c.visuel ? " fiche" : ""}`);
+      const fiche = r.colonnes.length > 1 || !!c.visuel;
+      dansFiche = fiche;
+      const uniteDeFiche = plan.atomes[a] ?? 0;
+      const flux = el(ctx.doc, "ul", `flux${fiche ? " fiche" : ""}`);
       for (const x of c.noeuds) {
-        if (x.type === "titre") flux.append(riche(ctx, el(ctx.doc, "li", `intertitre ${devoile && rang >= etape ? "cache" : ""}`.trim()), x.texte));
-        else if (x.type === "paragraphe") flux.append(riche(ctx, unite("para"), x.texte));
+        if (x.type === "titre") flux.append(riche(ctx, atome("intertitre"), x.texte));
+        else if (x.type === "paragraphe") flux.append(riche(ctx, atome("para"), x.texte));
         else if (x.type === "liste") {
           x.items.forEach((it, k) => {
-            const li = unite(`item${x.numerotee ? " numero" : ""}`);
+            const li = atome(`item${x.numerotee ? " numero" : ""}`);
             if (x.numerotee) li.dataset.n = String(k + 1);
             riche(ctx, li, it.texte);
-            if (it.details?.length) {
-              const d = el(ctx.doc, "div", "details");
-              it.details.forEach((t, j) => { if (j) d.append(el(ctx.doc, "br")); riche(ctx, d, t); });
-              li.append(d);
-            }
+            details(li, it.details);
             flux.append(li);
           });
         } else {
           for (const e of x.entrees) {
-            const li = unite("def");
+            const li = atome("def");
             li.append(riche(ctx, el(ctx.doc, "span", "terme"), e.terme));
             const t = riche(ctx, el(ctx.doc, "span", "definition"), e.texte);
-            if (e.details?.length) {
-              const d = el(ctx.doc, "div", "details");
-              e.details.forEach((x2, j) => { if (j) d.append(el(ctx.doc, "br")); riche(ctx, d, x2); });
-              t.append(d);
-            }
+            details(t, e.details);
             li.append(t);
             flux.append(li);
           }
         }
       }
-      if (c.visuel) {
-        const fiche = el(ctx.doc, "div", "fiche-illustree");
-        fiche.append(el(ctx.doc, "img", "illustration", undefined, { src: ctx.medias[c.visuel] ?? "", alt: "" }), flux);
-        rangee.append(fiche);
-      } else rangee.append(flux);
+      const boite = c.visuel ? el(ctx.doc, "div", "fiche-illustree") : flux;
+      if (c.visuel) boite.append(el(ctx.doc, "img", "illustration", undefined, { src: ctx.medias[c.visuel] ?? "", alt: "" }), flux);
+      // Une fiche paraît entière : son cadre aussi se cache tant qu'elle n'est pas dévoilée.
+      if (fiche && cache(uniteDeFiche)) boite.classList.add("cache");
+      if (fiche && devoile && uniteDeFiche === etape - 1 && ctx.anime === "etape") boite.classList.add("apparait");
+      rangee.append(boite);
     }
     racine.append(rangee);
   }
@@ -287,7 +295,7 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
       break;
     }
     case "etapes-cles":
-      corps.append(defile(ctx, liste(ctx, b.lignes, etape, devoile, "liste numerotee")));
+      corps.append(defile(ctx, b.structure ? structure(ctx, b.structure, etape, devoile) : liste(ctx, b.lignes, etape, devoile, "liste numerotee")));
       break;
     case "pas-a-pas":
       corps.append(pasAPas(ctx, b, etape));

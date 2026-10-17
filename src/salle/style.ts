@@ -123,7 +123,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--color-nav-bg);fo
 .flux .terme{font-weight:var(--fw-bold);color:var(--text-strong)}
 .flux strong{font-weight:var(--fw-bold);color:var(--text-strong)}
 .flux li.courant{color:var(--text-strong)}
-.flux li.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both}
+.flux li.apparait,.structure .fiche.apparait,.structure .fiche-illustree.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both}
+.structure .cache{visibility:hidden}
 /* Défilement : un rail qui glisse dans une fenêtre ; fondus aux bords coupés, indice de suite pour les pages. */
 .defile{position:relative;flex:1;min-height:0;min-width:0;width:100%;overflow:hidden}
 .defile .rail{position:relative;transition:transform var(--mvt-entree) var(--courbe-douce)}

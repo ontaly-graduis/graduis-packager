@@ -182,6 +182,27 @@ const recouvre = (a: Boite, b: Boite) => {
 
 const POINT = 12700;
 
+/**
+ * Les indications numérales priment : quand des pastilles 1…N annoncent chacune un cadre (le plus proche, pas le mieux
+ * aligné — les étapes clés ne le sont pas toujours), le texte est une liste numérotée dans l'ordre des numéros.
+ */
+function listeNumerotee(lus: readonly { f: FormeReleve; lignes: Ligne[] }[], pastilles: readonly FormeReleve[]): Structure | null {
+  const numeros = pastilles.map((p) => ({ p, n: Number((p.texte ?? []).join("").trim()) })).filter((x) => Number.isInteger(x.n) && x.n > 0);
+  const tries = [...numeros].sort((a, b) => a.n - b.n);
+  if (tries.length < 2 || !tries.every((x, i) => x.n === i + 1) || tries.length !== lus.length) return null;
+  const pris = new Set<number>();
+  const items: { texte: string; details?: string[] }[] = [];
+  for (const { p } of tries) {
+    const proche = lus.map((x, i) => ({ i, d: ecartBord(p.boite, x.f.boite) })).filter((c) => !pris.has(c.i)).sort((a, b) => a.d - b.d)[0];
+    if (!proche || proche.d > 4 * Math.max(p.boite[2], p.boite[3])) return null;
+    pris.add(proche.i);
+    // Un cadre tout en gras : la graisse est sa manière, pas une emphase.
+    const [premiere, ...reste] = lus[proche.i]!.lignes.map((l) => (l.toutGras ? l.texte.replace(/\*\*/g, "") : l.texte));
+    items.push({ texte: premiere ?? "", ...(reste.length ? { details: reste } : {}) });
+  }
+  return { rangees: [{ colonnes: [{ noeuds: [{ type: "liste", numerotee: true, items }] }] }] };
+}
+
 /** Deux cadres qui s'empilent : même colonne, largeurs comparables, l'un sous l'autre. */
 function sEmpilent(haut: Boite, bas: Boite): boolean {
   const S = SEUILS_STRUCTURE;
@@ -201,11 +222,13 @@ const union = (bs: readonly Boite[]): Boite => {
  * La structure d'un ensemble de cadres de texte. Les cadres s'empilent d'abord en colonnes (une fiche faite de plusieurs
  * cadres), puis les colonnes se rangent en rangées de haut en bas, de gauche à droite dans une rangée.
  */
-export function structurer(cadres: readonly FormeReleve[], images: readonly FormeReleve[] = []): Structure | null {
+export function structurer(cadres: readonly FormeReleve[], images: readonly FormeReleve[] = [], pastilles: readonly FormeReleve[] = []): Structure | null {
   const lus = cadres
     .map((f) => ({ f, lignes: (f.style?.corps as CorpsLu | undefined)?.paragraphes.map(enLigne).filter((l): l is Ligne => l !== null) ?? [], image: undefined as string | undefined }))
     .filter((x) => x.lignes.length);
   if (!lus.length) return null;
+  const numerotee = listeNumerotee(lus, pastilles);
+  if (numerotee) return numerotee;
   // Une image (un portrait, l'icône d'un rôle) va au cadre qui la touche : elle l'illustre.
   for (const im of images) {
     if (!im.media) continue;

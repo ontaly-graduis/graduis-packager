@@ -3,6 +3,7 @@ import type { Bloc, Dessin, Figure, SeanceSpec, Structure, Visuel } from "../piv
 import { compenserChasse, type TableDeChasse } from "../theme/chasse";
 import { habiller, type Maniere } from "../theme/maniere";
 import { regionMap, type RegionMap } from "./region-map";
+import { planDeDevoilement } from "./unites";
 
 export const SCHEMA_SALLE = "graduis/salle@0";
 
@@ -38,16 +39,7 @@ export interface BlocDeSalle {
   readonly structure?: Structure;
 }
 
-/** Les unités de dévoilement d'une structure : paragraphes, items (avec leurs détails), définitions. Les intertitres suivent. */
-export function unitesDe(s: Structure): number {
-  let n = 0;
-  for (const r of s.rangees) for (const c of r.colonnes) for (const x of c.noeuds) {
-    if (x.type === "paragraphe") n += 1;
-    else if (x.type === "liste") n += x.items.length;
-    else if (x.type === "definitions") n += x.entrees.length;
-  }
-  return n;
-}
+
 
 export interface SequenceDeSalle {
   readonly id: string;
@@ -93,7 +85,7 @@ function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, h: Habillage)
   const pastille = prise.devoilement === "pastille";
   const etapes = !pastille ? 0 : b.figure === "pas-a-pas" ? b.pas.length
     : b.figure === "schema" ? b.dessin?.partition?.pas ?? 0
-      : DEVOILEES.has(b.figure) ? (b.structure ? unitesDe(b.structure) : lignes.length) : 0;
+      : DEVOILEES.has(b.figure) ? (b.structure ? planDeDevoilement(b.structure).total : lignes.length) : 0;
   const dessin = b.dessin ? compenserChasse(b.dessin, h.chasse ?? {}) : undefined;
   const minutes = MINUTEES.has(b.figure) ? lignes.join(" ").match(/(\d{1,3})\s*min/i) : null;
   return {

@@ -55,11 +55,43 @@ function colonnes(d: Dessin): Boite[] {
   return retenues.length >= 3 ? retenues : [];
 }
 
-/** Pose le pas de chaque élément ; rend le dessin inchangé s'il n'a ni colonnes ni étapes numérotées. */
+/** Chaque pastille numérotée et la forme qu'elle annonce : la plus proche (pas la mieux alignée — les processus ne le
+ *  sont pas toujours) ; à égalité, une forme pleine (une étape) plutôt qu'une note, puis la plus proche du centre. */
+function apparier(elements: readonly ElementDeDessin[]): { pastille: number; forme: number | null; n: number }[] {
+  const S = SEUILS_PARTITION;
+  const pastilles = elements.map((e, i) => ({ i, n: numeroDePastille(e) })).filter((x): x is { i: number; n: number } => x.n !== null);
+  const formes = elements.map((e, i) => ({ e, i })).filter(({ e, i }) => e.type === "forme" && !estTrait(e) && !pastilles.some((p) => p.i === i) && texteDe(e));
+  const prises = new Set<number>();
+  // Les pastilles les plus proches d'une forme se servent d'abord.
+  const candidats = pastilles.map((p) => {
+    const b = elements[p.i]!.boite;
+    const c0 = centre(b);
+    const tries = formes
+      .map((f) => ({ f: f.i, d: ecart(b, f.e.boite), plein: f.e.type === "forme" && f.e.fond ? 0 : 1, dc: Math.hypot(centre(f.e.boite)[0] - c0[0], centre(f.e.boite)[1] - c0[1]) }))
+      .filter((x) => x.d <= S.porteePastille * Math.max(b[2], b[3]))
+      .sort((a, c) => Math.floor(a.d / 4) - Math.floor(c.d / 4) || a.plein - c.plein || a.dc - c.dc);
+    return { p, tries };
+  }).sort((a, b) => (a.tries[0]?.d ?? 1e9) - (b.tries[0]?.d ?? 1e9));
+  const out: { pastille: number; forme: number | null; n: number }[] = [];
+  for (const { p, tries } of candidats) {
+    const f = tries.find((x) => !prises.has(x.f));
+    if (f) prises.add(f.f);
+    out.push({ pastille: p.i, forme: f?.f ?? null, n: p.n });
+  }
+  return out.sort((a, b) => a.pastille - b.pastille);
+}
+
+/**
+ * Pose le pas de chaque élément ; rend le dessin inchangé s'il n'a ni colonnes ni étapes numérotées. Les indications
+ * numérales priment : une forme suit la pastille qui l'annonce (pas son alignement), les colonnes se rangent par le numéro
+ * de leur en-tête quand elles en portent un, et dans un pas les éléments paraissent dans l'ordre de leurs numéros.
+ */
 export function partitionner(d: Dessin): Dessin {
   const S = SEUILS_PARTITION;
   const elements = d.elements.map((e) => ({ ...e }));
   const pose = (i: number, pas: number) => { (elements[i] as { pas?: number }).pas = pas; };
+  const range = (i: number, ordre: number) => { (elements[i] as { ordre?: number }).ordre = ordre; };
+  const paires = apparier(elements);
   const cols = colonnes(d);
   if (cols.length) {
     // Un élément enclos dans une forme du décor (le cadre d'une légende) est du décor.
@@ -67,34 +99,44 @@ export function partitionner(d: Dessin): Dessin {
     const proche = (b: Boite) => cols.some((c) => centre(b)[1] < c[1] && c[1] - (b[1] + b[3]) <= S.enTete && centre(b)[0] >= c[0] && centre(b)[0] <= c[0] + c[2]);
     const enclos = (b: Boite) => d.elements.some((x) => x.boite !== b && !cols.includes(x.boite) && x.boite[2] * x.boite[3] > b[2] * b[3] * 2
       && dedans(centre(b), x.boite) && !cols.some((c) => dedans(centre(x.boite), c)) && !proche(x.boite));
-    elements.forEach((e, i) => {
+    const colonneDe = (e: ElementDeDessin): number => {
       const [cx, cy] = centre(e.boite);
       const k = cols.findIndex((c) => cx >= c[0] && cx <= c[0] + c[2]);
       const c = cols[k];
-      if (!c || e.boite[2] > S.traverse * c[2]) return;
+      if (!c || e.boite[2] > S.traverse * c[2]) return -1;
       // Dans la colonne, ou juste au-dessus d'elle (son en-tête) ; pas au-dessous, ni dans un cadre du décor.
       const dansLaColonne = cy >= c[1] && cy <= c[1] + c[3];
       const enTete = cy < c[1] && c[1] - (e.boite[1] + e.boite[3]) <= S.enTete && !enclos(e.boite);
-      if (dansLaColonne || enTete) pose(i, k + 1);
-    });
+      return dansLaColonne || enTete ? k : -1;
+    };
+    const k = elements.map(colonneDe);
+    // La forme qu'une pastille annonce est de la colonne de sa pastille.
+    for (const p of paires) if (p.forme !== null && k[p.pastille]! >= 0) k[p.forme] = k[p.pastille]!;
+    // L'en-tête numéroté d'une colonne : sa pastille la plus haute, au-dessus de la colonne ou sur son bord.
+    const entetes = cols.map((c, j) => paires.filter((p) => k[p.pastille] === j && centre(elements[p.pastille]!.boite)[1] < c[1] + 0.08 * c[3])
+      .sort((a, b) => elements[a.pastille]!.boite[1] - elements[b.pastille]!.boite[1])[0]);
+    const numerotees = entetes.every((e) => e) && new Set(entetes.map((e) => e!.n)).size === cols.length
+      && entetes.every((e) => e!.n >= 1 && e!.n <= cols.length);
+    const pasDeColonne = (j: number) => (numerotees ? entetes[j]!.n : j + 1);
+    k.forEach((j, i) => { if (j >= 0) pose(i, pasDeColonne(j)); });
+    for (const p of paires) {
+      const enTete = entetes.some((e) => e?.pastille === p.pastille);
+      range(p.pastille, enTete ? 0 : p.n);
+      if (p.forme !== null) range(p.forme, enTete ? 0 : p.n);
+    }
     return { ...d, elements, partition: { mode: "colonnes", pas: cols.length } };
   }
   // Des pastilles numérotées 1…N, chacune une fois : un pas par numéro.
-  const pastilles = elements.map((e, i) => ({ i, n: numeroDePastille(e) })).filter((x): x is { i: number; n: number } => x.n !== null);
-  const numeros = pastilles.map((p) => p.n).sort((a, b) => a - b);
+  const numeros = paires.map((p) => p.n).sort((a, b) => a - b);
   const suite = numeros.length >= 3 && numeros.every((n, i) => n === i + 1);
   if (!suite) return d;
-  const formes = elements.map((e, i) => ({ e, i })).filter(({ e, i }) => e.type === "forme" && !estTrait(e) && !pastilles.some((p) => p.i === i) && texteDe(e));
-  for (const p of pastilles) {
-    pose(p.i, p.n);
-    const b = elements[p.i]!.boite;
-    // La forme la plus proche ; à égalité, une forme pleine (une étape) plutôt qu'une note, puis la plus proche du centre.
-    const c0 = centre(b);
-    const proche = formes
-      .map((f) => ({ f, d: ecart(b, f.e.boite), plein: f.e.type === "forme" && f.e.fond ? 0 : 1, dc: Math.hypot(centre(f.e.boite)[0] - c0[0], centre(f.e.boite)[1] - c0[1]) }))
-      .filter((x) => x.d <= S.porteePastille * Math.max(b[2], b[3]))
-      .sort((a, c) => Math.floor(a.d / 4) - Math.floor(c.d / 4) || a.plein - c.plein || a.dc - c.dc)[0];
-    if (proche && !(elements[proche.f.i] as { pas?: number }).pas) pose(proche.f.i, p.n);
+  for (const p of paires) {
+    pose(p.pastille, p.n);
+    range(p.pastille, 0);
+    if (p.forme !== null && !(elements[p.forme] as { pas?: number }).pas) {
+      pose(p.forme, p.n);
+      range(p.forme, 0);
+    }
   }
   // Les traits suivent le flux : un trait qui part d'une forme d'un pas en est ; la forme où il arrive, si elle n'a pas
   // de pas (une décision, un renvoi), en est aussi. Un libellé collé à un trait (« Oui », « Non ») suit ce trait.
