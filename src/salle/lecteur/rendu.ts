@@ -1,6 +1,8 @@
 // Le rendu d'un bloc de salle en diapositive 1920 × 1080, au thème : une composition par figure.
 import { dessinEnSvg } from "../../dessin/svg";
+import type { Structure } from "../../pivot/seance-spec";
 import type { BlocDeSalle, SequenceDeSalle, VisuelDeSalle } from "../donnees";
+import { planDeDevoilement } from "../unites";
 
 export interface Contexte {
   readonly doc: Document;
@@ -34,6 +36,83 @@ function liste(ctx: Contexte, lignes: readonly string[], etape: number, devoile:
     ul.append(el(ctx.doc, "li", cache ? "cache" : courant ? `courant${ctx.anime === "etape" ? " apparait" : ""}` : "", l));
   });
   return ul;
+}
+
+/** Un texte du pivot, sa graisse (`**…**`) rendue. */
+function riche(ctx: Contexte, parent: HTMLElement, texte: string): HTMLElement {
+  texte.split(/(\*\*[^*]+?\*\*)/).forEach((morceau) => {
+    if (!morceau) return;
+    if (morceau.startsWith("**") && morceau.endsWith("**")) parent.append(el(ctx.doc, "strong", "", morceau.slice(2, -2)));
+    else parent.append(ctx.doc.createTextNode(morceau));
+  });
+  return parent;
+}
+
+/**
+ * L'organisation d'une diapositive de texte : des rangées, des colonnes (en fiches quand elles sont plusieurs), et dans
+ * chaque colonne un flux d'unités — paragraphes, items, définitions — qui se dévoilent une à une ; un intertitre paraît
+ * avec la première unité qu'il annonce.
+ */
+function structure(ctx: Contexte, s: Structure, etape: number, devoile: boolean): HTMLElement {
+  const racine = el(ctx.doc, "div", "structure");
+  const plan = planDeDevoilement(s);
+  let a = 0;
+  let dansFiche = false;
+  const cache = (u: number) => devoile && u >= etape;
+  // Dans une fiche, c'est la fiche qui paraît ; ses lignes ne s'animent pas une à une.
+  const etat = (u: number) => (cache(u) ? "cache" : devoile && u === etape - 1 ? `courant${ctx.anime === "etape" && !dansFiche ? " apparait" : ""}` : "");
+  /** L'atome suivant, dans l'ordre du plan : un `li` à l'état de son unité. */
+  const atome = (classe: string) => {
+    const li = el(ctx.doc, "li", `${classe} ${etat(plan.atomes[a] ?? 0)}`.trim());
+    a += 1;
+    return li;
+  };
+  const details = (parent: HTMLElement, lignes: readonly string[] | undefined) => {
+    if (!lignes?.length) return;
+    const d = el(ctx.doc, "div", "details");
+    lignes.forEach((t, j) => { if (j) d.append(el(ctx.doc, "br")); riche(ctx, d, t); });
+    parent.append(d);
+  };
+  for (const r of s.rangees) {
+    const rangee = el(ctx.doc, "div", "rangee");
+    rangee.style.setProperty("--n", String(r.colonnes.length));
+    for (const c of r.colonnes) {
+      const fiche = r.colonnes.length > 1 || !!c.visuel;
+      dansFiche = fiche;
+      const uniteDeFiche = plan.atomes[a] ?? 0;
+      const flux = el(ctx.doc, "ul", `flux${fiche ? " fiche" : ""}`);
+      for (const x of c.noeuds) {
+        if (x.type === "titre") flux.append(riche(ctx, atome("intertitre"), x.texte));
+        else if (x.type === "paragraphe") flux.append(riche(ctx, atome("para"), x.texte));
+        else if (x.type === "liste") {
+          x.items.forEach((it, k) => {
+            const li = atome(`item${x.numerotee ? " numero" : ""}`);
+            if (x.numerotee) li.dataset.n = String(k + 1);
+            riche(ctx, li, it.texte);
+            details(li, it.details);
+            flux.append(li);
+          });
+        } else {
+          for (const e of x.entrees) {
+            const li = atome("def");
+            li.append(riche(ctx, el(ctx.doc, "span", "terme"), e.terme));
+            const t = riche(ctx, el(ctx.doc, "span", "definition"), e.texte);
+            details(t, e.details);
+            li.append(t);
+            flux.append(li);
+          }
+        }
+      }
+      const boite = c.visuel ? el(ctx.doc, "div", "fiche-illustree") : flux;
+      if (c.visuel) boite.append(el(ctx.doc, "img", "illustration", undefined, { src: ctx.medias[c.visuel] ?? "", alt: "" }), flux);
+      // Une fiche paraît entière : son cadre aussi se cache tant qu'elle n'est pas dévoilée.
+      if (fiche && cache(uniteDeFiche)) boite.classList.add("cache");
+      if (fiche && devoile && uniteDeFiche === etape - 1 && ctx.anime === "etape") boite.classList.add("apparait");
+      rangee.append(boite);
+    }
+    racine.append(rangee);
+  }
+  return racine;
 }
 
 /**
@@ -147,12 +226,30 @@ function tableau(ctx: Contexte, lignes: readonly (readonly string[])[]): HTMLEle
   return t;
 }
 
-/** Le schéma redessiné : le SVG du dessin, ses images résolues depuis les médias inline. */
-function schema(ctx: Contexte, b: BlocDeSalle): HTMLElement {
+/**
+ * Le schéma redessiné : le SVG du dessin, ses images résolues depuis les médias inline. S'il a une partition, l'étape
+ * montre le décor et les pas atteints ; le pas qui arrive se trace (ses traits courent, ses aplats et ses textes suivent).
+ */
+function schema(ctx: Contexte, b: BlocDeSalle, etape: number): HTMLElement {
   const conteneur = el(ctx.doc, "div", "schema");
   if (!b.dessin) return conteneur;
   conteneur.innerHTML = dessinEnSvg(b.dessin, b.id);
   conteneur.querySelectorAll("image[data-media]").forEach((i) => i.setAttribute("href", ctx.medias[i.getAttribute("data-media") ?? ""] ?? ""));
+  if (b.etapes > 0) {
+    conteneur.querySelectorAll<SVGGElement>("g[data-pas]").forEach((g) => {
+      const pas = Number(g.dataset.pas);
+      if (pas > etape) g.classList.add("pas-cache");
+      else if (pas === etape) {
+        g.classList.add("pas-courant");
+        if (ctx.anime === "etape") {
+          g.classList.add("trace");
+          g.querySelectorAll("path").forEach((p) => {
+            if (p.getAttribute("class")?.includes("s-") && !p.hasAttribute("stroke-dasharray")) p.setAttribute("pathLength", "1");
+          });
+        }
+      } else g.classList.add("pas-fait");
+    });
+  }
   return conteneur;
 }
 
@@ -198,7 +295,7 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
       break;
     }
     case "etapes-cles":
-      corps.append(defile(ctx, liste(ctx, b.lignes, etape, devoile, "liste numerotee")));
+      corps.append(defile(ctx, b.structure ? structure(ctx, b.structure, etape, devoile) : liste(ctx, b.lignes, etape, devoile, "liste numerotee")));
       break;
     case "pas-a-pas":
       corps.append(pasAPas(ctx, b, etape));
@@ -206,7 +303,7 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
     case "schema":
       // Les textes d'un schéma sont les étiquettes de son dessin : ils ne se listent pas à côté.
       corps.classList.add("centre");
-      if (b.dessin) corps.append(schema(ctx, b));
+      if (b.dessin) corps.append(schema(ctx, b, etape));
       else corps.append(...visuels(ctx, b, CORPS.largeur, CORPS.hauteur));
       break;
     case "capture":
@@ -227,11 +324,13 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
       break;
     default: {
       const texte = el(ctx.doc, "div", "texte");
-      texte.append(defile(ctx, liste(ctx, b.lignes, etape, devoile), ...b.tableaux.map((t) => tableau(ctx, t))));
+      texte.append(defile(ctx, b.structure ? structure(ctx, b.structure, etape, devoile) : liste(ctx, b.lignes, etape, devoile), ...b.tableaux.map((t) => tableau(ctx, t))));
       corps.append(texte);
-      if (b.visuels.length) {
+      const illustrations = new Set(b.structure?.rangees.flatMap((r) => r.colonnes.flatMap((c) => (c.visuel ? [c.visuel] : []))) ?? []);
+      const libres = b.visuels.filter((v) => !illustrations.has(v.media));
+      if (libres.length) {
         const colonne = el(ctx.doc, "div", "visuels");
-        colonne.append(...visuels(ctx, b, 680, CORPS.hauteur));
+        colonne.append(...visuels(ctx, { ...b, visuels: libres }, 680, CORPS.hauteur));
         corps.append(colonne);
       }
     }

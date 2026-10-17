@@ -4,12 +4,16 @@ import type { Releve, DiapositiveReleve, FormeReleve } from "../releve/releve";
 import { POUCE, aCadreTexte, dedans, estCapture, estPastille, estZone, texteDe } from "../releve/geometrie";
 import { SCHEMA_SEANCE, type Bloc, type Pas, type SeanceSpec, type Sequence, type Visuel } from "../pivot/seance-spec";
 import { dessinDe } from "./dessin";
+import { structurer } from "./structure";
 import { estDeService, qualifier as qualifierDiapo, type Qualification } from "./figures";
 
 /** Tolérance d'une rangée pour l'ordre de lecture : deux boîtes dont les hauts diffèrent de moins sont sur la même ligne. */
 const RANGEE = 0.15 * POUCE;
 
 const trois = (n: number) => String(n).padStart(3, "0");
+
+/** Les figures de texte, dont la qualification lit l'organisation (`structure`). */
+const TEXTUELLES: ReadonlySet<string> = new Set(["contenu", "objectifs", "synthese", "etapes-cles"]);
 const normal = (s: string) => s.replace(/\s+/g, " ").trim();
 const centieme = (v: number) => Math.round(v * 100) / 100;
 
@@ -95,6 +99,13 @@ function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): { bloc: Bloc
   const numeroSaisi = (f: FormeReleve) => texteDe(f as Forme) === String(d.n) && f.boite[1] > hauteur * 0.85;
   const ecartees = new Set(d.formes.filter((f) => f === titre || estDeService(f) || numeroSaisi(f)));
   const schema = q.figure === "schema" ? dessinDe(d, ecartees) : undefined;
+  const structure = TEXTUELLES.has(q.figure)
+    ? structurer(
+      d.formes.filter((f) => f !== titre && aCadreTexte(f as Forme) && !estDeService(f) && !estPastille(f as Forme) && texteDe(f as Forme)),
+      d.formes.filter((f) => f.nature === "image" && f.media && !estCapture(f as Forme, largeur)),
+      d.formes.filter((f) => estPastille(f as Forme)),
+    )
+    : null;
   const dessin = schema?.dessin;
   const bloc: Bloc = {
     id: `b${trois(d.n)}`,
@@ -107,6 +118,7 @@ function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): { bloc: Bloc
     tableaux,
     pas,
     ...(dessin ? { dessin } : {}),
+    ...(structure ? { structure } : {}),
     notes: d.notes,
   };
   return { bloc, q: schema ? { ...q, projection: schema.projection } : q };

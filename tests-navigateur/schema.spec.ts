@@ -52,3 +52,16 @@ test("dessine le schéma au thème, textes dans leurs formes, sans requête ni e
   expect(requetes).toEqual([]);
   expect(erreurs).toEqual([]);
 });
+
+test("joue le schéma pas à pas : le décor d'abord, puis chaque étape se trace", async ({ page }) => {
+  await page.goto(url + "#b002.0");
+  await page.evaluate(() => document.fonts.ready);
+  // Six étapes, leurs six pastilles et les cinq traits qui les relient attendent leur pas.
+  await expect(page.locator(".dessin g[data-pas].pas-cache")).toHaveCount(17);
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".dessin g[data-pas='1'].pas-courant.trace")).toHaveCount(3);
+  expect(await page.locator(".dessin g[data-pas='1'] path[pathLength='1']").count()).toBeGreaterThan(0);
+  await expect(page.locator(".dessin g[data-pas].pas-cache")).toHaveCount(14);
+  await page.keyboard.press("End");
+  await expect(page.locator(".dessin g[data-pas].pas-cache")).toHaveCount(0);
+});

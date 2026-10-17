@@ -1,0 +1,9 @@
+{
+  "provenance": "La manière des schémas redessinés (graduis-packager, 17/10), dérivée du DS Onet : surfaces statiques à angles droits (--radius-static : 0), filets fins, badge d'étape pour les pastilles numérotées, deux épaisseurs de trait, trois corps de texte.",
+  "schema": {
+    "coins": "droits",
+    "traits": { "fin": 0.75, "appuye": 1.5, "seuil": 1.25 },
+    "corps": { "titre": 1.3, "libelle": 0.82, "tolerance": 0.2 },
+    "pastilles": "badge-etape"
+  }
+}

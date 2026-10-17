@@ -1,6 +1,7 @@
 // Le thème repris (`gabarits/theme-onet/`) chargé pour les sorties HTML : feuille de jetons, polices embarquées, logo.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import type { Maniere } from "./maniere";
 
 export interface Theme {
   /** Primitives, couche sémantique, mouvement et palette des schémas, tels quels (le seul endroit où vivent des valeurs hex). */
@@ -11,6 +12,8 @@ export interface Theme {
   readonly logo: string;
   /** Chasse des polices d'origine rapportée à celle du thème (`chasse.json`). */
   readonly chasse: Readonly<Record<string, number>>;
+  /** La manière des schémas redessinés (`maniere.json`). */
+  readonly maniere: Maniere;
 }
 
 
@@ -30,5 +33,6 @@ export function chargerTheme(dossier: string): Theme {
     .join("\n");
   const logo = "data:image/svg+xml;base64," + readFileSync(join(dossier, "logo-onet-bleu.svg")).toString("base64");
   const chasse = (JSON.parse(readFileSync(join(dossier, "chasse.json"), "utf8")) as { rapports: Record<string, number> }).rapports;
-  return { jetons, polices, logo, chasse };
+  const maniere = JSON.parse(readFileSync(join(dossier, "maniere.json"), "utf8")) as Maniere;
+  return { jetons, polices, logo, chasse, maniere };
 }

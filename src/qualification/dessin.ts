@@ -6,6 +6,7 @@ import type { DiapositiveReleve, FormeReleve } from "../releve/releve";
 import { dedans } from "../releve/geometrie";
 import type { Couleur } from "../ooxml/couleurs";
 import { cleDeCouleur, projeter, roleDe, roleDeTexte, type Projection } from "./roles";
+import { numeroDePastille, partitionner } from "./partition";
 
 const EMU_PAR_POINT = 12700;
 const pt = (emu: number) => Math.round((emu / EMU_PAR_POINT) * 100) / 100;
@@ -150,5 +151,7 @@ export function dessinDe(d: DiapositiveReleve, ecartees: ReadonlySet<FormeReleve
   const x1 = Math.max(...xs.map((b) => b[0] + b[2]));
   const y1 = Math.max(...xs.map((b) => b[1] + b[3]));
   const r = (v: number) => Math.round(v * 100) / 100;
-  return { dessin: { cadre: elements.length ? [r(x0), r(y0), r(x1 - x0), r(y1 - y0)] : [0, 0, 0, 0], elements }, projection };
+  const marques = elements.map((e) => (numeroDePastille(e) !== null && e.type === "forme" ? { ...e, marque: "pastille" as const } : e));
+  const dessin: Dessin = { cadre: elements.length ? [r(x0), r(y0), r(x1 - x0), r(y1 - y0)] : [0, 0, 0, 0], elements: marques };
+  return { dessin: partitionner(dessin), projection };
 }

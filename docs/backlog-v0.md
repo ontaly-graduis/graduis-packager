@@ -58,6 +58,31 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 
 ---
 
+## PKG-B3 · L'organisation des textes et les schémas joués — Sortie atteinte le 17/10
+
+**Livré** : demandé par David avant PKG-C, prototypé, puis arrêté sur ses cinq réponses (`decisions.md`, 17/10).
+- **Les textes** (`src/qualification/structure.ts`, `bloc.structure`) : rangées et colonnes de cadres ; fiches (cadres empilés) et fiches illustrées (une icône ou un portrait qui touche un cadre) ; intertitres, paragraphes, listes et leurs détails, définitions ; liste numérotée dans l'ordre des pastilles quand l'auteur a numéroté (étapes clés). Lus sur la graisse, le corps, les puces, les niveaux, les deux-points, les numéros ; la graisse en ligne gardée. En salle : fiches au thème, définitions en deux colonnes, dévoilement par niveau 1, resserrement jusqu'à 76 % avant de défiler.
+- **Les schémas** : la manière du thème (`maniere.json` : coins droits, deux traits, trois corps, badges d'étape) ; la partition (`src/qualification/partition.ts`) par colonnes rangées par leurs numéros, ou par étapes numérotées (traits qui suivent le flux, décisions et leurs « Oui / Non ») ; en salle, chaque pas se trace (les traits courent, puis aplats et textes), les pas joués restent pleins.
+
+**Sortie** (45 témoins Vitest — 34 sur le dépôt, 11 sur le corpus — et 8 Playwright, verts)
+- Les 7 schémas : 5 partitionnés (17 à 20 en 4 colonnes, 31 en 9 étapes), 2 d'un bloc (15, 16 : architectures sans colonnes) ; le décor (couloirs, légende) visible dès l'entrée.
+- Les étapes clés dans l'ordre de leurs numéros ; les statuts en définitions ; les rôles S2P en quatre fiches illustrées.
+- Non couvert, nommé : la structure et la partition ne passent pas encore par le PPT de validation (PKG-C) ; le papier ne les rend pas encore (PKG-D).
+
+---
+
+## PKG-B4 · Les schémas recomposés par les gabarits du wizard
+
+**Livrer** (décision de David, 17/10 : « préférable » à la fidélité au dessin) : quand un schéma relève d'un gabarit du wizard (`parcours`, `cas`, `tableau`, `trame`, `ensembles`), il est **recomposé** : sa structure est lue au pivot, sa mise en page est calculée au thème, son dévoilement suit le phrasé du gabarit. Les autres restent redessinés (PKG-B2, B3).
+
+**Candidats mesurés** : le processus S2P (17, 18) est un `cas` à quatre colonnes numérotées, chacune une suite d'étapes numérotées, chaque étape d'une nature (tâche Oracle, action automatique, action manuelle : la légende) et, en 18, d'une description ; les fiches personae (19, 20) sont une grille couloirs × phases ; le logigramme (31) et les architectures (15, 16) n'ont pas de gabarit et restent redessinés.
+
+**À trancher au démarrage**
+- Le rendu : SVG calculé comme au wizard (le texte se coupe sur des métriques de police), ou composition HTML au thème (le navigateur coupe le texte avec la vraie police) — même structure et même phrasé dans les deux cas.
+- Ce qui s'ajoute aux structures du wizard : la nature d'une étape (et sa légende), la description d'une étape, l'en-tête numéroté d'une colonne.
+
+---
+
 ## PKG-C · Le PPT d'auteur et l'aller-retour
 
 **Livrer** : le gabarit d'auteur, généré du thème ONET (dispositions `G · …`, pastille, zone, espaces réservés « Consignes ») ; `emettre` (pivot → PPTX) ; `lire` (PPTX → pivot) ; les identifiants en étiquettes OOXML ; les propositions ✦ en notes. Mesuré en PKG-0 : pptxgenjs n'écrit `<a:noFill/>` que par `addText` ; une zone s'émet donc en `addText("")` avec un trait.
@@ -65,6 +90,7 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 **À trancher au démarrage**
 - Le nom de l'objet : « PPT d'auteur » (spec) ou « PPT de validation » (le mot de David, 17/10).
 - Le dessin des schémas réémis en formes natives : aux couleurs des rôles (valeurs du thème) et en Montserrat, corps compensés ; ce que `lire` en relit doit redonner le même dessin (I-PKG-3).
+- La grammaire des lectures heuristiques (I-PKG-4) : la structure d'un texte (intertitres, listes, définitions, fiches) et la partition d'un schéma (pas et ordre de chaque élément) se montrent et se corrigent dans le PPT de validation.
 - Le support des identifiants : étiquettes OOXML ou nom de diapositive ; le comportement au copier-coller.
 - Le thème dans le PPT : comment la couche sémantique ONET se projette sur les 12 emplacements de couleur et les polices du thème Office.
 - Le repli de police : Montserrat manque sur une partie des postes, et PowerPoint ne l'embarque pas toujours. Police embarquée, police système de repli, ou installation demandée à ONET ?

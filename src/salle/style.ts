@@ -24,6 +24,15 @@ const STYLE_DESSIN = `
 .dessin .al-droite{text-align:right}
 .dessin .al-justifie{text-align:justify}
 ${ROLES.map((r) => `.dessin .f-${r}{fill:var(--dessin-${r})}.dessin .s-${r}{stroke:var(--dessin-${r})}.dessin .c-${r}{color:var(--dessin-${r})}`).join("\n")}
+.dessin .pastille{fill:var(--color-badge-step);stroke:none}
+.dessin .bt-pastille span{color:var(--text-on-primary);font-weight:var(--fw-bold)}
+.dessin .pas-cache{visibility:hidden}
+.dessin .trace path{animation:aplatIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .45)}
+.dessin .trace path[pathLength]{stroke-dasharray:1;animation:traitIn calc(var(--mvt-entree) * 1.4) linear both,aplatIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--r) * var(--mvt-decalage)),calc(var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .45)}
+.dessin .trace foreignObject,.dessin .trace image{animation:fonduIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .7)}
+@keyframes traitIn{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes aplatIn{from{fill-opacity:0}to{fill-opacity:1}}
+@keyframes fonduIn{from{opacity:0}to{opacity:1}}
 `;
 
 export const STYLE_SALLE = `
@@ -92,6 +101,30 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--color-nav-bg);fo
 .f-ecran-animation p{margin:0;font-size:32px;color:var(--text-secondary)}
 .f-demonstration{background:var(--color-surface)}
 .f-renvoi .sommaire{list-style:none;padding:0;margin:0;font-size:34px;text-align:center;color:var(--text-strong)}
+/* L'organisation d'un texte : rangées, colonnes en fiches, flux d'unités (intertitre, paragraphe, item et ses détails, définition). */
+.structure{display:flex;flex-direction:column;gap:36px;width:100%}
+.rangee{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:40px;align-items:start}
+.flux{list-style:none;margin:0;padding:0;font-size:calc(30px * var(--echelle, 1));line-height:1.4;color:var(--text-body)}
+.flux.fiche{background:var(--color-surface);border-top:var(--filet-width) solid var(--color-primary);padding:.85em 1em .3em;box-shadow:var(--shadow-card)}
+.flux li{margin-bottom:.6em}
+.flux li.cache{visibility:hidden}
+.flux .intertitre{font-size:1.04em;font-weight:var(--fw-bold);color:var(--text-strong);margin:.2em 0 .55em}
+.flux .intertitre::after{content:"";display:block;width:1.9em;height:4px;margin-top:.33em;background:var(--color-accent)}
+.flux .item{position:relative;padding-left:1.33em}
+.flux .item::before{content:"";position:absolute;left:.13em;top:.55em;width:.4em;height:.4em;background:var(--color-primary)}
+.flux .item.numero{padding-left:2.1em}
+.flux .item.numero::before{content:attr(data-n);left:0;top:-.05em;width:1.47em;height:1.47em;border-radius:50%;background:var(--color-badge-step);color:var(--text-on-primary);font-size:.73em;font-weight:var(--fw-bold);display:grid;place-items:center}
+.fiche-illustree{display:grid;grid-template-columns:120px minmax(0,1fr);align-items:stretch;background:var(--color-surface);border-top:var(--filet-width) solid var(--color-primary);box-shadow:var(--shadow-card)}
+.fiche-illustree .illustration{width:120px;height:auto;max-height:150px;object-fit:contain;padding:22px 0 22px 26px;align-self:start}
+.fiche-illustree .flux.fiche{border-top:none;box-shadow:none;background:none}
+.flux .details{font-size:.8em;line-height:1.4;color:var(--text-secondary);margin-top:6px}
+.flux .def{display:grid;grid-template-columns:minmax(200px,30%) minmax(0,1fr);gap:1.05em;padding:.45em 0 .5em;margin:0;border-bottom:var(--border-hairline)}
+.flux .def:first-of-type{border-top:var(--border-hairline)}
+.flux .terme{font-weight:var(--fw-bold);color:var(--text-strong)}
+.flux strong{font-weight:var(--fw-bold);color:var(--text-strong)}
+.flux li.courant{color:var(--text-strong)}
+.flux li.apparait,.structure .fiche.apparait,.structure .fiche-illustree.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both}
+.structure .cache{visibility:hidden}
 /* Défilement : un rail qui glisse dans une fenêtre ; fondus aux bords coupés, indice de suite pour les pages. */
 .defile{position:relative;flex:1;min-height:0;min-width:0;width:100%;overflow:hidden}
 .defile .rail{position:relative;transition:transform var(--mvt-entree) var(--courbe-douce)}
