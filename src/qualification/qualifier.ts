@@ -4,7 +4,7 @@ import type { Releve, DiapositiveReleve, FormeReleve } from "../releve/releve";
 import { POUCE, aCadreTexte, dedans, estCapture, estPastille, estZone, texteDe } from "../releve/geometrie";
 import { SCHEMA_SEANCE, type Bloc, type Pas, type SeanceSpec, type Sequence, type Visuel } from "../pivot/seance-spec";
 import { dessinDe } from "./dessin";
-import { composerCas, composerTableau } from "./gabarits";
+import { composerCas, composerTableau, harmoniser } from "./gabarits";
 import { structurer } from "./structure";
 import { estDeService, qualifier as qualifierDiapo, type Qualification } from "./figures";
 
@@ -108,7 +108,9 @@ function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): { bloc: Bloc
     )
     : null;
   const dessin = schema?.dessin;
-  const composition = dessin ? composerCas(dessin) ?? composerTableau(dessin) : null;
+  // Un tableau s'harmonise sur sa légende ; ce qui change est tracé au rapport.
+  const lue = dessin ? composerCas(dessin) ?? composerTableau(dessin) : null;
+  const { composition, harmonisations } = lue ? harmoniser(lue) : { composition: null, harmonisations: [] };
   const bloc: Bloc = {
     id: `b${trois(d.n)}`,
     figure: q.figure,
@@ -124,7 +126,7 @@ function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): { bloc: Bloc
     ...(composition ? { composition } : {}),
     notes: d.notes,
   };
-  return { bloc, q: schema ? { ...q, projection: schema.projection } : q };
+  return { bloc, q: schema ? { ...q, projection: schema.projection, ...(harmonisations.length ? { harmonisations } : {}) } : q };
 }
 
 export interface Qualifie {

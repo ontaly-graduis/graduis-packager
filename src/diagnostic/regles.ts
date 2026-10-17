@@ -223,14 +223,13 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
         const t = b.composition;
         const sans = t.etapes.filter((e) => e.numero === undefined).length;
         c("DESSIN", "a-valider", n, s.id, `Recomposé au gabarit « tableau » : ${t.colonnes.length} phases, ${t.lignes.length} couloirs, ${t.etapes.length} étapes${sans ? ` (dont ${sans} sans numéro)` : ""}${t.legende?.length ? `, légende de ${t.legende.length} entrées` : ""}.`);
-        // Ce que la légende nomme : des manières (une case) et des signaux (un triangle). Ce qu'elle ne nomme pas se signale.
-        const cle = (x: { fond?: string | undefined; bord: string }) => `${x.fond ?? "sans fond"} ${x.bord === "aucun" ? "sans bord" : x.bord === "tirets" ? "en tirets" : "bord plein"}`;
-        const manieres = new Set((t.legende ?? []).filter((l) => !l.forme).map(cle));
-        const signaux = new Set((t.legende ?? []).filter((l) => l.forme === "triangle").map((l) => l.fond));
-        const hors = t.etapes.filter((e) => manieres.size && !manieres.has(cle(e)));
-        if (hors.length) c("DESSIN", "a-valider", n, s.id, `${hors.length} étapes d'une manière que la légende ne nomme pas (${[...new Set(hors.map(cle))].join(" ; ")}) : gardée telle quelle.`);
-        const horsSignal = t.etapes.filter((e) => e.signal && signaux.size && !signaux.has(e.signal));
-        if (horsSignal.length) c("DESSIN", "a-valider", n, s.id, `${horsSignal.length} signaux d'une couleur que la légende ne nomme pas (${[...new Set(horsSignal.map((e) => e.signal))].join(", ")}).`);
+        // L'harmonisation sur la légende : chaque manière ou signal ramené à ce que la légende nomme.
+        const h = qualifications.get(n)?.harmonisations ?? [];
+        const manieres = h.filter((x) => x.quoi === "maniere");
+        const signaux = h.filter((x) => x.quoi === "signal");
+        const groupes = (xs: typeof h) => [...new Set(xs.map((x) => `${x.de} → ${x.vers}`))].map((g) => `${g} (${xs.filter((x) => `${x.de} → ${x.vers}` === g).length})`).join(" ; ");
+        if (manieres.length) c("DESSIN", "a-valider", n, s.id, `${manieres.length} étapes harmonisées sur la légende, faute d'une manière qu'elle nomme : ${groupes(manieres)}.`);
+        if (signaux.length) c("DESSIN", "a-valider", n, s.id, `${signaux.length} signaux harmonisés sur la légende : ${groupes(signaux)}.`);
       }
       // VIDE
       if (b.figure === "contenu" && !b.titre && !b.textes.length && !b.visuels.length && !b.tableaux.length) {

@@ -5,7 +5,7 @@ import { qualifierReleve } from "../src/qualification/qualifier";
 import { relever } from "../src/releve/releve";
 import { planDeDevoilement } from "../src/salle/unites";
 import { habiller, type Maniere } from "../src/theme/maniere";
-import { composerCas, composerTableau } from "../src/qualification/gabarits";
+import { composerCas, composerTableau, harmoniser } from "../src/qualification/gabarits";
 import { deckDeCas, deckDeSchema, deckDeTableau } from "./fixture";
 
 describe("le dévoilement par niveau de hiérarchie 1", () => {
@@ -105,10 +105,24 @@ describe("la fiche persona en couloirs recomposée au gabarit « tableau » du w
     ]);
     expect(t.etapes[0]).toMatchObject({ bord: "tirets", signal: "rouge-fort" });
     expect(t.etapes[1]).toMatchObject({ bord: "aucun", signal: "vert-moyen" });
-    // Les cases d'abord, puis les signaux ; et chaque entrée nomme une manière ou un signal des étapes.
+    // Les cases d'abord, puis les signaux.
     expect(t.legende?.map((l) => [l.texte, l.forme ?? "case"])).toEqual([
-      ["Tâche automatique", "case"], ["Tâche d'un tiers", "case"], ["Impact léger", "triangle"], ["Impact fort", "triangle"],
+      ["Tâche automatique", "case"], ["Tâche d'un tiers", "case"], ["Tâche du persona", "case"],
+      ["Impact léger", "triangle"], ["Impact moyen", "triangle"], ["Impact fort", "triangle"],
     ]);
+  });
+
+  it("s'harmonise sur sa légende : chaque étape prend une manière et un signal qu'elle nomme, le bord d'abord", () => {
+    if (t?.gabarit !== "tableau") return;
+    const nommees = new Set(t.legende!.filter((l) => !l.forme).map((l) => `${l.fond}/${l.bord}`));
+    const signaux = new Set(t.legende!.filter((l) => l.forme).map((l) => l.fond));
+    expect(t.etapes.every((e) => nommees.has(`${e.fond}/${e.bord}`))).toBe(true);
+    expect(t.etapes.every((e) => !e.signal || signaux.has(e.signal))).toBe(true);
+    // La carte blanche à bord plein devient une tâche du persona ; son triangle noir, le signal nommé le plus proche.
+    const persona = t.legende!.find((l) => l.texte === "Tâche du persona")!;
+    expect(t.etapes.find((e) => e.texte === "Complétion de la fiche")).toMatchObject({ fond: persona.fond, bord: "plein", signal: "rouge-fort" });
+    const { harmonisations } = harmoniser(composerTableau(bloc.dessin!)!);
+    expect(harmonisations.map((h) => [h.texte, h.quoi])).toEqual([["Complétion de la fiche", "maniere"], ["Complétion de la fiche", "signal"]]);
   });
 
   it("ne lit en tableau ni un cas ni un logigramme, ni en cas une fiche en couloirs", async () => {

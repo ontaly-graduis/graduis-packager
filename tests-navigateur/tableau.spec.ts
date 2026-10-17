@@ -41,7 +41,7 @@ test("compose le tableau au thème, le dévoile phase par phase et relie les ét
   await expect(page.locator(".tab-etape")).toHaveCount(7);
   await expect(page.locator(".tab-etape .cas-numero")).toHaveCount(6);
   await expect(page.locator(".tab-etape .signal")).toHaveCount(6);
-  await expect(page.locator(".cas-legende li")).toHaveCount(4);
+  await expect(page.locator(".cas-legende li")).toHaveCount(6);
   // Une étape va à la case de son couloir et de sa phase.
   const caseDe = (texte: string) => page.locator(".tab-case", { hasText: texte }).evaluate((c) => [(c as HTMLElement).style.gridRow, (c as HTMLElement).style.gridColumn]);
   expect(await caseDe("Demande soumise")).toEqual(["4", "2"]);

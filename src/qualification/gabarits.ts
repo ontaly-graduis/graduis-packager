@@ -219,3 +219,55 @@ export function composerTableau(d: Dessin): Composition | null {
   };
 }
 
+/** Une harmonisation : la manière ou le signal d'une étape, ramené à ce que la légende nomme (pour le rapport). */
+export interface Harmonisation {
+  readonly texte: string;
+  readonly quoi: "maniere" | "signal";
+  readonly de: string;
+  readonly vers: string;
+}
+
+/** La distance entre deux rôles : leur famille (les neutres — gris, papier, encre — à mi-chemin), puis leur clarté. */
+function distanceDeRoles(a: Role | undefined, b: Role | undefined): number {
+  const lire = (r: Role | undefined): [string, number] => {
+    if (!r || r === "papier") return ["neutre", 3];
+    if (r === "encre") return ["neutre", -1];
+    const [famille, ton] = r.split("-") as [string, string];
+    return [famille === "gris" ? "neutre" : famille, ton === "fort" ? 0 : ton === "moyen" ? 1 : 2];
+  };
+  const [fa, ca] = lire(a);
+  const [fb, cb] = lire(b);
+  return (fa === fb ? 0 : fa === "neutre" || fb === "neutre" ? 0.5 : 1) + 0.25 * Math.abs(ca - cb);
+}
+
+const decrire = (x: { fond?: string | undefined; bord: string }) =>
+  `${x.fond ?? "sans fond"}, ${x.bord === "aucun" ? "sans bord" : x.bord === "tirets" ? "en tirets" : "bord plein"}`;
+
+/**
+ * L'harmonisation d'un tableau sur sa légende (décision de David, 17/10) : une étape d'une manière que la légende ne nomme
+ * pas prend la manière nommée la plus proche — le bord d'abord (il dit qui agit : en tirets, un tiers), puis le fond ; un
+ * signal d'une couleur que la légende ne nomme pas prend le signal nommé le plus proche. Sans légende, rien ne change.
+ */
+export function harmoniser(c: Composition): { composition: Composition; harmonisations: Harmonisation[] } {
+  if (c.gabarit !== "tableau" || !c.legende?.length) return { composition: c, harmonisations: [] };
+  const manieres = c.legende.filter((l) => !l.forme);
+  const signaux = c.legende.filter((l) => l.forme === "triangle" && l.fond).map((l) => l.fond!);
+  const harmonisations: Harmonisation[] = [];
+  const etapes = c.etapes.map((e) => {
+    let r = e;
+    if (manieres.length && !manieres.some((m) => m.fond === e.fond && m.bord === e.bord)) {
+      const m = [...manieres].sort((a, b) => (Number(a.bord !== e.bord) * 2 + distanceDeRoles(a.fond, e.fond)) - (Number(b.bord !== e.bord) * 2 + distanceDeRoles(b.fond, e.fond)))[0]!;
+      const { fond: _f, ...sans } = r;
+      r = { ...sans, ...(m.fond ? { fond: m.fond } : {}), bord: m.bord };
+      harmonisations.push({ texte: e.texte, quoi: "maniere", de: decrire(e), vers: decrire(m) });
+    }
+    if (e.signal && signaux.length && !signaux.includes(e.signal)) {
+      const v = [...signaux].sort((a, b) => distanceDeRoles(a, e.signal) - distanceDeRoles(b, e.signal))[0]!;
+      r = { ...r, signal: v };
+      harmonisations.push({ texte: e.texte, quoi: "signal", de: e.signal, vers: v });
+    }
+    return r;
+  });
+  return { composition: { ...c, etapes }, harmonisations };
+}
+

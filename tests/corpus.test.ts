@@ -115,9 +115,18 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
       expect(t19.etapes[0]).toMatchObject({ numero: 1, bord: "tirets", signal: "rouge-fort" });
     }
     expect([15, 16, 17, 18, 31].map((n) => bloc(n).composition?.gabarit ?? null)).toEqual([null, null, "cas", "cas", null]);
-    // La fiche 20 mêle des manières que sa légende ne nomme pas : le rapport le dit, la salle les garde.
-    const hors = rapport.constats.filter((c) => c.regle === "DESSIN" && /que la légende ne nomme pas/.test(c.message)).map((c) => c.diapo);
-    expect(hors).toEqual([20, 20]);
+    // La fiche 20 mêle des manières que sa légende ne nomme pas : elles s'y harmonisent (le bord d'abord), le rapport le dit.
+    const t20 = bloc(20).composition;
+    if (t20?.gabarit === "tableau") {
+      const nommees = new Set(t20.legende!.filter((l) => !l.forme).map((l) => `${l.fond}/${l.bord}`));
+      expect(t20.etapes.every((e) => nommees.has(`${e.fond}/${e.bord}`))).toBe(true);
+      expect(t20.etapes.filter((e) => e.bord === "tirets").map((e) => e.texte)).toEqual([
+        "Soumission et approbation des demandes d’achat", "Approbation des commandes d’achat",
+        "Réception dans Oracle, notation", "Réception des factures", "Rapprochement commandes/factures",
+      ]);
+    }
+    const harmonisees = rapport.constats.filter((c) => c.regle === "DESSIN" && /harmonisé/.test(c.message)).map((c) => [c.diapo, c.message.split(" ")[0]]);
+    expect(harmonisees).toEqual([[20, "12"], [20, "2"]]);
   });
 
   it("qualifie de façon déterministe", () => {
