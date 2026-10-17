@@ -4,8 +4,14 @@ import { basename, extname, join } from "node:path";
 import { sha256, stringify2 } from "../lib/json";
 import { relever } from "../releve/releve";
 import { medianeMots, medianeResolution, mesurer } from "../releve/mesures";
+import { qualifierReleve } from "../qualification/qualifier";
+import { SeanceSpec } from "../pivot/seance-spec";
+import { diagnostiquer } from "../diagnostic/regles";
+import { rapportHtml } from "../diagnostic/rapport-html";
+import { chargerTheme } from "../theme/theme";
 
-function releverCommande(deck: string, sortie: string | undefined): void {
+/** Relève un deck et écrit `releve.json` et les médias hashés dans le dossier de sortie. */
+function ecrireReleve(deck: string, sortie: string | undefined) {
   const nom = basename(deck);
   const { releve, medias } = relever(new Uint8Array(readFileSync(deck)), nom);
   const dossier = sortie ?? join("out", basename(nom, extname(nom)));
@@ -13,6 +19,31 @@ function releverCommande(deck: string, sortie: string | undefined): void {
   const texte = stringify2(releve);
   writeFileSync(join(dossier, "releve.json"), texte);
   for (const [h, { ext, octets }] of medias) writeFileSync(join(dossier, "medias", `${h.slice(7)}.${ext}`), octets);
+  return { nom, releve, medias, dossier, texte };
+}
+
+function qualifierCommande(deck: string, sortie: string | undefined, dossierTheme: string): void {
+  const { releve, dossier } = ecrireReleve(deck, sortie);
+  const { spec, qualifications } = qualifierReleve(releve);
+  SeanceSpec.parse(spec);
+  writeFileSync(join(dossier, "seance-spec.json"), stringify2(spec));
+  const rapport = diagnostiquer(spec, releve, qualifications);
+  writeFileSync(join(dossier, "rapport.json"), stringify2(rapport));
+  writeFileSync(join(dossier, "rapport.html"), rapportHtml(rapport, chargerTheme(dossierTheme)));
+  const s = rapport.synthese;
+  console.log([
+    `# Qualification — ${releve.deck.nom}`,
+    `pivot ${rapport.pivot} → ${dossier}/seance-spec.json`,
+    `rapport → ${dossier}/rapport.html`,
+    "",
+    `figures : ${Object.entries(s.figures).map(([f, n]) => `${f} ${n}`).join(" · ")}`,
+    `pas : ${s.pas.total} · repère ${s.pas.repere} · légende ${s.pas.legende} · proposée ${s.pas.proposee} · sans zone ${s.pas.sansZone} · sans consigne ${s.pas.sansConsigne}`,
+    `constats : ${Object.entries(s.constats).map(([n, v]) => `${n} ${v}`).join(" · ")}`,
+  ].join("\n"));
+}
+
+function releverCommande(deck: string, sortie: string | undefined): void {
+  const { nom, releve, medias, dossier, texte } = ecrireReleve(deck, sortie);
 
   const m = mesurer(releve);
   const pc = (a: number, b: number) => (b ? `${Math.round((100 * a) / b)} %` : "—");
@@ -46,10 +77,13 @@ function releverCommande(deck: string, sortie: string | undefined): void {
 }
 
 const [commande, ...args] = process.argv.slice(2);
-if (commande === "relever" && args[0]) {
-  const i = args.indexOf("--sortie");
-  releverCommande(args[0], i >= 0 ? args[i + 1] : undefined);
-} else {
-  console.error("usage : packager relever <deck.pptx> [--sortie <dossier>]");
+const option = (nom: string) => {
+  const i = args.indexOf(nom);
+  return i >= 0 ? args[i + 1] : undefined;
+};
+if (commande === "relever" && args[0]) releverCommande(args[0], option("--sortie"));
+else if (commande === "qualifier" && args[0]) qualifierCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet");
+else {
+  console.error("usage : packager relever|qualifier <deck.pptx> [--sortie <dossier>] [--theme <dossier>]");
   process.exit(2);
 }

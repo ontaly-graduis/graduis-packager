@@ -27,6 +27,8 @@ export interface Forme {
   readonly groupe?: number;
   /** Dernier segment de l'URI `graphicData` d'un cadre graphique non tableau. */
   readonly graphique?: string;
+  /** Les cellules d'un tableau, ligne par ligne (paragraphes d'une cellule joints par « \n »). */
+  readonly lignes?: readonly (readonly string[])[];
 }
 
 interface Espace {
@@ -140,13 +142,13 @@ export function aplatir(arbre: Element, ctx: Contexte, tf: Transformation = IDEN
       const uri = donnees?.getAttribute("uri") ?? "";
       const tbl = donnees && enfant(donnees, NS.a, "tbl");
       if (tbl) {
-        const texte = enfants(tbl, NS.a, "tr").flatMap((tr) =>
-          enfants(tr, NS.a, "tc").flatMap((tc) => {
+        const lignes = enfants(tbl, NS.a, "tr").map((tr) =>
+          enfants(tr, NS.a, "tc").map((tc) => {
             const corps = enfant(tc, NS.a, "txBody");
-            return corps ? paragraphes(corps) : [];
+            return corps ? paragraphes(corps).join("\n").trim() : "";
           }),
         );
-        out.push({ id, nom, nature: "tableau", boite: arrondie(tf(boite)), texte, ...dansGroupe });
+        out.push({ id, nom, nature: "tableau", boite: arrondie(tf(boite)), lignes, ...dansGroupe });
       } else {
         out.push({ id, nom, nature: "graphique", boite: arrondie(tf(boite)), graphique: uri.split("/").pop() ?? "", ...dansGroupe });
       }

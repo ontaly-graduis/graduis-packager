@@ -4,6 +4,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { stringify2 } from "../src/lib/json";
 import { relever, type Releve } from "../src/releve/releve";
 import { medianeMots, medianeResolution, mesurer, type Mesures } from "../src/releve/mesures";
+import { qualifierReleve } from "../src/qualification/qualifier";
+import { diagnostiquer, type Rapport } from "../src/diagnostic/regles";
+import type { SeanceSpec } from "../src/pivot/seance-spec";
 
 const DECK = process.env.PKG_CORPUS ?? "docs/sources/boost acheteur areprendre v1.pptx";
 const NOM = "boost acheteur areprendre v1.pptx";
@@ -12,10 +15,43 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   let octets: Uint8Array;
   let releve: Releve;
   let m: Mesures;
+  let spec: SeanceSpec;
+  let rapport: Rapport;
   beforeAll(() => {
     octets = new Uint8Array(readFileSync(DECK));
     releve = relever(octets, NOM).releve;
     m = mesurer(releve);
+    const q = qualifierReleve(releve);
+    spec = q.spec;
+    rapport = diagnostiquer(spec, releve, q.qualifications);
+  });
+
+  it("qualifie les 166 diapositives (mesure du 17/10)", () => {
+    expect(rapport.synthese.figures).toEqual({
+      couverture: 1, "ecran-animation": 10, transition: 13, objectifs: 1, contenu: 15, processus: 2, schema: 6,
+      demonstration: 3, "pas-a-pas": 61, capture: 37, "mise-en-pratique": 8, "etapes-cles": 6, synthese: 1, glossaire: 1, renvoi: 1,
+    });
+    const op = rapport.sequences.filter((l) => l.operatoire && l.temps.R && l.temps["R*"]).map((l) => l.id);
+    expect(op).toEqual(["s030", "s059", "s068", "s099", "s112", "s138"]);
+  });
+
+  it("ancre les pas : 130 relevés, au moins 127 avec une zone, dont les zones proposées", () => {
+    const pas = rapport.synthese.pas;
+    expect(pas.total).toBe(130);
+    expect(pas.total - pas.sansZone).toBeGreaterThanOrEqual(127);
+    expect(pas.proposee).toBeGreaterThan(0);
+  });
+
+  it("retrouve les anomalies du § 0.3 au rapport", () => {
+    const de = (regle: string) => rapport.constats.filter((k) => k.regle === regle);
+    expect(de("H8").map((k) => k.diapo)).toEqual([2, 16, 24, 146, 159]);
+    expect(de("H6").map((k) => k.diapo)).toEqual([95]);
+    expect(de("H4")).toHaveLength(1);
+    expect(de("H1").filter((k) => k.niveau === "info")).toHaveLength(6);
+  });
+
+  it("qualifie de façon déterministe", () => {
+    expect(stringify2(qualifierReleve(relever(octets, NOM).releve).spec)).toBe(stringify2(spec));
   });
 
   it("retrouve les mesures du relevé Python (17/10)", () => {

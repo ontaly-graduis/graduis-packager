@@ -1,0 +1,232 @@
+// Le diagnostic d'un pivot : règles d'harmonisation H1–H9, anomalies de la source, état des pas (rapport `graduis/rapport@0`).
+import type { Forme } from "../ooxml/formes";
+import { sha256, stringify2 } from "../lib/json";
+import type { Releve } from "../releve/releve";
+import { estCapture } from "../releve/geometrie";
+import { FIGURES, TEMPS_DE_FIGURE, type Bloc, type Figure, type SeanceSpec, type Temps } from "../pivot/seance-spec";
+import type { Qualification } from "../qualification/figures";
+
+export const SCHEMA_RAPPORT = "graduis/rapport@0";
+
+/** Seuils provisoires de la charte d'harmonisation (décision du 17/10), à valider avec ONET sur le démonstrateur. */
+export const CHARTE = { motsParEcran: 60, pastillesParCapture: 9, ecartSequence: 2 } as const;
+
+export const NIVEAUX = ["bloquant", "avis", "a-valider", "info"] as const;
+export type Niveau = (typeof NIVEAUX)[number];
+
+export interface Constat {
+  readonly regle: string;
+  readonly niveau: Niveau;
+  readonly diapo: number | null;
+  readonly sequence: string | null;
+  readonly message: string;
+}
+
+export interface LigneSequence {
+  readonly id: string;
+  /** Le numéro dérivé de l'ordre des transitions (`null` pour l'ouverture). */
+  readonly numero: number | null;
+  readonly titre: string;
+  readonly diapositives: number;
+  readonly operatoire: boolean;
+  readonly temps: { readonly E: boolean; readonly R: boolean; readonly "R*": boolean };
+  readonly demonstrations: number;
+  readonly pas: number;
+  readonly mots: number;
+}
+
+export interface Rapport {
+  readonly schema: typeof SCHEMA_RAPPORT;
+  readonly source: { readonly nom: string; readonly empreinte: string };
+  readonly pivot: string;
+  readonly synthese: {
+    readonly diapositives: number;
+    readonly figures: Readonly<Record<string, number>>;
+    readonly pas: { readonly total: number; readonly repere: number; readonly legende: number; readonly proposee: number; readonly sansZone: number; readonly sansConsigne: number };
+    readonly constats: Readonly<Record<Niveau, number>>;
+  };
+  readonly sequences: readonly LigneSequence[];
+  readonly constats: readonly Constat[];
+  readonly qualification: readonly { readonly diapo: number; readonly figure: Figure; readonly temps: Temps | null; readonly signal: string; readonly titre: string | null }[];
+}
+
+/** Les règles telles que le rapport les présente : leur libellé et ce qu'on fait d'un constat. */
+export const REGLES: Readonly<Record<string, { readonly libelle: string; readonly action: string }>> = {
+  H1: { libelle: "Une séquence opératoire a ses trois temps", action: "Exposition (pas-à-pas ou démonstration), Réalisation (mise en pratique), Régulation (étapes clés)." },
+  H2: { libelle: `Au plus ${CHARTE.motsParEcran} mots par écran projeté`, action: "Le surplus descend aux notes de l'animateur ou au papier du participant." },
+  H3: { libelle: `Au plus ${CHARTE.pastillesParCapture} pastilles par capture`, action: "Au-delà, la capture se découpe." },
+  H4: { libelle: "La numérotation se dérive", action: "Les numéros saisis sont ignorés : l'ordre les donne." },
+  H5: { libelle: "Des captures lisibles et commentées", action: "Recapturer ce qui est trop pauvre pour le zoom (moins d'un pixel source par pixel affiché à 1920) ; commenter ou passer en pas-à-pas ce qui est muet." },
+  H6: { libelle: "Chaque mise en pratique a son propre énoncé", action: "Un énoncé repris d'un autre cas est une erreur de copie." },
+  H8: { libelle: "Aucun marqueur d'inachèvement ne sort", action: "Bloquant : rien ne se livre tant qu'il en reste." },
+  H9: { libelle: "Des séquences comparables", action: "Signalé au-delà du double, ou en deçà de la moitié, de la médiane des séquences opératoires." },
+  PAS: { libelle: "Les pas à ancrer dans le PPT de validation", action: "Confirmer les zones proposées par ordre de lecture ; compléter les zones et consignes manquantes." },
+  VIDE: { libelle: "Les diapositives sans contenu", action: "À supprimer ou à compléter." },
+};
+
+const INACHEVE = [/\ba rédiger\b/i, /\ba supprimer\b/i, /\binsérer\b/i, /xxx/i] as const;
+const mots = (s: string) => s.match(/\S+/gu)?.length ?? 0;
+
+/** Similarité de Dice sur les bigrammes de lettres : tolère une coquille (« Tra,sformer » ≈ « Transformer »). */
+function similarite(a: string, b: string): number {
+  const bigrammes = (s: string) => {
+    const t = s.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "");
+    const m = new Map<string, number>();
+    for (let i = 0; i < t.length - 1; i++) m.set(t.slice(i, i + 2), (m.get(t.slice(i, i + 2)) ?? 0) + 1);
+    return { m, n: Math.max(0, t.length - 1) };
+  };
+  const x = bigrammes(a);
+  const y = bigrammes(b);
+  if (!x.n || !y.n) return 0;
+  let communs = 0;
+  for (const [g, k] of x.m) communs += Math.min(k, y.m.get(g) ?? 0);
+  return (2 * communs) / (x.n + y.n);
+}
+const SIMILAIRE = 0.85;
+
+function texteDuBloc(b: Bloc): string {
+  return [b.titre ?? "", ...b.textes, ...b.tableaux.flat(2), ...b.pas.map((p) => p.consigne ?? "")].join(" ");
+}
+
+function median(v: readonly number[]): number {
+  const s = [...v].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
+}
+
+export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: ReadonlyMap<number, Qualification>): Rapport {
+  const constats: Constat[] = [];
+  const c = (regle: string, niveau: Niveau, diapo: number | null, sequence: string | null, message: string) =>
+    constats.push({ regle, niveau, diapo, sequence, message });
+  const diapos = new Map(releve.diapositives.map((d) => [d.n, d]));
+  const { largeur } = releve.deck;
+
+  // Séquences : temps, démonstrations, densité (H1, H9).
+  let rang = 0;
+  const lignes: LigneSequence[] = spec.sequences.map((s) => {
+    const figures = s.blocs.map((b) => b.figure);
+    const transition = s.blocs.find((b) => b.figure === "transition");
+    if (transition) rang += 1;
+    return {
+      id: s.id,
+      numero: transition ? rang : null,
+      titre: transition?.titre ?? "(ouverture)",
+      diapositives: s.blocs.length,
+      operatoire: figures.includes("pas-a-pas"),
+      temps: {
+        E: figures.some((f) => TEMPS_DE_FIGURE[f] === "E"),
+        R: figures.some((f) => TEMPS_DE_FIGURE[f] === "R"),
+        "R*": figures.some((f) => TEMPS_DE_FIGURE[f] === "R*"),
+      },
+      demonstrations: figures.filter((f) => f === "demonstration").length,
+      pas: s.blocs.reduce((n, b) => n + b.pas.length, 0),
+      mots: s.blocs.reduce((n, b) => n + mots(texteDuBloc(b)), 0),
+    };
+  });
+  for (const l of lignes.filter((x) => x.operatoire)) {
+    const manque = (["E", "R", "R*"] as const).filter((t) => !l.temps[t]);
+    if (manque.length) c("H1", "avis", null, l.id, `« ${l.titre} » : temps manquant (${manque.join(", ")}).`);
+    if (!l.demonstrations) c("H1", "info", null, l.id, `« ${l.titre} » : aucune démonstration annoncée.`);
+  }
+  const op = lignes.filter((l) => l.operatoire);
+  if (op.length >= 3) {
+    for (const [mesure, unite] of [["diapositives", "diapositives"], ["mots", "mots"]] as const) {
+      const m = median(op.map((l) => l[mesure]));
+      for (const l of op) {
+        if (l[mesure] > CHARTE.ecartSequence * m || l[mesure] < m / CHARTE.ecartSequence) {
+          c("H9", "avis", null, l.id, `« ${l.titre} » : ${l[mesure]} ${unite}, pour une médiane de ${m} sur les séquences opératoires.`);
+        }
+      }
+    }
+  }
+
+  // H4 — numéros de séquence saisis sur les transitions, contre l'ordre.
+  const transitions = spec.sequences.flatMap((s) => s.blocs.filter((b) => b.figure === "transition"));
+  const saisis = transitions.map((b) => b.textes.find((t) => /^\d{1,2}$/.test(t.trim())) ?? null);
+  if (saisis.some((n, i) => n !== null && Number(n) !== i + 1)) {
+    c("H4", "avis", null, null, `Numéros saisis sur les transitions : ${saisis.map((n) => n ?? "—").join(", ")} ; l'ordre donne 1 à ${transitions.length}. La numérotation sera dérivée.`);
+  }
+
+  // H6 — un énoncé de mise en pratique repris d'un autre cas.
+  const vus: { cle: string; diapo: number }[] = [];
+  for (const s of spec.sequences) {
+    for (const b of s.blocs.filter((x) => x.figure === "mise-en-pratique")) {
+      const cle = b.textes.filter((t) => !/vous de jouer/i.test(t)).join(" ").replace(/\s+/g, " ").trim();
+      if (!cle) continue;
+      const deja = vus.find((v) => similarite(v.cle, cle) >= SIMILAIRE);
+      if (deja) c("H6", "avis", b.source.diapo, s.id, `Énoncé repris de la diapositive ${deja.diapo} : « ${cle.slice(0, 80)} ».`);
+      else vus.push({ cle, diapo: b.source.diapo });
+    }
+  }
+
+  for (const s of spec.sequences) {
+    for (const b of s.blocs) {
+      const n = b.source.diapo;
+      const texte = [texteDuBloc(b), b.notes].join(" ");
+      // H8
+      for (const motif of INACHEVE) {
+        const m = texte.match(motif);
+        if (m) c("H8", "bloquant", n, s.id, `Marqueur « ${m[0]} »${b.masquee ? " (diapositive masquée)" : ""}.`);
+      }
+      // H2
+      if (!b.masquee && !["glossaire", "schema"].includes(b.figure)) {
+        const nb = mots([...b.textes, ...b.pas.map((p) => p.consigne ?? "")].join(" "));
+        if (nb > CHARTE.motsParEcran) c("H2", "avis", n, s.id, `${nb} mots à l'écran.`);
+      }
+      // H3
+      const parCapture = new Map<string, number>();
+      for (const p of b.pas) if (p.capture) parCapture.set(p.capture, (parCapture.get(p.capture) ?? 0) + 1);
+      for (const nb of parCapture.values()) if (nb > CHARTE.pastillesParCapture) c("H3", "avis", n, s.id, `${nb} pas sur une même capture : à découper.`);
+      // H5
+      const d = diapos.get(n);
+      const zoomables = b.figure === "pas-a-pas" || b.figure === "capture";
+      const caps = d && zoomables ? d.formes.filter((f) => f.media && estCapture(f as Forme, largeur)) : [];
+      for (const f of caps) {
+        const px = releve.medias[f.media!]?.px;
+        if (px && px[0] / ((f.boite[2] / largeur) * 1920) < 1) {
+          c("H5", "avis", n, s.id, `Sous-résolue : ${px[0]} px pour ${Math.round((f.boite[2] / largeur) * 1920)} px affichés.`);
+        }
+      }
+      if (b.figure === "capture" && !b.masquee) c("H5", "avis", n, s.id, "Capture muette.");
+      // PAS
+      const proposes = b.pas.filter((p) => p.ancrage === "proposee").map((p) => p.numero);
+      if (proposes.length) c("PAS", "a-valider", n, s.id, `Zone proposée par ordre de lecture pour ${proposes.length > 1 ? "les pas" : "le pas"} ${proposes.join(", ")}.`);
+      const sansZone = b.pas.filter((p) => !p.zone).map((p) => p.numero);
+      if (sansZone.length) c("PAS", "avis", n, s.id, `Sans zone sur la capture : pas ${sansZone.join(", ")}.`);
+      const sansConsigne = b.pas.filter((p) => !p.consigne).map((p) => p.numero);
+      if (sansConsigne.length) c("PAS", "avis", n, s.id, `Sans consigne : pas ${sansConsigne.join(", ")}.`);
+      // VIDE
+      if (b.figure === "contenu" && !b.titre && !b.textes.length && !b.visuels.length && !b.tableaux.length) {
+        c("VIDE", "avis", n, s.id, "Diapositive sans contenu.");
+      }
+    }
+  }
+
+  const blocs = spec.sequences.flatMap((s) => s.blocs);
+  const tousPas = blocs.flatMap((b) => b.pas);
+  const figures = Object.fromEntries(FIGURES.map((f) => [f, blocs.filter((b) => b.figure === f).length]).filter(([, v]) => v));
+  return {
+    schema: SCHEMA_RAPPORT,
+    source: spec.source,
+    pivot: sha256(stringify2(spec)),
+    synthese: {
+      diapositives: blocs.length,
+      figures,
+      pas: {
+        total: tousPas.length,
+        repere: tousPas.filter((p) => p.ancrage === "repere").length,
+        legende: tousPas.filter((p) => p.ancrage === "legende").length,
+        proposee: tousPas.filter((p) => p.ancrage === "proposee").length,
+        sansZone: tousPas.filter((p) => !p.zone).length,
+        sansConsigne: tousPas.filter((p) => !p.consigne).length,
+      },
+      constats: Object.fromEntries(NIVEAUX.map((n) => [n, constats.filter((x) => x.niveau === n).length])) as Record<Niveau, number>,
+    },
+    sequences: lignes,
+    constats,
+    qualification: blocs.map((b) => {
+      const q = qualifications.get(b.source.diapo)!;
+      return { diapo: b.source.diapo, figure: b.figure, temps: TEMPS_DE_FIGURE[b.figure], signal: q.signal, titre: b.titre };
+    }),
+  };
+}
