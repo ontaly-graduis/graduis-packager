@@ -26,9 +26,26 @@ export interface Fragment {
   readonly couleur: Couleur;
 }
 
+/** La puce d'un paragraphe : déclarée (caractère, numérotation), ôtée, ou héritée (non résolue : masque ou disposition). */
+export type Puce = "car" | "num" | "aucune" | "heritee";
+
 export interface Paragraphe {
   readonly alignement: string;
   readonly fragments: readonly Fragment[];
+  /** Le niveau de plan (`lvl`, 0 à 8). */
+  readonly niveau: number;
+  readonly puce: Puce;
+  /** Le retrait de gauche (`marL`) en EMU, s'il est déclaré. */
+  readonly retrait?: number;
+}
+
+/** La puce déclarée par un `pPr` ou un niveau de `lstStyle`, s'il en déclare une. */
+function puceDe(pr: Element | undefined): Puce | undefined {
+  if (!pr) return undefined;
+  if (enfant(pr, NS.a, "buNone")) return "aucune";
+  if (enfant(pr, NS.a, "buAutoNum")) return "num";
+  if (enfant(pr, NS.a, "buChar") || enfant(pr, NS.a, "buBlip")) return "car";
+  return undefined;
 }
 
 /** Le cadre de texte : ancrage, marges en EMU, retour à la ligne, échelle de réduction automatique (cent-millièmes). */
@@ -219,7 +236,15 @@ export function corpsDe(txBody: Element, base: DefautsDeTexte, m: StylesDuMasque
       else if (c.localName === "br") ajouter("\n", enfant(c, NS.a, "rPr"));
     }
     if (!fragments.length) ajouter("", enfant(p, NS.a, "endParaRPr"));
-    return { alignement: enfant(p, NS.a, "pPr")?.getAttribute("algn") || "l", fragments };
+    const pPr = enfant(p, NS.a, "pPr");
+    const niveau = entier(pPr, "lvl") ?? 0;
+    const duNiveau = chemin(txBody, ["a:lstStyle", `a:lvl${niveau + 1}pPr`]);
+    const retrait = entier(pPr, "marL") ?? entier(duNiveau, "marL");
+    return {
+      alignement: pPr?.getAttribute("algn") || "l", fragments, niveau,
+      puce: puceDe(pPr) ?? puceDe(duNiveau) ?? "heritee",
+      ...(retrait !== null && retrait !== undefined ? { retrait } : {}),
+    };
   });
   const retraits = marges ?? ([
     entier(bodyPr, "lIns") ?? MARGES_PAR_DEFAUT[0], entier(bodyPr, "tIns") ?? MARGES_PAR_DEFAUT[1],

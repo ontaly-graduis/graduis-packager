@@ -123,6 +123,10 @@ export const FormeDeDessin = z.object({
   fond: role.optional(),
   trait: TraitDeDessin.optional(),
   texte: Corps.optional(),
+  /** Une pastille numérotée : le thème la dessine à sa manière (le badge d'étape). */
+  marque: z.literal("pastille").optional(),
+  /** Le pas de la partition où l'élément paraît (absent : il est là dès l'entrée, c'est le décor). */
+  pas: z.number().int().positive().optional(),
 }).strict();
 
 export const ImageDeDessin = z.object({
@@ -131,6 +135,7 @@ export const ImageDeDessin = z.object({
   media: hash,
   rognage: z.tuple([z.number(), z.number(), z.number(), z.number()]).optional(),
   geometrie: z.string().optional(),
+  pas: z.number().int().positive().optional(),
 }).strict();
 
 export const Cellule = z.object({
@@ -147,14 +152,45 @@ export const TableauDeDessin = z.object({
   colonnes: z.array(z.number()),
   hauteurs: z.array(z.number()),
   cellules: z.array(z.array(Cellule)),
+  pas: z.number().int().positive().optional(),
 }).strict();
 
 export const ElementDeDessin = z.discriminatedUnion("type", [FormeDeDessin, ImageDeDessin, TableauDeDessin]);
 
-/** Un schéma dessiné, en points, dans l'ordre d'empilement ; `cadre` = la région de la diapositive qu'il occupe. */
+/**
+ * Un schéma dessiné, en points, dans l'ordre d'empilement ; `cadre` = la région de la diapositive qu'il occupe.
+ * `partition` dit comment il se dévoile : par colonnes (de gauche à droite) ou par étapes numérotées ; ses pas sont
+ * portés par les éléments.
+ */
 export const Dessin = z.object({
   cadre: boite,
   elements: z.array(ElementDeDessin),
+  partition: z.object({ mode: z.enum(["colonnes", "etapes"]), pas: z.number().int().positive() }).strict().optional(),
+}).strict();
+
+/**
+ * L'organisation d'une diapositive de texte (figures `contenu`, `objectifs`, `synthese`) : des rangées de haut en bas,
+ * des colonnes de gauche à droite, des nœuds dans l'ordre de lecture. Les textes gardent leur graisse en `**…**`.
+ */
+export const Noeud = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("titre"), texte: z.string() }).strict(),
+  z.object({ type: z.literal("paragraphe"), texte: z.string() }).strict(),
+  z.object({
+    type: z.literal("liste"),
+    numerotee: z.literal(true).optional(),
+    items: z.array(z.object({ texte: z.string(), details: z.array(z.string()).optional() }).strict()),
+  }).strict(),
+  z.object({
+    type: z.literal("definitions"),
+    entrees: z.array(z.object({ terme: z.string(), texte: z.string(), details: z.array(z.string()).optional() }).strict()),
+  }).strict(),
+]);
+
+export const Structure = z.object({
+  rangees: z.array(z.object({
+    /** Une colonne peut porter l'image qui l'illustre (portrait, icône d'un rôle) : elle est alors une fiche. */
+    colonnes: z.array(z.object({ visuel: hash.optional(), noeuds: z.array(Noeud) }).strict()),
+  }).strict()),
 }).strict();
 
 export const Bloc = z.object({
@@ -169,6 +205,8 @@ export const Bloc = z.object({
   pas: z.array(Pas),
   /** Le schéma redessiné (figure `schema`). */
   dessin: Dessin.optional(),
+  /** L'organisation du texte (figures de texte). */
+  structure: Structure.optional(),
   notes: z.string(),
 }).strict();
 
@@ -193,3 +231,5 @@ export type ElementDeDessin = z.infer<typeof ElementDeDessin>;
 export type FormeDeDessin = z.infer<typeof FormeDeDessin>;
 export type TraitDeDessin = z.infer<typeof TraitDeDessin>;
 export type Corps = z.infer<typeof Corps>;
+export type Structure = z.infer<typeof Structure>;
+export type Noeud = z.infer<typeof Noeud>;

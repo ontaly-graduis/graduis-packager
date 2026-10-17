@@ -58,6 +58,26 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 
 ---
 
+## PKG-B3 · Piste : l'organisation des textes et les schémas joués — prototype (branche `lot/piste-structure-schemas`)
+
+**Demande (David, 17/10)** : avant PKG-C, l'organisation sémantique des diapositives de texte (tout était au même niveau, en énumération) et des schémas qui jouent mieux le thème et l'animation du moteur de figures.
+
+**Prototype** (non fusionné, à juger sur `out/boost-acheteur/salle-s001-s004-s013-s099-s138-s162.html` et `salle-s013-s030.html`) :
+- **Textes** (`src/qualification/structure.ts`, `bloc.structure`) : rangées et colonnes de cadres (un cadre empilé sur un autre fait une fiche ; une icône ou un portrait qui touche un cadre l'illustre), intertitres, paragraphes, listes et leurs détails, définitions « terme : définition » — lus sur la graisse, le corps, les puces, les niveaux, les deux-points. La graisse en ligne est gardée (`**…**`). En salle : fiches au thème, définitions en deux colonnes, dévoilement unité par unité (l'intertitre paraît avec sa première unité), resserrement jusqu'à 76 % avant de défiler.
+- **Schémas, la manière du thème** (`gabarits/theme-onet/maniere.json`, `src/theme/maniere.ts`) : coins droits (les surfaces du DS Onet sont à angles droits), deux épaisseurs de trait, trois corps, pastilles numérotées en badge d'étape.
+- **Schémas, la partition** (`src/qualification/partition.ts`, `dessin.partition`, `pas` des éléments) : par colonnes (processus en phases, fiches personae : 4 pas) ou par étapes numérotées (logigramme PTP-040-010 : 9 pas, les traits suivent le flux, les décisions et leurs « Oui / Non » suivent leur pas) ; le reste est le décor. En salle, chaque pas **se trace** comme dans le wizard (TRC) : les traits courent, les aplats puis les textes paraissent, sur les jetons de mouvement du thème.
+
+**À trancher**
+- La structure et la partition sont des lectures heuristiques : par I-PKG-4, elles doivent passer par le PPT de validation. La grammaire de PKG-C les porte-t-elle (intertitres, listes, définitions, fiches ; ordre de dévoilement d'un schéma) ?
+- Le dévoilement d'un texte : unité par unité (prototype) ou section par section sur les diapositives denses.
+- La manière des schémas : coins droits, trois corps, badges — tout, ou en partie ?
+- La partition : les pas passés restent pleins (prototype) ou s'estompent (le verbe `s-estompe` de la pièce) ; le tracé à chaque pas, ou un simple fondu.
+- Plus loin : recomposer certains schémas par les gabarits du wizard (`parcours`, `cas`, `ensembles`) — mise en page calculée, entièrement au thème, au prix de la fidélité au dessin d'origine.
+
+**Sortie** (si adoptée) : témoins de structure et de partition sur la fixture et le corpus ; décisions.
+
+---
+
 ## PKG-C · Le PPT d'auteur et l'aller-retour
 
 **Livrer** : le gabarit d'auteur, généré du thème ONET (dispositions `G · …`, pastille, zone, espaces réservés « Consignes ») ; `emettre` (pivot → PPTX) ; `lire` (PPTX → pivot) ; les identifiants en étiquettes OOXML ; les propositions ✦ en notes. Mesuré en PKG-0 : pptxgenjs n'écrit `<a:noFill/>` que par `addText` ; une zone s'émet donc en `addText("")` avec un trait.

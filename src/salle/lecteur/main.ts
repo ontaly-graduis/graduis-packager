@@ -142,6 +142,14 @@ function contexte(doc: Document, z: boolean, anime: Contexte["anime"]): Contexte
  */
 function ajuster(racine: Element, etapesDuDevoilement: number, etape: number): number {
   ajusterTextes(racine);
+  // Un texte organisé tient d'abord dans sa page en se resserrant (jusqu'à 76 %), puis défile.
+  racine.querySelectorAll<HTMLElement>(".defile").forEach((f) => {
+    const s = f.querySelector<HTMLElement>(".structure");
+    const rail = f.querySelector<HTMLElement>(".rail");
+    if (!s || !rail) return;
+    s.style.removeProperty("--echelle");
+    for (let k = 0.96; rail.offsetHeight > f.clientHeight + 1 && k >= 0.76; k -= 0.04) s.style.setProperty("--echelle", k.toFixed(2));
+  });
   let pages = 1;
   racine.querySelectorAll<HTMLElement>(".defile").forEach((f, k) => {
     const rail = f.querySelector<HTMLElement>(".rail");

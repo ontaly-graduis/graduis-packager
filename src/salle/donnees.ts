@@ -1,6 +1,7 @@
 // Le pivot mis en salle : blocs projetés, étapes de dévoilement, durées, numéros dérivés, zones en `RegionMap`.
-import type { Bloc, Dessin, Figure, SeanceSpec, Visuel } from "../pivot/seance-spec";
+import type { Bloc, Dessin, Figure, SeanceSpec, Structure, Visuel } from "../pivot/seance-spec";
 import { compenserChasse, type TableDeChasse } from "../theme/chasse";
+import { habiller, type Maniere } from "../theme/maniere";
 import { regionMap, type RegionMap } from "./region-map";
 
 export const SCHEMA_SALLE = "graduis/salle@0";
@@ -33,6 +34,19 @@ export interface BlocDeSalle {
   readonly regionMap?: RegionMap;
   /** Le schéma redessiné, rendu en SVG par le lecteur. */
   readonly dessin?: Dessin;
+  /** L'organisation du texte (rangées, colonnes, intertitres, listes, définitions) ; ses unités se dévoilent une à une. */
+  readonly structure?: Structure;
+}
+
+/** Les unités de dévoilement d'une structure : paragraphes, items (avec leurs détails), définitions. Les intertitres suivent. */
+export function unitesDe(s: Structure): number {
+  let n = 0;
+  for (const r of s.rangees) for (const c of r.colonnes) for (const x of c.noeuds) {
+    if (x.type === "paragraphe") n += 1;
+    else if (x.type === "liste") n += x.items.length;
+    else if (x.type === "definitions") n += x.entrees.length;
+  }
+  return n;
 }
 
 export interface SequenceDeSalle {
@@ -60,7 +74,13 @@ function lignesDe(b: Bloc): string[] {
 
 type Dimensions = (media: string) => readonly [number, number] | null;
 
-function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, chasse: TableDeChasse): BlocDeSalle {
+/** Ce que le thème apporte au rendu des schémas : la chasse de sa police, sa manière. */
+export interface Habillage {
+  readonly chasse?: TableDeChasse;
+  readonly maniere?: Maniere;
+}
+
+function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, h: Habillage): BlocDeSalle {
   let lignes = lignesDe(b);
   let titre = b.titre;
   let aide = false;
@@ -71,7 +91,10 @@ function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, chasse: Table
     if (/vous de jouer/i.test(titre ?? "") && lignes.length) [titre, lignes] = [lignes[0]!, lignes.slice(1)];
   }
   const pastille = prise.devoilement === "pastille";
-  const etapes = !pastille ? 0 : b.figure === "pas-a-pas" ? b.pas.length : DEVOILEES.has(b.figure) ? lignes.length : 0;
+  const etapes = !pastille ? 0 : b.figure === "pas-a-pas" ? b.pas.length
+    : b.figure === "schema" ? b.dessin?.partition?.pas ?? 0
+      : DEVOILEES.has(b.figure) ? (b.structure ? unitesDe(b.structure) : lignes.length) : 0;
+  const dessin = b.dessin ? compenserChasse(b.dessin, h.chasse ?? {}) : undefined;
   const minutes = MINUTEES.has(b.figure) ? lignes.join(" ").match(/(\d{1,3})\s*min/i) : null;
   return {
     id: b.id,
@@ -85,19 +108,20 @@ function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, chasse: Table
     duree: minutes ? Number(minutes[1]) : null,
     ...(aide ? { aide: true as const } : {}),
     ...(b.figure === "pas-a-pas" ? { regionMap: regionMap(b) } : {}),
-    ...(b.dessin ? { dessin: compenserChasse(b.dessin, chasse) } : {}),
+    ...(dessin ? { dessin: h.maniere ? habiller(dessin, h.maniere) : dessin } : {}),
+    ...(b.structure ? { structure: b.structure } : {}),
   };
 }
 
 /** Met un pivot en salle : séquences retenues (toutes par défaut), blocs masqués écartés, textes des schémas à la chasse du thème. */
-export function mettreEnSalle(spec: SeanceSpec, prise: PriseDeSalle, px: Dimensions, retenues?: readonly string[], chasse: TableDeChasse = {}): DonneesDeSalle {
+export function mettreEnSalle(spec: SeanceSpec, prise: PriseDeSalle, px: Dimensions, retenues?: readonly string[], habillage: Habillage = {}): DonneesDeSalle {
   let rang = 0;
   const sequences: SequenceDeSalle[] = [];
   for (const s of spec.sequences) {
     const transition = s.blocs.find((b) => b.figure === "transition");
     if (transition) rang += 1;
     if (retenues && !retenues.includes(s.id)) continue;
-    const blocs = s.blocs.filter((b) => !b.masquee).map((b) => blocDeSalle(b, prise, px, chasse));
+    const blocs = s.blocs.filter((b) => !b.masquee).map((b) => blocDeSalle(b, prise, px, habillage));
     if (blocs.length) sequences.push({ id: s.id, numero: transition ? rang : null, titre: transition?.titre ?? "Ouverture", blocs });
   }
   return { schema: SCHEMA_SALLE, source: spec.source, prise, sequences };

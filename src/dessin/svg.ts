@@ -33,7 +33,7 @@ function attributsDeTrait(t: TraitDeDessin | undefined): string {
   return ` class="s-${t.couleur}" stroke-width="${n(l)}"${motif ? ` stroke-dasharray="${motif}"` : ""}`;
 }
 
-function corpsEnHtml(c: Corps, boite: readonly [number, number, number, number], transformation: string, forme?: readonly [number, number, number, number]): string {
+function corpsEnHtml(c: Corps, boite: readonly [number, number, number, number], transformation: string, forme?: readonly [number, number, number, number], classe = ""): string {
   const [x, y, w, h] = boite;
   const [ml, mt, mr, mb] = c.marges;
   let [fx, fy, fw, fh] = [x + ml, y + mt, w - ml - mr, h - mt - mb];
@@ -51,7 +51,7 @@ function corpsEnHtml(c: Corps, boite: readonly [number, number, number, number],
     return `<p class="al-${p.alignement}">${fragments || "​"}</p>`;
   }).join("");
   return `<foreignObject x="${n(fx)}" y="${n(fy)}" width="${n(fw)}" height="${n(fh)}"${transformation}>`
-    + `<div xmlns="http://www.w3.org/1999/xhtml" class="bt a-${c.ancrage}${c.retour === false ? " sans-retour" : ""}"><div class="bt-l">${paragraphes}</div></div></foreignObject>`;
+    + `<div xmlns="http://www.w3.org/1999/xhtml" class="bt a-${c.ancrage}${c.retour === false ? " sans-retour" : ""}${classe}"><div class="bt-l">${paragraphes}</div></div></foreignObject>`;
 }
 
 function forme(e: FormeDeDessin): string {
@@ -61,7 +61,8 @@ function forme(e: FormeDeDessin): string {
   const [sx, sy] = [e.retournement?.includes("h") ? -1 : 1, e.retournement?.includes("v") ? -1 : 1];
   const miroir = sx < 0 || sy < 0 ? `translate(${n(cx)} ${n(cy)}) scale(${sx} ${sy}) translate(${n(-cx)} ${n(-cy)})` : "";
   const tf = [rotation, miroir].filter(Boolean).join(" ");
-  const fond = e.fond ? `f-${e.fond}` : "sans-fond";
+  // Une pastille numérotée prend la manière du thème (le badge d'étape) : la classe `pastille` l'emporte sur son rôle.
+  const fond = `${e.fond ? `f-${e.fond}` : "sans-fond"}${e.marque === "pastille" ? " pastille" : ""}`;
   const trait = attributsDeTrait(e.trait).replace(/^ class="([^"]*)"/, ` class="${fond} $1"`);
   const parties: string[] = [];
   let zoneTexte: readonly [number, number, number, number] = [x, y, w, h];
@@ -94,15 +95,31 @@ function forme(e: FormeDeDessin): string {
     if (t.texte) zoneTexte = [x + t.texte[0], y + t.texte[1], t.texte[2], t.texte[3]];
   }
   const dessin = tf ? `<g transform="${tf}">${parties.join("")}</g>` : parties.join("");
-  const texte = e.texte ? corpsEnHtml(e.texte, zoneTexte, rotation ? ` transform="${rotation}"` : "", e.boite) : "";
+  const texte = e.texte ? corpsEnHtml(e.texte, zoneTexte, rotation ? ` transform="${rotation}"` : "", e.boite, e.marque === "pastille" ? " bt-pastille" : "") : "";
   return dessin + texte;
 }
 
 /** Le SVG d'un dessin ; `prefixe` rend uniques les identifiants (découpes d'images) dans le document. */
 export function dessinEnSvg(d: Dessin, prefixe: string): string {
   const [x0, y0, w0, h0] = d.cadre;
-  const parties: string[] = [];
+  const tout: string[] = [];
+  // Dans un pas, les éléments paraissent dans l'ordre de lecture (`data-r`, borné : un pas ne fait pas attendre).
+  const rangs = new Map<number, number>();
+  const parPas = new Map<number, number[]>();
+  d.elements.forEach((e, i) => { if (e.pas) parPas.set(e.pas, [...(parPas.get(e.pas) ?? []), i]); });
+  for (const ids of parPas.values()) {
+    [...ids].sort((a, b) => d.elements[a]!.boite[1] - d.elements[b]!.boite[1] || d.elements[a]!.boite[0] - d.elements[b]!.boite[0])
+      .forEach((i, r) => rangs.set(i, Math.min(r, 10)));
+  }
   d.elements.forEach((e, i) => {
+    const parties: string[] = [];
+    rendre(e, i, parties);
+    tout.push(e.pas ? `<g data-pas="${e.pas}" style="--r:${rangs.get(i) ?? 0}">${parties.join("")}</g>` : parties.join(""));
+  });
+  const vb = [x0 - MARGE, y0 - MARGE, w0 + 2 * MARGE, h0 + 2 * MARGE].map(n).join(" ");
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="dessin" viewBox="${vb}" preserveAspectRatio="xMidYMid meet">${tout.join("")}</svg>`;
+
+  function rendre(e: Dessin["elements"][number], i: number, parties: string[]): void {
     if (e.type === "forme") {
       parties.push(forme(e));
       return;
@@ -136,7 +153,5 @@ export function dessinEnSvg(d: Dessin, prefixe: string): string {
       });
       cy += hh;
     });
-  });
-  const vb = [x0 - MARGE, y0 - MARGE, w0 + 2 * MARGE, h0 + 2 * MARGE].map(n).join(" ");
-  return `<svg xmlns="http://www.w3.org/2000/svg" class="dessin" viewBox="${vb}" preserveAspectRatio="xMidYMid meet">${parties.join("")}</svg>`;
+  }
 }
