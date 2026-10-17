@@ -130,29 +130,33 @@ pivot₀ ── émettre ──► PPT d'auteur (gabarit à grammaire, thème ON
 | **rapport** | anomalies de la source, diagnostics H1–H9, écarts relevé ↔ pivot, propositions ouvertes | HTML statique dérivé |
 | **livraison** | les sorties + un manifeste : hashes du PPT d'auteur, du pivot, de la prise et de chaque sortie | la seule trace de ce qui a été livré |
 
-### 4.1 Le pivot (nom à trancher, proposition : `seance-spec`)
+### 4.1 Le pivot `graduis/seance-spec@0` (tranché le 17/10)
 
 ```json
 {
   "schema": "graduis/seance-spec@0",
-  "formation": { "id": "boost-acheteur", "titre": "…", "public": "…", "duree": "2 jours" },
+  "source": { "nom": "boost acheteur areprendre v1.pptx", "empreinte": "sha256:…" },
   "sequences": [
-    { "id": "s07", "titre": "Commande à partir d'une DA hors catalogue",
+    { "id": "s030",
       "blocs": [
-        { "id": "s07-b05", "figure": "pas-a-pas", "temps": "E",
-          "source": { "deck": "sha256:…", "diapo": 34 },
+        { "id": "b034", "figure": "pas-a-pas", "source": { "diapo": 34 },
           "titre": "Liste des DA en attente de commande",
-          "contenu": { "capture": "sha256:…", "region_map": { "captures": { "…": [] }, "pas": [] } },
-          "animation": { "duree": null, "consigne": null, "vigilance": null } } ] } ],
-  "glossaire": [ { "oracle": "…", "onet": "…", "definition": "…" } ],
-  "renvois": [ { "id": "navigation-fusion", "titre": "Les fondamentaux de la navigation", "cible": "…" } ]
+          "textes": ["les demandes d’achat apparaissent dans une liste en attente…"],
+          "visuels": [ { "media": "sha256:…", "capture": true } ],
+          "tableaux": [],
+          "pas": [ { "numero": 3, "capture": "sha256:…", "zone": [61.2, 8.4, 20.5, 6.1], "ancrage": "repere",
+                     "consigne": "Possibilité de changer d’agence" } ],
+          "notes": "" } ] } ]
 }
 ```
 
-- `temps` ∈ `E` · `R` · `R*` · `animation` (hors triplet : émargement, pauses, météo…).
-- **La numérotation ne s'écrit pas** : séquences, sections et pas se dérivent de l'ordre (H4).
-- `contenu` dépend de la figure (§ 4.2). Pour `pas-a-pas`, c'est le contrat `RegionMap` du wizard, repris tel quel : `Zone{ id, role: "observe", required: false, rect: [x, y, w, h] en %, step, consigne, dit? }`.
-- `animation` porte les notes structurées de l'animateur ; tout le reste des notes est du texte libre, conservé.
+- **Un bloc par diapositive**, identifiants dérivés de la diapositive source ; une séquence s'ouvre à chaque transition (la première commence à la couverture).
+- **Rien ne se stocke qui se dérive** : le temps se lit de la figure (`TEMPS_DE_FIGURE`), la numérotation de l'ordre (H4), la `RegionMap` de la salle des pas.
+- `textes` : le texte porteur, verbatim, dans l'ordre de lecture, hors titre, pastilles, espaces de service (numéro, date, pied) et consignes des pas.
+- `pas` : zone en pourcentage de la capture (contrat `RegionMap`, arrondi au centième) ; `ancrage` ∈ `repere` · `legende` · `proposee` (zone attribuée par ordre de lecture, à valider dans le PPT de validation) ; `null` si aucune zone.
+- `notes` : verbatim. Leur grammaire (`Durée :`, `Consigne :`, `Vigilance :`, `Corrigé :`) arrive avec le PPT de validation (PKG-C).
+- Le glossaire structuré et les renvois résolus viendront avec leurs consommateurs (H7, modules partagés), pas avant.
+- La trace de classification (le signal qui a décidé la figure) vit au rapport, jamais au pivot.
 
 ### 4.2 Les figures de salle
 
@@ -242,11 +246,7 @@ Les seuils (N, 9, celui de H9) se valident une fois avec ONET, sur le démonstra
 
 ## 8. Arbitrages ouverts
 
-Rangés au backlog, sous la session qui doit les trancher (`docs/backlog-v0.md`, « À trancher au démarrage »). Les plus structurants :
-- **la pile** : Python pour le seul relevé du deck hérité, TypeScript pour tout le reste (proposition révisée le 17/10 : le gabarit se générant du thème, il n'y a plus de masque existant où écrire) ;
-- **le lien au wizard** : alias épinglé par `PROVENANCE.md` (précédent du bundle BNP) ou copie avec en-tête de provenance (précédent du compagnon) ;
-- **le nom du pivot** ;
-- **le repli de police du PPT** : Montserrat manque sur une partie des postes.
+Rangés au backlog, sous la session qui doit les trancher (`docs/backlog-v0.md`, « À trancher au démarrage »). Tranchés le 17/10 (`decisions.md`) : P2, le thème, la pile (TypeScript), le lien au wizard (copie avec provenance), le nom du pivot (`seance-spec`), le dépôt (`ontaly-graduis`), l'ancrage des pas incomplets (zones proposées par ordre de lecture). Reste, entre autres, **le repli de police du PPT** : Montserrat manque sur une partie des postes (PKG-C).
 
 ---
 

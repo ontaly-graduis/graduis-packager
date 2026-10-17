@@ -18,29 +18,22 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 
 ---
 
-## PKG-A · Qualification, pivot et diagnostics
+## PKG-A · Qualification, pivot et diagnostics — Sortie atteinte le 17/10
 
-**Livrer** : le schéma du pivot et sa validation ; `qualifier` (relevé → pivot₀ : figures, temps, séquences, `region_map`) ; `diagnostiquer` (pivot → rapport HTML : H1–H9, anomalies de la source, écarts).
+**Livré** : `npm run packager -- qualifier <deck.pptx>` → `releve.json`, `seance-spec.json` (pivot₀, validé par son schéma Zod), `rapport.json` et `rapport.html` (au thème ONET, autonome). Le schéma `graduis/seance-spec@0` (`src/pivot/`) ; la qualification par règles (`src/qualification/`) ; les règles H1–H9 et l'état des pas (`src/diagnostic/`).
 
-**À trancher au démarrage**
-- **A-3 · Le nom du pivot** — proposition : `seance-spec` ; alternatives : `support-spec`, `deroule`.
-- **A-4 · Le dépôt distant** : `ontaly-graduis/graduis-packager` (PR et CI à la release, comme le wizard) ou dépôt personnel d'abord. Le dépôt local existe depuis la clôture de PKG-0.
-- **Les pas incomplets** (20 au relevé) : proposer une zone aux légendes sans repère, par ordre de lecture des zones de la capture, comme proposition à valider dans le PPT d'auteur ? Ou les laisser à la main ?
-- Le grain du pivot : séquence → blocs suffit-il, ou faut-il un niveau « partie » (journée, demi-journée) ?
-- La taxonomie et les noms des figures (spec § 4.2).
-- Les seuils provisoires de la charte d'harmonisation (N = 60 mots ? 9 pastilles ? écart de H9 ?).
-- La classification : règles seules, ou un acte IA en appoint pour les diapositives indécises (registre, proposition gâtée) ?
-
-**Sortie**
-- Les 166 diapositives qualifiées, chacune avec sa figure, son temps et le signal qui l'a décidée.
-- Le rapport retrouve les anomalies du § 0.3 : les 5 marqueurs d'inachèvement, les notes de la diapo 7, le titre de la diapo 95, la numérotation des séquences, les déséquilibres (démonstrations, captures muettes, séquence 13).
-- pivot₀ stable au hash.
+**Sortie** (20 témoins verts : 12 sur le dépôt, 8 sur le corpus)
+- Les 166 diapositives qualifiées, chacune avec sa figure, son temps et le signal qui l'a décidée (au rapport) : couverture 1, écrans d'animation 10, transitions 13, objectifs 1, contenus 15, processus 2, schémas 6, démonstrations 3, pas-à-pas 61, captures 37, mises en pratique 8, étapes clés 6, synthèse 1, glossaire 1, renvoi 1.
+- Les six séquences opératoires portent leurs trois temps ; la séquence « Navigation dans la gestion des commandes » n'a ni mise en pratique ni étapes clés (H1).
+- Pas : 130, dont 108 ancrés par repère, 6 par légende, 13 par zone proposée ; 3 sans zone, 4 sans consigne.
+- Le rapport retrouve les anomalies du § 0.3 : les 5 marqueurs (H8, bloquants), la numérotation des transitions (H4), le cas 3 qui reprend l'énoncé du cas 2 (H6, malgré la coquille « Tra,sformer »), les démonstrations absentes (H1), les séquences déséquilibrées (H9), 34 écrans denses (H2), 35 captures sous-résolues et 37 captures muettes (H5).
+- Le pivot est stable au hash, et le rapport ne contient aucun hex hors jetons.
 
 ---
 
 ## PKG-B · La salle (sortie prioritaire)
 
-**Livrer** : l'effecteur de salle en fichier HTML unique — navigation au clavier et à la télécommande, dévoilement pastille par pastille, zoom sur la zone, minuteur des écrans d'animation et des mises en pratique, infobulles de glossaire, mode présentateur (notes, diapositive suivante, chrono), thème ONET (`gabarits/theme-onet/`, Montserrat embarquée), transitions didactiques.
+**Livrer** : l'effecteur de salle en fichier HTML unique, qui dérive la `RegionMap` du wizard des pas du pivot (zone → `Zone{ role: "observe", rect, step, consigne }`) — navigation au clavier et à la télécommande, dévoilement pastille par pastille, zoom sur la zone, minuteur des écrans d'animation et des mises en pratique, infobulles de glossaire, mode présentateur (notes, diapositive suivante, chrono), thème ONET (`gabarits/theme-onet/`, Montserrat embarquée), transitions didactiques.
 
 **À trancher au démarrage**
 - Le mode présentateur : seconde fenêtre pilotée par la première, ou vue présentateur sur un seul écran ?

@@ -21,16 +21,23 @@ L'outil interne d'Ontaly qui refait des supports d'animation présentielle exist
 
 ## Vocabulaire
 
-Celui du wizard (canon-effecteur-v1), sans le redéfinir : `prise` (interprétation figée, hashée), `figure`, `temps` (E · R · R*), `dévoilement` (coordonnée de la prise, jouée par la route), `thème` (`graduis/theme@1`, une table), `region_map`, `zone`, `pastille`. Propres au packager : **deck hérité** (le PPT reçu), **relevé** (ce que l'ingestion héritée en lit), **PPT d'auteur** (la source à grammaire), **pivot** (nom à trancher, proposition `seance-spec`), **salle** · **papier** · **animation** (les trois routes), **charte d'harmonisation** (les seuils H1–H9 validés avec le client). Le mot « transition » désigne la figure d'entrée de séquence ; le mode de transition est celui de la prise.
+Celui du wizard (canon-effecteur-v1), sans le redéfinir : `prise` (interprétation figée, hashée), `figure`, `temps` (E · R · R*), `dévoilement` (coordonnée de la prise, jouée par la route), `thème` (`graduis/theme@1`, une table), `region_map`, `zone`, `pastille`. Propres au packager : **deck hérité** (le PPT reçu), **relevé** (ce que l'ingestion héritée en lit), **PPT d'auteur** (la source à grammaire), **pivot** (`seance-spec`, schéma `graduis/seance-spec@0`), **salle** · **papier** · **animation** (les trois routes), **charte d'harmonisation** (les seuils H1–H9 validés avec le client). Le mot « transition » désigne la figure d'entrée de séquence ; le mode de transition est celui de la prise.
 
 ## Structure attendue
 
 ```
 graduis-packager/
   docs/        spec, decisions, backlog ; sources/ (decks client, hors dépôt)
-  scripts/     relevés de mesure (releve_pptx.py)
-  atelier/     relever · qualifier · emettre · lire · diagnostiquer · rapport (pile : A-1)
-  effecteur/   salle (fichier unique) · papier (impression) (pile : A-1)
+  scripts/     relevés de mesure (releve_pptx.py, référence de parité)
+  src/         TypeScript strict
+    ooxml/         lecteur PPTX (paquet, formes aplaties) — servira aussi `lire`
+    releve/        ingestion héritée : relevé, appariement des pas, mesures
+    pivot/         schéma `graduis/seance-spec@0` (Zod)
+    qualification/ relevé → pivot₀ (figures par règles, zones proposées)
+    diagnostic/    règles H1–H9 → rapport (JSON + HTML au thème ONET)
+    theme/         chargement du thème repris
+    cli/           `npm run packager -- relever|qualifier <deck>`
+    (à venir : emission/ et lecture/ du PPT de validation, salle/, papier/)
   gabarits/    theme-onet/ (thème DS Onet repris, PROVENANCE.md) ; le gabarit d'auteur PPT se génère de ce thème
   golden/      séquence de référence : pivot + sorties (anonymisé ou hors dépôt)
   tests/
