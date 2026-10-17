@@ -45,11 +45,12 @@ export function qualifier(d: DiapositiveReleve, largeur: number, titre: string |
   if (d.pas_a_pas) return q("pas-a-pas", `capture et ${d.pas_a_pas.pas.length} pas numérotés`);
   const liens = d.liens.some((l) => /\.pptx?(\?|$)/i.test(l));
   if (liens || /lien vers|insérer lien/.test(t)) return q("renvoi", liens ? "lien vers un autre deck" : "texte « lien vers »");
+  // Le dessin passe avant le tableau : un logigramme peut porter un petit tableau de légende (diapo 31).
+  const dessin = d.formes.filter((f) => ["forme", "texte", "libre", "trait"].includes(f.nature) && !estDeService(f)).length;
+  if (dessin >= SEUIL_SCHEMA) return q("schema", `${dessin} formes dessinées`);
   if (d.formes.some((f) => f.nature === "tableau")) {
     return /processus|étape|ptp-\d/.test(t) ? q("processus", "tableau d'étapes de processus") : q("contenu", "tableau");
   }
-  const dessin = d.formes.filter((f) => ["forme", "texte", "libre", "trait"].includes(f.nature) && !estDeService(f)).length;
-  if (dessin >= SEUIL_SCHEMA) return q("schema", `${dessin} formes dessinées`);
   if (d.formes.some((f) => estCapture(f as Forme, largeur))) return q("capture", "capture sans pastille");
   if (/^objectifs?\b/i.test(titre ?? "")) return q("objectifs", "titre « Objectifs »");
   return q("contenu", "aucune règle particulière");

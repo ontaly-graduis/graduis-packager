@@ -28,7 +28,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
 
   it("qualifie les 166 diapositives (mesure du 17/10)", () => {
     expect(rapport.synthese.figures).toEqual({
-      couverture: 1, "ecran-animation": 10, transition: 13, objectifs: 1, contenu: 15, processus: 2, schema: 6,
+      couverture: 1, "ecran-animation": 10, transition: 13, objectifs: 1, contenu: 15, processus: 1, schema: 7,
       demonstration: 3, "pas-a-pas": 61, capture: 37, "mise-en-pratique": 8, "etapes-cles": 6, synthese: 1, glossaire: 1, renvoi: 1,
     });
     const op = rapport.sequences.filter((l) => l.operatoire && l.temps.R && l.temps["R*"]).map((l) => l.id);

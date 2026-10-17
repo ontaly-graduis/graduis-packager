@@ -9,6 +9,8 @@ import { SeanceSpec } from "../pivot/seance-spec";
 import { diagnostiquer } from "../diagnostic/regles";
 import { rapportHtml } from "../diagnostic/rapport-html";
 import { chargerTheme } from "../theme/theme";
+import { construireSalle } from "../salle/construire";
+import type { Devoilement } from "../salle/donnees";
 
 /** Relève un deck et écrit `releve.json` et les médias hashés dans le dossier de sortie. */
 function ecrireReleve(deck: string, sortie: string | undefined) {
@@ -20,6 +22,29 @@ function ecrireReleve(deck: string, sortie: string | undefined) {
   writeFileSync(join(dossier, "releve.json"), texte);
   for (const [h, { ext, octets }] of medias) writeFileSync(join(dossier, "medias", `${h.slice(7)}.${ext}`), octets);
   return { nom, releve, medias, dossier, texte };
+}
+
+async function salleCommande(deck: string, sortie: string | undefined, dossierTheme: string, sequences: string[] | undefined, devoilement: Devoilement): Promise<void> {
+  const { releve, medias, dossier } = ecrireReleve(deck, sortie);
+  const { spec } = qualifierReleve(releve);
+  SeanceSpec.parse(spec);
+  const { html, nonAffichables } = await construireSalle(spec, {
+    prise: { devoilement },
+    theme: chargerTheme(dossierTheme),
+    media: (h) => {
+      const m = medias.get(h);
+      return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined;
+    },
+    ...(sequences ? { sequences } : {}),
+  });
+  const nom = sequences ? `salle-${sequences.join("-")}.html` : "salle.html";
+  writeFileSync(join(dossier, nom), html);
+  console.log([
+    `# Salle — ${releve.deck.nom}`,
+    `${dossier}/${nom} · ${(Buffer.byteLength(html) / 1e6).toFixed(1)} Mo · empreinte ${sha256(html)}`,
+    `dévoilement ${devoilement}${sequences ? ` · séquences ${sequences.join(", ")}` : " · toutes les séquences"}`,
+    nonAffichables.length ? `médias non affichables (à convertir) : ${nonAffichables.length}` : "tous les médias sont affichables",
+  ].join("\n"));
 }
 
 function qualifierCommande(deck: string, sortie: string | undefined, dossierTheme: string): void {
@@ -83,7 +108,10 @@ const option = (nom: string) => {
 };
 if (commande === "relever" && args[0]) releverCommande(args[0], option("--sortie"));
 else if (commande === "qualifier" && args[0]) qualifierCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet");
-else {
-  console.error("usage : packager relever|qualifier <deck.pptx> [--sortie <dossier>] [--theme <dossier>]");
+else if (commande === "salle" && args[0]) {
+  const devoilement = option("--devoilement") === "ecran" ? "ecran" : "pastille";
+  await salleCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", option("--sequences")?.split(","), devoilement);
+} else {
+  console.error("usage : packager relever|qualifier|salle <deck.pptx> [--sortie <dossier>] [--theme <dossier>] [--sequences s030,…] [--devoilement pastille|ecran]");
   process.exit(2);
 }
