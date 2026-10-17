@@ -2,7 +2,7 @@
 
 Ce qui reste à faire, session par session. Chaque session a ses « À trancher au démarrage » et sa « Sortie », vraie quand ses témoins sont verts.
 
-**Ordre** : PKG-0 → PKG-A → (PKG-B ∥ PKG-C) → PKG-D → PKG-E. B et C ne dépendent que du pivot ; B passe en premier si l'on manque de bras (la salle est la sortie prioritaire).
+**Ordre** : PKG-0 → PKG-A → PKG-B → PKG-B2 → PKG-C → PKG-D → PKG-E. B, B2 et C ne dépendent que du pivot.
 
 ---
 
@@ -31,21 +31,32 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 
 ---
 
-## PKG-B · La salle (sortie prioritaire)
+## PKG-B · La salle (sortie prioritaire) — Sortie atteinte le 17/10
 
-**Livrer** : l'effecteur de salle en fichier HTML unique, qui dérive la `RegionMap` du wizard des pas du pivot (zone → `Zone{ role: "observe", rect, step, consigne }`) — navigation au clavier et à la télécommande, dévoilement pastille par pastille, zoom sur la zone, minuteur des écrans d'animation et des mises en pratique, infobulles de glossaire, mode présentateur (notes, diapositive suivante, chrono), thème ONET (`gabarits/theme-onet/`, Montserrat embarquée), transitions didactiques.
+**Livré** : `npm run packager -- salle <deck.pptx> [--sequences s030,…] [--devoilement pastille|ecran]` → `salle.html`, un fichier unique (thème, polices, données, médias et lecteur inline). Le lecteur (`src/salle/lecteur/`, TypeScript sans framework, regroupé par esbuild) : scène 1920 × 1080 à l'échelle, une composition par figure, dévoilement pastille par pastille avec projecteur sur la zone courante, zoom sur la zone (Z), minuteur (T), écran noir (B), notes en surimpression (N), plein écran (F), présentateur dans une seconde fenêtre (P), ancre de reprise (`#b034.2`). La salle dérive la `RegionMap` du wizard des pas du pivot. Tests navigateur : `npm run test:navigateur` (Playwright ; `PW_CHROMIUM` désigne un Chromium déjà installé).
+
+**Sortie** (25 témoins Vitest, dont 8 sur le corpus ; 3 témoins Playwright en `file://`)
+- La séquence 30–58 jouée hors ligne dans Chromium : aucune requête réseau, aucune erreur ; le présentateur s'ouvre et pilote la salle.
+- Même pivot et même prise ⇒ même fichier, à l'octet (5,8 Mo pour la séquence 30 ; 25,6 Mo pour le deck entier).
+- Aucun hex hors jetons ; aucune ressource distante.
+- Les captures rognées sont rejouées rognées ; le seul média non affichable est l'icône EMF de la diapo 54.
+- Revue visuelle : la diapo 31, un logigramme dessiné avec un petit tableau de légende, passe de « processus » à « schéma » (la règle du dessin précède celle du tableau : processus 1, schémas 7) ; une mise en pratique « À vous de jouer » prend son énoncé pour titre.
+- Non couvert, nommé : Edge et Firefox (seul Chromium est joué) ; les schémas dessinés n'ont pas encore de rendu (PKG-B2) ; les infobulles de glossaire attendent H7.
+
+---
+
+## PKG-B2 · Les schémas au thème
+
+**Livrer** : le rendu vectoriel des schémas dessinés en formes (7 diapositives du deck acheteur : architecture S2P, fiches personae, logigramme PTP-040-010) en SVG à **classes de rôle**, comme le veut le principe PE2 du wizard (« un SVG composé ne porte ni couleur ni fonte ») : le thème ONET les résout. Le SVG entre au pivot comme un média hashé, servi tel quel à la salle, au papier et au PPT de validation.
 
 **À trancher au démarrage**
-- Le mode présentateur : seconde fenêtre pilotée par la première, ou vue présentateur sur un seul écran ?
-- Le poids cible du fichier et la recompression des captures (22 Mo de médias pour ce seul deck).
-- Le zoom sur les captures sous-résolues (36 sur 113) : borné, ou signalé à l'animateur ?
-- Les touches : flèches, PageUp/PageDown (télécommandes), écran noir, retour.
+- Les styles à lire au relevé : remplissage, trait, texte (taille, graisse, couleur, alignement), y compris les couleurs du thème Office et leurs modificateurs (`lumMod`, `lumOff`).
+- La projection des couleurs du deck sur les rôles du thème ONET : c'est de l'harmonisation, donc une règle validée une fois.
+- Les formes libres (`custGeom`) : chemin redessiné, ou boîte englobante ?
+- L'alternative écartée a priori : rasteriser la diapositive avec LibreOffice (installation requise, rendu non déterministe d'une version à l'autre).
 
 **Sortie**
-- La séquence 30–58 jouée hors ligne sur Chrome, Edge et Firefox.
-- Zéro requête réseau (témoin Playwright).
-- 0 hex hors jetons (témoin).
-- Même pivot et même prise ⇒ même fichier, à l'octet.
+- Les 7 schémas rendus, lisibles à 1920 px, au thème ; déterministes ; aucun hex hors jetons.
 
 ---
 
@@ -54,6 +65,7 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 **Livrer** : le gabarit d'auteur, généré du thème ONET (dispositions `G · …`, pastille, zone, espaces réservés « Consignes ») ; `emettre` (pivot → PPTX) ; `lire` (PPTX → pivot) ; les identifiants en étiquettes OOXML ; les propositions ✦ en notes. Mesuré en PKG-0 : pptxgenjs n'écrit `<a:noFill/>` que par `addText` ; une zone s'émet donc en `addText("")` avec un trait.
 
 **À trancher au démarrage**
+- Le nom de l'objet : « PPT d'auteur » (spec) ou « PPT de validation » (le mot de David, 17/10).
 - Le support des identifiants : étiquettes OOXML ou nom de diapositive ; le comportement au copier-coller.
 - Le thème dans le PPT : comment la couche sémantique ONET se projette sur les 12 emplacements de couleur et les polices du thème Office.
 - Le repli de police : Montserrat manque sur une partie des postes, et PowerPoint ne l'embarque pas toujours. Police embarquée, police système de repli, ou installation demandée à ONET ?

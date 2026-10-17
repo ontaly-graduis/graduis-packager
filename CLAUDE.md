@@ -36,8 +36,10 @@ graduis-packager/
     qualification/ relevé → pivot₀ (figures par règles, zones proposées)
     diagnostic/    règles H1–H9 → rapport (JSON + HTML au thème ONET)
     theme/         chargement du thème repris
-    cli/           `npm run packager -- relever|qualifier <deck>`
-    (à venir : emission/ et lecture/ du PPT de validation, salle/, papier/)
+    salle/         pivot → salle.html : données de salle, RegionMap, assemblage ; lecteur/ (navigateur, sans framework)
+    cli/           `npm run packager -- relever|qualifier|salle <deck>`
+    (à venir : schémas SVG, emission/ et lecture/ du PPT de validation, papier/)
+  tests-navigateur/ Playwright : la salle jouée en file:// (`npm run test:navigateur`)
   gabarits/    theme-onet/ (thème DS Onet repris, PROVENANCE.md) ; le gabarit d'auteur PPT se génère de ce thème
   golden/      séquence de référence : pivot + sorties (anonymisé ou hors dépôt)
   tests/
