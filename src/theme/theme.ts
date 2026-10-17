@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 export interface Theme {
-  /** Primitives puis couche sémantique, telles quelles (le seul endroit où vivent des valeurs hex). */
+  /** Primitives, couche sémantique et mouvement, tels quels (le seul endroit où vivent des valeurs hex). */
   readonly jetons: string;
   /** `@font-face` des polices du thème, en data-URI woff2. */
   readonly polices: string;
@@ -12,7 +12,7 @@ export interface Theme {
 }
 
 export function chargerTheme(dossier: string): Theme {
-  const jetons = ["tokens.css", "ds-onet.css"].map((f) => readFileSync(join(dossier, f), "utf8")).join("\n");
+  const jetons = ["tokens.css", "ds-onet.css", "mouvement.css"].map((f) => readFileSync(join(dossier, f), "utf8")).join("\n");
   const polices = readdirSync(join(dossier, "polices"))
     .filter((f) => f.endsWith(".woff2"))
     .sort()

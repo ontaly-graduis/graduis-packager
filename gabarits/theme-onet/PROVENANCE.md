@@ -7,6 +7,7 @@ Repris tel quel (copie, jamais modifiée ici) le 2026-10-17, décision David du 
 - **Couches** : `tokens.css` (primitives `--c-*`, figées) → `ds-onet.css` (couche sémantique `--color-*`, recréée dans l'effecteur NDF ; seuls hex hors primitives : ses dérivés) ; `design-tokens.json` (les mêmes primitives au format DTCG).
 - **Police** : Montserrat (licence OFL), woff2 latin et latin-ext en 400, 600 et 700, repris du build de l'effecteur NDF (suffixe de hash Vite retiré).
 - **Logo** : `ONET/boost/DS/logo-onet-bleu.svg`.
+- **Mouvement** (ajouté le 17/10, décision du même jour) : le thème ne déclare aucun jeton de mouvement ; ses valeurs vivent dans la feuille de l'effecteur NDF. `mouvement.css` en extrait les durées, courbes, décalages et keyframes **à l'identique**, sous des noms de jetons (`--mvt-*`, `--courbe-*`).
 
 Toute évolution du thème se fait à l'origine (ou se décide dans `docs/decisions.md`), puis se recopie ici avec ses nouveaux hashes.
 
@@ -22,3 +23,4 @@ Toute évolution du thème se fait à l'origine (ou se décide dans `docs/decisi
 | `polices/montserrat-latin-ext-400-normal.woff2` | `pipeline-graduis/etape-5/effecteur-ndf/dist/assets/montserrat-latin-ext-400-normal-<hash>.woff2` | `sha256:30f166cea0894715f7b1342798306dd4206bc1d0331440d543f6e7f7fff04539` |
 | `polices/montserrat-latin-ext-600-normal.woff2` | `pipeline-graduis/etape-5/effecteur-ndf/dist/assets/montserrat-latin-ext-600-normal-<hash>.woff2` | `sha256:1d8a4af6a50cc4f7561e8484d5bff39acda90016b8e8cbb5cee69c253bb02750` |
 | `polices/montserrat-latin-ext-700-normal.woff2` | `pipeline-graduis/etape-5/effecteur-ndf/dist/assets/montserrat-latin-ext-700-normal-<hash>.woff2` | `sha256:a59fcc944a712e213a2f3bd994367129217c75f24a9155a5a3c1a0f5fd2cc9a7` |
+| `mouvement.css` | `pipeline-graduis/etape-5/effecteur-ndf/theme/effecteur.css` (extrait, valeurs verbatim) | `sha256:1b55baf7069d607f789cdf62843f091437d49603ffe5da29d2756d8603bd706a` |

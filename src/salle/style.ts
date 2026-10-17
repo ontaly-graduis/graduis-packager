@@ -11,10 +11,10 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--color-nav-bg);fo
 .corps.centre{flex-direction:column;align-items:center;justify-content:center;gap:28px}
 .corps.colonne{flex-direction:column;gap:28px}
 .pied{display:flex;justify-content:space-between;gap:32px;font-size:20px;color:var(--text-secondary);border-top:var(--border-hairline);padding-top:14px}
-.texte{flex:1;min-width:0}
+.texte{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
 .visuels{flex:none;display:flex;flex-direction:column;gap:24px;align-items:center;justify-content:center}
 .liste{list-style:none;margin:0;padding:0;font-size:32px;line-height:1.4}
-.liste li{position:relative;padding-left:44px;margin-bottom:22px;transition:opacity .3s}
+.liste li{position:relative;padding-left:44px;margin-bottom:22px}
 .liste li::before{content:"";position:absolute;left:4px;top:.5em;width:14px;height:14px;background:var(--color-primary)}
 .liste li.cache{visibility:hidden}
 .liste li.courant{color:var(--text-strong);font-weight:var(--fw-semibold)}
@@ -23,17 +23,19 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--color-nav-bg);fo
 .liste.numerotee li::before{content:counter(n);counter-increment:n;left:0;top:-2px;width:52px;height:52px;border-radius:50%;background:var(--color-badge-step);color:var(--text-on-primary);font-size:26px;font-weight:var(--fw-bold);display:grid;place-items:center}
 .liste.legende{font-size:24px;color:var(--text-secondary)}
 .liste.legende li::before{width:10px;height:10px}
-.liste.glossaire{columns:2;column-gap:64px;font-size:22px}
-.liste.glossaire li{break-inside:avoid;margin-bottom:14px}
+.liste.glossaire{display:grid;grid-template-columns:1fr 1fr;column-gap:64px;font-size:22px}
+.liste.glossaire li{margin-bottom:14px}
 .capture{position:relative;overflow:hidden;flex:none;background:var(--color-surface);box-shadow:var(--shadow-raised)}
-.capture .plan{position:absolute;inset:0;transform-origin:0 0;transition:transform .45s ease;--k:1}
+.capture .plan{position:absolute;inset:0;transform-origin:0 0;transition:transform var(--mvt-entree) var(--courbe-douce);--k:1}
 .capture img{position:absolute;max-width:none;user-select:none}
 .capture .absent{position:absolute;inset:0;display:grid;place-items:center;font-size:24px;color:var(--text-secondary)}
-.zone{position:absolute;border:calc(5px / var(--k)) solid var(--color-badge-step);border-radius:6px;box-shadow:0 0 0 4000px color-mix(in srgb, var(--color-nav-bg) 40%, transparent);transition:all .35s ease}
+.zone{position:absolute;border:calc(5px / var(--k)) solid var(--color-badge-step);border-radius:6px;box-shadow:0 0 0 4000px color-mix(in srgb, var(--color-nav-bg) 40%, transparent)}
 .zone.toutes{box-shadow:none}
 .zone .num{position:absolute;left:calc(-26px / var(--k));top:calc(-26px / var(--k));width:calc(48px / var(--k));height:calc(48px / var(--k));border-radius:50%;background:var(--color-badge-step);color:var(--text-on-primary);font-weight:var(--fw-bold);font-size:calc(24px / var(--k));display:grid;place-items:center}
-.pap{display:flex;gap:48px;align-items:flex-start;width:100%}
-.consignes{list-style:none;margin:0;padding:0;font-size:27px;line-height:1.35;flex:1;min-width:0}
+.pap{display:flex;gap:48px;align-items:stretch;width:100%;min-height:0}
+.pap .capture{align-self:flex-start}
+.colonne-consignes{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+.consignes{list-style:none;margin:0;padding:0;font-size:27px;line-height:1.35}
 .consignes li{display:grid;grid-template-columns:44px 1fr;gap:18px;margin-bottom:22px;color:var(--text-secondary)}
 .consignes li .num{width:44px;height:44px;border-radius:50%;background:var(--color-border);color:var(--text-secondary);font-size:22px;font-weight:var(--fw-bold);display:grid;place-items:center}
 .consignes li.courant{color:var(--text-strong);font-weight:var(--fw-semibold)}
@@ -63,6 +65,35 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--color-nav-bg);fo
 .f-ecran-animation p{margin:0;font-size:32px;color:var(--text-secondary)}
 .f-demonstration{background:var(--color-surface)}
 .f-renvoi .sommaire{list-style:none;padding:0;margin:0;font-size:34px;text-align:center;color:var(--text-strong)}
+/* Défilement : un rail qui glisse dans une fenêtre ; fondus aux bords coupés, indice de suite pour les pages. */
+.defile{position:relative;flex:1;min-height:0;min-width:0;width:100%;overflow:hidden}
+.defile .rail{position:relative;transition:transform var(--mvt-entree) var(--courbe-douce)}
+.defile::before,.defile::after{content:"";position:absolute;left:0;right:0;height:80px;pointer-events:none;opacity:0;z-index:1;transition:opacity var(--mvt-moyen) var(--courbe-standard)}
+.defile::before{top:0;background:linear-gradient(var(--color-background),transparent)}
+.defile::after{bottom:0;background:linear-gradient(transparent,var(--color-background))}
+.defile.haut::before,.defile.bas::after{opacity:1}
+.defile .indice{position:absolute;left:50%;bottom:4px;z-index:2;font-size:34px;line-height:1;color:var(--color-primary);opacity:0;pointer-events:none;transition:opacity var(--mvt-moyen) var(--courbe-standard)}
+.defile.bas .indice{opacity:1;animation:chevBob var(--mvt-volet) ease-in-out infinite}
+/* Mouvement du thème : entrée de diapositive en cascade, dévoilement de l'item courant, apparition des encadrés. */
+.diapo.entree .entete{animation:screenIn var(--mvt-entree) var(--courbe-ressort) both}
+.diapo.entree .corps>*{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:var(--mvt-decalage-max)}
+.diapo.entree .corps>:nth-child(1){animation-delay:var(--mvt-decalage-depart)}
+.diapo.entree .corps>:nth-child(2){animation-delay:calc(var(--mvt-decalage-depart) + var(--mvt-decalage))}
+.diapo.entree .corps>:nth-child(3){animation-delay:calc(var(--mvt-decalage-depart) + 2 * var(--mvt-decalage))}
+.diapo.entree .corps>:nth-child(4){animation-delay:calc(var(--mvt-decalage-depart) + 3 * var(--mvt-decalage))}
+.diapo.entree .puce{animation-name:ctaIn;animation-duration:var(--mvt-cta)}
+.diapo.entree.f-transition .numero{animation-name:popIn}
+.diapo.entree.f-transition .sommaire li{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:calc(var(--mvt-decalage-depart) + 3 * var(--mvt-decalage))}
+.diapo.entree.f-transition .sommaire li:nth-child(n+2){animation-delay:var(--mvt-decalage-max)}
+.f-transition .filet{height:6px;width:240px;background:var(--color-button)}
+.diapo.entree .filet{animation:hairlineGrow var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--mvt-decalage-depart) + 2 * var(--mvt-decalage))}
+.diapo.entree.f-transition .sommaire{animation:none}
+.diapo.entree.apres-volet .entete,.diapo.entree.apres-volet .corps>:nth-child(n){animation-delay:calc(var(--mvt-volet) / 2)}
+li.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both}
+.zone.apparait{animation:popIn var(--mvt-entree) var(--courbe-ressort) both}
+.volet{position:absolute;inset:0;z-index:5;background:var(--color-nav-bg);color:var(--text-on-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:0 160px;animation:voletOut var(--mvt-volet) var(--courbe-volet) forwards}
+.volet .surtitre{font-size:26px;font-weight:var(--fw-bold);letter-spacing:3px;text-transform:uppercase;opacity:.85;animation:voletLabel var(--mvt-entree) ease forwards}
+.volet .titre{font-size:64px;font-weight:var(--fw-bold);line-height:1.1;max-width:24ch;animation:voletLabel var(--mvt-entree) ease forwards}
 #surcouche{position:fixed;inset:0;pointer-events:none}
 .minuteur{position:absolute;top:24px;right:24px;padding:10px 22px;border-radius:var(--radius-pill);background:var(--color-background);color:var(--text-strong);font:var(--fw-bold) 28px var(--font-base);box-shadow:var(--shadow-raised);font-variant-numeric:tabular-nums}
 .minuteur.bientot{background:var(--color-warning-bg);color:var(--color-warning)}
