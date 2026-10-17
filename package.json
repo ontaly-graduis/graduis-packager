@@ -6,15 +6,18 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "packager": "tsx src/cli/packager.ts"
+    "packager": "tsx src/cli/packager.ts",
+    "test:navigateur": "playwright test"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.8",
+    "esbuild": "^0.24.0",
     "fflate": "^0.8.2",
     "image-size": "^2.0.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.48.0",
     "@types/node": "^22.9.0",
     "pptxgenjs": "^4.0.1",
     "tsx": "^4.19.2",
