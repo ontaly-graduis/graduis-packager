@@ -5,7 +5,7 @@ import { POUCE, aCadreTexte, dedans, estCapture, estPastille, estZone, texteDe }
 import { SCHEMA_SEANCE, SeanceSpec, type Bloc, type Pas, type Sequence, type Visuel } from "../pivot/seance-spec";
 import { dessinDe } from "./dessin";
 import { roleDe } from "./roles";
-import { textesDeStructure } from "../pivot/textes";
+import { inventaireDeSchema, textesDeStructure } from "../pivot/textes";
 import { composerCas, composerTableau, harmoniser } from "./gabarits";
 import { structurer } from "./structure";
 import { estDeService, qualifier as qualifierDiapo, type Qualification } from "./figures";
@@ -200,6 +200,10 @@ function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): { bloc: Bloc
   // Un tableau s'harmonise sur sa légende ; ce qui change est tracé au rapport.
   const lue = dessin ? composerCas(dessin) ?? composerTableau(dessin) : null;
   const { composition, harmonisations } = lue ? harmoniser(lue) : { composition: null, harmonisations: [] };
+  // Un schéma : son inventaire se dérive de ce qui le montre (le même calcul que la lecture, PKG-C3) ; une image qu'il
+  // dessine n'est pas un visuel de plus.
+  const inventaire = q.figure === "schema" && dessin ? inventaireDeSchema(dessin, composition ?? undefined) : null;
+  const dessinees = new Set(dessin?.elements.flatMap((e) => (e.type === "image" ? [e.media] : [])) ?? []);
   const bloc: Bloc = {
     id: `b${trois(d.n)}`,
     figure: q.figure,
@@ -207,9 +211,9 @@ function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): { bloc: Bloc
     ...(d.masquee ? { masquee: true as const } : {}),
     titre: titre ? texteDe(titre as Forme) : null,
     // Un texte organisé : son inventaire se dérive de sa structure (le même calcul que la lecture du PPT de validation).
-    textes: structure ? textesDeStructure(structure) : textes,
-    visuels,
-    tableaux,
+    textes: structure ? textesDeStructure(structure) : inventaire ? inventaire.textes : textes,
+    visuels: inventaire ? visuels.filter((v) => v.role || !dessinees.has(v.media)) : visuels,
+    tableaux: inventaire ? inventaire.tableaux : tableaux,
     pas,
     ...(dessin ? { dessin } : {}),
     ...(structure ? { structure } : {}),

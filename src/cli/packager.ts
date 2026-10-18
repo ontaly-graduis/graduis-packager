@@ -56,7 +56,9 @@ function emettreCommande(deck: string, sortie: string | undefined, dossierTheme:
   console.log([
     `# PPT de validation — ${spec.source.nom}`,
     `${dossier}/validation.pptx · ${(octets.length / 1e6).toFixed(1)} Mo · empreinte ${sha256(octets)}`,
-    `${blocs.length} diapositives · ${spec.sequences.length} séquences · ${blocs.reduce((n, b) => n + b.pas.length, 0)} pas`,
+    `${blocs.length} blocs · ${spec.sequences.length} séquences · ${blocs.reduce((n, b) => n + b.pas.length, 0)} pas`
+      + ` · ${blocs.filter((b) => b.figure === "schema" && (b.dessin || b.composition)).length} schémas en formes natives`
+      + ` (${blocs.filter((b) => b.figure === "schema" && b.composition && b.dessin).length} recomposés, leur dessin d'origine en annexe masquée)`,
     "à relire et corriger dans PowerPoint, puis : packager lire validation.pptx",
   ].join("\n"));
 }

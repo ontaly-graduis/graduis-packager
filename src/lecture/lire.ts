@@ -7,8 +7,14 @@ import { sha256 } from "../lib/json";
 import { formesDeDiapositive, type Forme } from "../ooxml/formes";
 import { Paquet } from "../ooxml/paquet";
 import { SCHEMA_SEANCE, SeanceSpec, type Bloc, type Pas, type Sequence, type Visuel } from "../pivot/seance-spec";
-import { ESPACES, ETIQUETTES, NOMS, PROPRIETES, ROLES_DE_COULEUR, ancrageDeZone, couleurDeRole, figureDeDisposition, roleDeVisuel } from "../emission/grammaire";
+import { ESPACES, ETIQUETTES, NOMS, PROPRIETES, ROLES_DE_COULEUR, ancrageDeZone, couleurDeRole, figureDeDisposition, partitionDeNom, roleDeVisuel } from "../emission/grammaire";
 import { lireCouleur, paletteDuMasque } from "../ooxml/couleurs";
+import { NS, chemin, elementsEnfants } from "../ooxml/paquet";
+import { stylesDuMasque } from "../ooxml/styles";
+import { inventaireDeSchema } from "../pivot/textes";
+import type { Composition, Dessin } from "../pivot/seance-spec";
+import { lireElement, lireElements, lireGrille, lireGroupe, repereDeGroupe, versGroupe, type LecteurDeDessin } from "./dessin";
+import { lireComposition } from "./composition";
 import { roleDe } from "../qualification/roles";
 import { structurer } from "../qualification/structure";
 import { qualifierReleve } from "../qualification/qualifier";
@@ -117,12 +123,89 @@ function rolesDeCouleur(p: Paquet, diapo: string): (rgb: string) => Role {
   return f;
 }
 
+/** Ce qu'il faut pour relire les formes d'une diapositive : thème, couleurs proches, médias. */
+function lecteurDe(p: Paquet, diapo: string): LecteurDeDessin {
+  const masque = p.masqueDe(p.disposition(diapo)?.chemin ?? "");
+  const st = stylesDuMasque(p, masque);
+  const proche = rolesDeCouleur(p, diapo);
+  const rels = new Map(p.relations(diapo).filter((r) => r.type === "image").map((r) => [r.id, r.cible]));
+  const hashs = new Map<string, string | undefined>();
+  return {
+    roleProche: (el) => { const c = lireCouleur(el, st.palette); return c ? proche(c.rgb) : undefined; },
+    media: (rId) => {
+      if (!hashs.has(rId)) { const c = rels.get(rId); const o = c ? p.octets(c) : undefined; hashs.set(rId, o ? sha256(o) : undefined); }
+      return hashs.get(rId);
+    },
+    polices: st.polices,
+    largeurs: st.largeurs,
+  };
+}
+
+const nomDeForme = (el: Element) => chemin(el, [`p:${({ sp: "nvSpPr", pic: "nvPicPr", cxnSp: "nvCxnSpPr", grpSp: "nvGrpSpPr", graphicFrame: "nvGraphicFramePr" } as Record<string, string>)[el.localName ?? ""] ?? "nvSpPr"}`, "p:cNvPr"]);
+const estEspaceReserve = (el: Element) => el.getElementsByTagNameNS(NS.p, "ph").length > 0;
+
+interface SchemaLu {
+  readonly dessin?: Dessin;
+  readonly composition?: Composition;
+  /** Les identifiants des formes lues ici (groupes de la grammaire, formes ajoutées par ONET) : le reste de la lecture les ignore. */
+  readonly prises: ReadonlySet<number>;
+}
+
+/**
+ * Le schéma d'une diapositive (PKG-C3) : le dessin du groupe « G·schéma » et ses tableaux, ou la composition posée en
+ * formes. Ce qu'ONET ajoute sur un dessin y entre (dans son repère) ; sur une composition, il est signalé et laissé.
+ */
+function schemaDe(arbre: Element, l: LecteurDeDessin, ecart: (m: string) => void): SchemaLu | null {
+  const enfants = elementsEnfants(arbre).filter((e) => e.namespaceURI === NS.p && ["sp", "pic", "cxnSp", "grpSp", "graphicFrame"].includes(e.localName ?? ""));
+  const nom = (e: Element) => nomDeForme(e)?.getAttribute("name") ?? "";
+  const id = (e: Element) => Number(nomDeForme(e)?.getAttribute("id") || 0);
+  const grilles = enfants.filter((e) => e.localName === "graphicFrame" && nom(e).startsWith(NOMS.grille));
+  const prises = new Set<number>();
+  const libres = enfants.filter((e) => !nom(e).startsWith("G·") && !estEspaceReserve(e));
+  const groupe = enfants.find((e) => e.localName === "grpSp" && nom(e).startsWith(NOMS.schema));
+  if (groupe) {
+    const des = grilles.filter((t) => nom(t).startsWith(`${NOMS.grille} · schéma ·`));
+    for (const e of [groupe, ...des]) prises.add(id(e));
+    const { cadre, elements } = lireGroupe(groupe, des, l);
+    const g = repereDeGroupe(groupe);
+    if (g && libres.length) {
+      const inverse = versGroupe(g);
+      const rang = enfants.indexOf(groupe);
+      const avant: typeof elements = [];
+      for (const e of libres) {
+        const gg = e.localName === "grpSp" ? repereDeGroupe(e) : undefined;
+        const lus = gg ? lireElements(e, l, (b) => inverse.repere(gg.repere(b)))
+          : [e.localName === "graphicFrame" ? lireGrille(e, l, inverse.repere, inverse.s) : lireElement(e, l, inverse.repere)].filter((x) => x !== null);
+        if (!lus.length) continue;
+        prises.add(id(e));
+        (enfants.indexOf(e) < rang ? avant : elements).push(...lus);
+      }
+      elements.unshift(...avant);
+      ecart(`${libres.length} forme(s) ajoutée(s) sur le schéma : reprise(s) dans son dessin (${libres.map((e) => `« ${nom(e)} »`).join(", ")})`);
+    }
+    const partition = partitionDeNom(nom(groupe));
+    return { dessin: { cadre, elements, ...(partition ? { partition } : {}) }, prises };
+  }
+  const lue = lireComposition(arbre, grilles, l);
+  if (!lue) return null;
+  const DE_COMPOSITION = [NOMS.cas, NOMS.etape, NOMS.phase, NOMS.couloir, NOMS.signal, NOMS.legende, NOMS.decor, NOMS.signe, NOMS.illustration, NOMS.grille];
+  for (const e of enfants) if (DE_COMPOSITION.some((p) => nom(e).startsWith(p))) prises.add(id(e));
+  for (const m of lue.ecarts) ecart(m);
+  if (libres.length) {
+    for (const e of libres) prises.add(id(e));
+    ecart(`${libres.length} forme(s) hors grammaire sur une composition, laissée(s) de côté : une composition se modifie dans ses formes (${libres.map((e) => `« ${nom(e)} »`).join(", ")})`);
+  }
+  return { composition: lue.composition, prises };
+}
+
 /** PPT de validation → pivot, et les écarts à la grammaire. */
 export function lire(octets: Uint8Array): { spec: SeanceSpec; ecarts: Ecart[] } {
   const paquet = new Paquet(octets);
   const ecarts: Ecart[] = [];
   const props = proprietes(paquet);
   const lus: { bloc: Omit<Bloc, "id"> & { id?: string }; n: number }[] = [];
+  // Les diapositives annexes : le dessin d'origine d'un schéma recomposé, rattaché à son bloc (elles ne sont pas des blocs).
+  const annexes: { id: string; n: number; dessin: Dessin | undefined }[] = [];
   const { largeur } = paquet.taille();
   // L'ingestion initiale, appliquée au PPT lui-même : pour une diapositive venue d'ailleurs (sa disposition n'est pas de la
   // grammaire), on la lit comme on a lu le deck hérité. Calculée une fois, au besoin.
@@ -145,7 +228,17 @@ export function lire(octets: Uint8Array): { spec: SeanceSpec; ecarts: Ecart[] } 
       lus.push({ n: d.n, bloc: { ...(id ? { id } : {}), ...contenu, source: { diapo: Number.isFinite(source) ? source : d.n } } });
       continue;
     }
-    const formes = formesDeDiapositive(paquet, d.chemin);
+    const arbre = chemin(paquet.racine(d.chemin), ["p:cSld", "p:spTree"]);
+    const lecteur = lecteurDe(paquet, d.chemin);
+    const annexe = tags.get(ETIQUETTES.annexe);
+    if (annexe) {
+      const s = arbre ? schemaDe(arbre, lecteur, ecart) : null;
+      annexes.push({ id: annexe, n: d.n, dessin: s?.dessin });
+      continue;
+    }
+    const schema = figure === "schema" && arbre ? schemaDe(arbre, lecteur, ecart) : null;
+    // Les formes de la grammaire du schéma (et celles qu'il a reprises) ne sont ni des visuels, ni des textes libres.
+    const formes = formesDeDiapositive(paquet, d.chemin).filter((f) => !schema || (!schema.prises.has(f.id) && !(f.groupe !== undefined && schema.prises.has(f.groupe))));
     const hashDe = (f: Forme) => { const o = f.media ? paquet.octets(f.media) : undefined; return o ? sha256(o) : undefined; };
     const titre = formes.find((f) => f.espace?.type === "title" || f.espace?.type === "ctrTitle");
     const contenu = espace(formes, ESPACES.contenu);
@@ -203,12 +296,24 @@ export function lire(octets: Uint8Array): { spec: SeanceSpec; ecarts: Ecart[] } 
         visuels,
         tableaux,
         pas: pasDe(formes, hashDe, ecart),
-        ...(stash.dessin ? { dessin: stash.dessin } : {}),
+        // Un PPT émis avant PKG-C3 portait dessin et composition en étiquette : repris s'il n'en dessine pas.
+        ...(schema?.dessin ?? stash.dessin ? { dessin: (schema?.dessin ?? stash.dessin)! } : {}),
         ...(structure ? { structure } : {}),
-        ...(stash.composition ? { composition: stash.composition } : {}),
+        ...(schema?.composition ?? (schema ? undefined : stash.composition) ? { composition: (schema?.composition ?? stash.composition)! } : {}),
         notes: paquet.notes(d.chemin),
       },
     });
+  }
+  // Les annexes rejoignent leur bloc ; l'inventaire d'un schéma se dérive alors de ce qui le montre (PKG-C3).
+  for (const a of annexes) {
+    const lu = lus.find((x) => x.bloc.id === a.id && x.bloc.composition && !x.bloc.dessin);
+    if (lu && a.dessin) lu.bloc = { ...lu.bloc, dessin: a.dessin };
+    else ecarts.push({ diapo: a.n, message: `diapositive annexe sans schéma recomposé à qui la rattacher (« ${a.id} ») : ignorée` });
+  }
+  for (const { bloc, n } of lus) {
+    if (bloc.figure !== "schema" || (!bloc.dessin && !bloc.composition)) continue;
+    if (bloc.composition && !bloc.dessin) ecarts.push({ diapo: n, message: "schéma recomposé sans sa diapositive annexe : le dessin d'origine manque" });
+    Object.assign(bloc, inventaireDeSchema(bloc.dessin, bloc.composition));
   }
   // Une diapositive dupliquée duplique ses étiquettes : la seconde reçoit un identifiant neuf, au-delà du plus grand.
   const vus = new Set<string>();

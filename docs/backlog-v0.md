@@ -112,7 +112,7 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 
 ## PKG-C · Le PPT de validation et l'aller-retour
 
-Découpé en trois sessions : C1, la grammaire des figures et l'aller-retour (faite) ; C2, la structure des textes en
+Découpé en trois sessions, faites : C1, la grammaire des figures et l'aller-retour ; C2, la structure des textes en
 grammaire ; C3, les schémas, leur partition et leurs recompositions en grammaire.
 
 ### PKG-C1 · La grammaire des figures et l'aller-retour — Sortie atteinte le 17/10
@@ -142,15 +142,15 @@ L'**initiale** lit le deck hérité et produit le PPT de validation ; la **compl
 - Une zone de texte ajoutée à un texte organisé devient une rangée ; ailleurs, un texte de plus ; une image ajoutée, un visuel ; une diapositive d'un autre deck est lue par l'ingestion initiale ; chaque fois un écart est dit.
 - Non couvert, nommé : le dessin des schémas, leur partition et leurs recompositions voyagent encore en étiquette (→ C3).
 
-### PKG-C3 · Les schémas, leur partition et leurs recompositions en grammaire
+### PKG-C3 · Les schémas, leur partition et leurs recompositions en grammaire — Sortie atteinte le 18/10
 
-**Livrer** : le dessin réémis en formes natives (géométries, chemins libres, rôles en couleurs du thème, Montserrat aux corps compensés) ; la partition et les recompositions (`cas`, `tableau`, harmonisations) montrées et corrigibles ; `lire` les relit (I-PKG-3) ; l'étiquette provisoire disparaît.
+**Livré** : le dessin réémis en formes natives (`src/emission/dessin.ts`) et relu au centième de point (`src/lecture/dessin.ts`) ; la composition `cas` ou `tableau` en formes éditables (`src/emission/composition.ts`, `src/lecture/composition.ts`) ; le dessin d'origine d'un schéma recomposé sur une diapositive annexe masquée, étiquetée « Pour contrôle uniquement » (tranché par David le 18/10) ; le dévoilement dans les noms des formes ; l'inventaire d'un schéma dérivé de ce qui le montre ; l'étiquette `GRADUIS.LECTURES` retirée.
 
-**À trancher au démarrage**
-- Ce que montre une diapositive recomposée : la composition (ce qui sera livré) en formes natives, le dessin d'origine en repli (masqué, ou sur une diapositive annexe) ?
-- ~~La grammaire du dévoilement~~ : tranché le 18/10 — sans animations ; le pas d'une forme dans son nom.
-- ~~Le repli de police~~ : tranché le 18/10 — le PPT de validation est un support de relecture, PowerPoint remplace Montserrat sans dommage.
-- ~~Les animations de dévoilement~~ : tranché le 18/10 — on s'en passe.
+**Sortie** (77 témoins Vitest — 62 sur le dépôt, 15 sur le corpus — et 11 Playwright, verts ; fumée : 164 blocs, 0 erreur, 0 requête)
+- `lire(émettre(pivot₀)) ≡ pivot₀` sur les 166 blocs, sans aucune étiquette de lectures : 7 schémas en formes natives, dont 4 recomposés (2 `cas`, 2 `tableau`) et leurs 4 annexes ; même hash de pivot (`sha256:6ec5d3…`) ; la salle construite depuis le PPT est identique à l'octet à celle construite depuis le deck. Le PPT (170 diapositives) valide contre les schémas (887 parties, 0 erreur) et se rend dans LibreOffice ; PowerPoint l'ouvre sans erreur (par automatisation).
+- Une composition retouchée se relit comme telle : une étape réécrite, une étape déplacée d'une case avec son signal, une étape recolorée d'une couleur hors grammaire (au rôle le plus proche) ; rien d'autre ne change.
+- Une forme ajoutée sur un dessin y entre, dans son repère, et l'écart est dit ; une annexe supprimée laisse la composition et l'écart est dit.
+- Non couvert, nommé : le rendu dans PowerPoint lui-même, à regarder sur un poste ; les numéros des bandeaux et des étapes vivent dans les noms des formes, pas à l'écran (l'ordre se lit de haut en bas) ; les arcs de chemins libres (aucun au corpus) passent par la conversion SVG ↔ `arcTo` sans témoin corpus ; l'annexe se relit (le dessin reste la source et le repli du pivot), mais n'est pas faite pour être retouchée.
 
 ---
 

@@ -173,7 +173,7 @@ pivot₀ ── émettre ──► PPT d'auteur (gabarit à grammaire, thème ON
 | `objectifs` | E | titre « Objectifs… » | liste dévoilée | encadré | idem |
 | `contenu` | E | texte, avec ou sans visuel | organisé (fiches, sections, listes, définitions), dévoilé par niveau 1 | texte intégral, organisé | idem |
 | `processus` | E | tableau d'étapes (ex. PTP-040-010) | tableau, ligne active | tableau | idem |
-| `schema` | E | groupe dense de formes (fiches personae, architecture S2P) | recomposé par un gabarit du wizard quand il en relève (PKG-B4), sinon redessiné en SVG à la manière du thème ; dévoilé pas à pas (colonnes, étapes numérotées), chaque pas se trace | le même SVG, état final | formes natives réémises du dessin (PKG-C) |
+| `schema` | E | groupe dense de formes (fiches personae, architecture S2P) | recomposé par un gabarit du wizard quand il en relève (PKG-B4), sinon redessiné en SVG à la manière du thème ; dévoilé pas à pas (colonnes, étapes numérotées), chaque pas se trace | le même SVG, état final | formes natives réémises du dessin, ou sa composition en formes éditables et le dessin d'origine en annexe « pour contrôle » (PKG-C3) |
 | `demonstration` | E | écran « Démonstration » | écran signal : ce qui va être montré dans Oracle | renvoi au pas-à-pas | idem |
 | `pas-a-pas` | E (aide en R) | capture + pastilles (61) | **dévoilement pastille par pastille**, zoom sur la zone | capture, toutes pastilles, consignes numérotées | capture + pastilles, consignes en liste |
 | `capture` | E | capture sans pastille (39) | image, zoom | image | idem ; diagnostic « capture muette » (H5) |
@@ -187,16 +187,18 @@ pivot₀ ── émettre ──► PPT d'auteur (gabarit à grammaire, thème ON
 
 ### 4.3 Le PPT d'auteur (« PPT de validation ») : la grammaire
 
+*PKG-C3 (18/10) : un schéma en formes natives — le dessin en groupe « G·schéma » (repère enfant au point près, dévoilement dans les noms : « pas n · ordre k · pastille »), ou, recomposé, sa composition en formes éditables (« G·cas n », « G·étape n », « G·phase n », « G·couloir n », « G·signal », « G·légende n ») et le dessin d'origine sur une diapositive annexe masquée, « Pour contrôle uniquement » ; l'inventaire d'un schéma se dérive de ce qui le montre. Plus aucune lecture en étiquette JSON.*
+
 *PKG-C2 (18/10) : la structure d'un texte en cadres « G·colonne r.c » et en paragraphes (• liste, numéros, ▸ définition, – détail, intertitre en gras 18 pt), `textes` dérivé de la structure ; l'ingestion complémentaire lit ce qu'ONET ajoute hors grammaire par l'heuristique de l'ingestion initiale et le signale. Pas d'animations (18/10).* 
 
-*Mise en œuvre en PKG-C1 (17/10) : `src/emission/grammaire.ts` la tient en un seul endroit ; `emettre` l'écrit, `lire` la lit ; `lire(émettre(pivot₀)) ≡ pivot₀` sur les 166 diapositives du deck acheteur. Les identifiants sont des étiquettes OOXML (`GRADUIS.BLOC`, `GRADUIS.SOURCE`), le deck hérité une propriété du document ; la structure des textes (C2), le dessin, la partition et les recompositions (C3) voyagent provisoirement en étiquette JSON.*
+*Mise en œuvre en PKG-C1 (17/10) : `src/emission/grammaire.ts` la tient en un seul endroit ; `emettre` l'écrit, `lire` la lit ; `lire(émettre(pivot₀)) ≡ pivot₀` sur les 166 diapositives du deck acheteur. Les identifiants sont des étiquettes OOXML (`GRADUIS.BLOC`, `GRADUIS.SOURCE`), le deck hérité une propriété du document ; la structure des textes (C2), le dessin, la partition et les recompositions (C3) voyageaient provisoirement en étiquette JSON, sorties depuis en grammaire.*
 
 - **Un gabarit d'auteur généré du thème ONET**, sans reprendre le masque des decks hérités : une disposition par figure, nommée par elle (`G · Pas-à-pas`, `G · Mise en pratique`…). La disposition est le contrat : `lire` ne devine rien.
 - **Les pastilles et les zones** : une forme de pastille unique au gabarit, numérotée par son texte ; une zone est un cadre sans remplissage, au style « zone ». `lire` apparie pastille n, zone voisine et ligne n des consignes.
 - **Les consignes** : une liste numérotée dans l'espace réservé « Consignes ». L'appariement se fait par rang, jamais par proximité.
 - **Les notes structurées** : `Durée :`, `Consigne :`, `Vigilance :`, `Corrigé :`. Le reste est le texte libre de l'animateur.
 - **Les identifiants** : chaque diapositive porte son id de bloc et sa source dans une étiquette OOXML invisible. Dupliquer une diapositive duplique l'étiquette : `lire` le détecte et renumérote.
-- **Le thème** : couleurs et polices du gabarit dérivées du thème ONET (P6). Aucune couleur en dur dans les diapositives émises. Montserrat n'est pas installée sur tous les postes : le repli de police du PPT se tranche en PKG-C.
+- **Le thème** : couleurs et polices du gabarit dérivées du thème ONET (P6). Aucune couleur en dur dans les diapositives émises. Montserrat n'est pas installée sur tous les postes : PowerPoint la remplace sans dommage, le PPT de validation étant un support de relecture (tranché le 18/10). Le texte d'un schéma garde sa police d'origine.
 - **Les propositions** (P8) : une réécriture non acceptée vit dans les notes, marquée ✦, à côté de l'original qui reste sur la diapositive. L'accepter, c'est la porter sur la diapositive dans PowerPoint. `lire` lit toujours la diapositive, donc ce qui est accepté ; le rapport liste les propositions ouvertes.
 
 ---
@@ -255,7 +257,7 @@ Les seuils (N, 9, celui de H9) se valident une fois avec ONET, sur le démonstra
 
 ## 8. Arbitrages ouverts
 
-Rangés au backlog, sous la session qui doit les trancher (`docs/backlog-v0.md`, « À trancher au démarrage »). Tranchés le 17/10 (`decisions.md`) : P2, le thème, la pile (TypeScript), le lien au wizard (copie avec provenance), le nom du pivot (`seance-spec`), le dépôt (`ontaly-graduis`), l'ancrage des pas incomplets (zones proposées par ordre de lecture). Reste, entre autres, **le repli de police du PPT** : Montserrat manque sur une partie des postes (PKG-C).
+Rangés au backlog, sous la session qui doit les trancher (`docs/backlog-v0.md`, « À trancher au démarrage »). Tranchés le 17/10 (`decisions.md`) : P2, le thème, la pile (TypeScript), le lien au wizard (copie avec provenance), le nom du pivot (`seance-spec`), le dépôt (`ontaly-graduis`), l'ancrage des pas incomplets (zones proposées par ordre de lecture). Tranchés le 18/10 : les deux ingestions, le repli de police du PPT (PowerPoint remplace Montserrat sans dommage), les animations (on s'en passe), ce que montre un schéma recomposé (sa composition, le dessin d'origine en annexe « pour contrôle uniquement »).
 
 ---
 
