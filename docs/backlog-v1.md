@@ -45,7 +45,9 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 **À trancher au démarrage**
 - La provenance des decks (Ontaly, clients passés avec leur accord, supports publics) et l'accord écrit qu'il faut ; leur lieu (hors dépôt, I-PKG-9).
 - Les exports Google Slides, Keynote et Canva à inclure, et sur quels decks.
-- La vérité de terrain : qui dit la figure juste d'une diapositive, pour mesurer la part décidée par les seules règles génériques.
+- La vérité de terrain : qui dit la figure juste d'une diapositive, pour mesurer la part décidée par les seules règles génériques ; et ce qu'est une diapositive « décidée » (le repli `contenu` — « aucune règle particulière » — n'en est pas une ; la couverture par sa seule position ?).
+- **Le profil et le procédé de mesure** (révélé par GEN-1) : qualifier un deck exige un profil — ses dispositions, mais aussi la projection des couleurs, sans laquelle un schéma ne se dessine pas — et diagnostiquer, une charte et un thème. Un profil neutre (aucune disposition ; quels seuils de projection : ceux d'ONET repris comme défaut Graduis, ou réglés sur le corpus ?), une charte Graduis par défaut (§ 4.8), et pour les pages de travail un thème — le thème neutre Graduis n'existe pas encore (§ 4.7, THM-1).
+- **Le relevé étendu sans casser le rejeu ONET** : un champ de plus au relevé (SmartArt, graphiques, ordre des animations) change l'empreinte de `releve.json`, que porte la référence v0.1. `graduis/releve@1` et une montée de version (rejeu, diff, décision), ou les lectures étendues à côté du relevé, dans un fichier distinct ?
 - Les figures candidates au cercle de référence (§ 4.5) que le tableau doit compter.
 
 **Sortie**
