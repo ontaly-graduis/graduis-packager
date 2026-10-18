@@ -3,7 +3,8 @@ import PptxGenJS from "pptxgenjs";
 import { crc32, deflateSync } from "node:zlib";
 
 /** Un PNG valide de `l` × `h` pixels (blanc), pour que le relevé en lise les dimensions. */
-export function png(l: number, h: number): Buffer {
+/** Un PNG en niveaux de gris, uni (blanc par défaut). */
+export function png(l: number, h: number, gris = 0xff): Buffer {
   const morceau = (type: string, donnees: Buffer) => {
     const t = Buffer.from(type, "ascii");
     const lg = Buffer.alloc(4);
@@ -16,7 +17,7 @@ export function png(l: number, h: number): Buffer {
   ihdr.writeUInt32BE(l, 0);
   ihdr.writeUInt32BE(h, 4);
   ihdr.set([8, 0, 0, 0, 0], 8);
-  const lignes = Buffer.alloc((l + 1) * h, 0xff);
+  const lignes = Buffer.alloc((l + 1) * h, gris);
   for (let y = 0; y < h; y++) lignes[y * (l + 1)] = 0;
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),

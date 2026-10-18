@@ -2,7 +2,7 @@
 import type { Theme } from "../theme/theme";
 import { NIVEAUX, REGLES, type Constat, type Niveau, type Rapport } from "./regles";
 
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const LIBELLE_NIVEAU: Readonly<Record<Niveau, string>> = {
   bloquant: "Bloquant", avis: "Avis", "a-valider": "À valider", info: "Info",
@@ -15,7 +15,8 @@ const LIBELLE_FIGURE: Readonly<Record<string, string>> = {
   glossaire: "Glossaire", renvoi: "Renvoi",
 };
 
-const STYLE = `
+/** La feuille des pages de travail au thème ONET : le rapport, le diff d'une livraison, la fiche de revue. */
+export const STYLE_DOCUMENT = `
 *{box-sizing:border-box}
 body{margin:0;background:var(--color-surface);color:var(--text-body);font-family:var(--font-base);font-size:15px;line-height:1.55}
 .page{max-width:var(--canvas-max);margin:0 auto;padding:var(--space-6) var(--space-5) var(--space-7)}
@@ -83,7 +84,7 @@ export function rapportHtml(r: Rapport, theme: Theme): string {
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rapport — ${esc(r.source.nom)}</title>
 <style id="theme">${theme.jetons}\n${theme.polices}</style>
-<style>${STYLE}</style></head>
+<style>${STYLE_DOCUMENT}</style></head>
 <body><div class="page">
 <header><img src="${theme.logo}" alt="Onet"><div><h1>Rapport d'anomalies et d'équilibrage</h1>
 <p>${esc(r.source.nom)} · source ${esc(r.source.empreinte.slice(7, 19))} · pivot ${esc(r.pivot.slice(7, 19))}</p></div></header>

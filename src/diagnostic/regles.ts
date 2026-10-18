@@ -261,8 +261,10 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
     sequences: lignes,
     constats,
     qualification: blocs.map((b) => {
-      const q = qualifications.get(b.source.diapo)!;
-      return { diapo: b.source.diapo, figure: b.figure, temps: TEMPS_DE_FIGURE[b.figure], signal: q.signal, titre: b.titre };
+      // Un pivot lu dans le PPT de validation : la figure est celle de la disposition, que la revue a pu changer.
+      const q = qualifications.get(b.source.diapo);
+      const signal = q && q.figure === b.figure ? q.signal : "disposition du PPT de validation (lecture grammaticale)";
+      return { diapo: b.source.diapo, figure: b.figure, temps: TEMPS_DE_FIGURE[b.figure], signal, titre: b.titre };
     }),
   };
 }

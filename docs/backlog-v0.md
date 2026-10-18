@@ -167,18 +167,19 @@ L'**initiale** lit le deck hérité et produit le PPT de validation ; la **compl
 
 ---
 
-## PKG-E · Le démonstrateur
+## PKG-E · Le démonstrateur — outillage livré le 18/10, Sortie à atteindre avec David
 
 **Livrer** : la séquence 30–58 au niveau cible dans les trois sorties, propositions tranchées ; le rapport sur les 166 diapositives ; le scénario de modification (une capture remplacée dans le PPT d'auteur → chaîne rejouée → diff et trois sorties à jour) ; une répétition à blanc devant Karim et Mehdi.
 
-**À trancher au démarrage**
-- La date de la démonstration chez ONET : elle cadre tout le calendrier.
-- Le niveau d'harmonisation montré : la séquence seule, ou une seconde séquence brute pour le contraste avant/après ?
-- Qui joue l'animateur pendant la démonstration.
+**Tranché le 18/10** : la date chez ONET n'est pas fixée (tout jouable dès la fin du lot) ; la même séquence avant et après ; David anime ; David tranche la revue de la séquence 30, chronométré.
+
+**Livré** (`src/livraison/`, `src/diagnostic/revue.ts`, `docs/demonstration.md`) : `packager livrer` (trois sorties, rapport, manifeste ; refus d'un deck hérité et d'un bloquant), `packager diff` (pivot champ par champ, sorties, image avant/après), `packager revue` (fiche chronométrée et extrapolation au deck), `packager planche` (avant/après) ; le déroulé de la démonstration. 91 témoins Vitest (75 dépôt, 16 corpus) et 17 Playwright, verts.
+- Joué sur le corpus : `livraison-s030/` — salle, `participant-s030.pdf` (24 pages, recette 281/281), `animation-s030.pptx`, rapport, manifeste, planche des 29 diapositives — en 6 s (la planche, 36 s) ; le scénario (`scenario/`) : la capture de la diapositive 40 remplacée, la chaîne rejouée, le diff : un bloc (b036 — sa capture et ses 5 pas), les quatre sorties à jour, la couche texte du PDF inchangée.
+- La fiche de revue de la séquence 30 compte 17 points : la relecture des 29 diapositives, 4 zones proposées et 3 pas incomplets, 10 écrans denses, la séquence hors norme, le dévoilement du logigramme.
 
 **Sortie**
-- La démonstration jouée à blanc.
-- Le temps humain résiduel mesuré sur la séquence, extrapolé par deck pour le chiffrage (cible : au plus un jour par deck, toutes sorties et recette comprises).
+- La revue de la séquence 30 tranchée par David, chronométrée ; le temps humain résiduel extrapolé par deck pour le chiffrage (cible : au plus un jour par deck, toutes sorties et recette comprises) — à reporter dans `decisions.md`.
+- La démonstration jouée à blanc devant Karim et Mehdi (`docs/demonstration.md`), avec une vraie capture Oracle récente pour le scénario.
 
 ---
 
