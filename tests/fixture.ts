@@ -219,3 +219,34 @@ export async function deckDEcrans(): Promise<Uint8Array> {
   o.addText("Centraliser la création des fournisseurs.", { x: 0.4, y: 1.2, w: 8, h: 1.0, fontSize: 14 });
   return new Uint8Array((await pptx.write({ outputType: "nodebuffer" })) as Buffer);
 }
+
+/**
+ * Un texte organisé (PKG-C2) : des définitions en tête ; deux fiches côte à côte, chacune titrée, l'une avec une liste et
+ * le détail d'un élément, l'autre avec une liste numérotée et son illustration à sa gauche.
+ */
+export async function deckDeTextes(): Promise<Uint8Array> {
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_16x9";
+  pptx.defineSlideMaster({ title: "Titre seul", background: { color: "FFFFFF" }, objects: [] });
+  pptx.defineSlideMaster({ title: "Titre et contenu", background: { color: "FFFFFF" }, objects: [] });
+  pptx.addSlide({ masterName: "Titre seul" }).addText("Ouverture", { x: 1, y: 2, w: 8, h: 1 });
+  const s = pptx.addSlide({ masterName: "Titre et contenu" });
+  s.addText("Organisation de la formation", { x: 0.4, y: 0.2, w: 9, h: 0.6, fontSize: 24, bold: true });
+  s.addText([
+    { text: "Durée", options: { bold: true } }, { text: " : 2 jours", options: { breakLine: true } },
+    { text: "Lieu", options: { bold: true } }, { text: " : siège de Saint-Cloud" },
+  ], { x: 0.4, y: 1.0, w: 9, h: 0.8, fontSize: 14 });
+  s.addText([
+    { text: "Jour 1", options: { bold: true, fontSize: 18, breakLine: true } },
+    { text: "Accueil et tour de table", options: { bullet: true, breakLine: true } },
+    { text: "Prise en main d'Oracle Fusion", options: { bullet: true, breakLine: true } },
+    { text: "Navigation et favoris", options: { bullet: true, indentLevel: 1 } },
+  ], { x: 0.4, y: 2.0, w: 4.2, h: 2.6, fontSize: 14, valign: "top" });
+  s.addImage({ data: `data:image/png;base64,${png(80, 100).toString("base64")}`, x: 5.0, y: 2.1, w: 0.8, h: 1.0 });
+  s.addText([
+    { text: "Jour 2", options: { bold: true, fontSize: 18, breakLine: true } },
+    { text: "Créer la commande", options: { bullet: { type: "number" }, breakLine: true } },
+    { text: "La soumettre à l'**approbation**", options: { bullet: { type: "number" } } },
+  ], { x: 5.9, y: 2.0, w: 3.8, h: 2.6, fontSize: 14, valign: "top" });
+  return new Uint8Array((await pptx.write({ outputType: "nodebuffer" })) as Buffer);
+}

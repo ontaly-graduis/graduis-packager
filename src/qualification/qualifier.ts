@@ -5,6 +5,7 @@ import { POUCE, aCadreTexte, dedans, estCapture, estPastille, estZone, texteDe }
 import { SCHEMA_SEANCE, SeanceSpec, type Bloc, type Pas, type Sequence, type Visuel } from "../pivot/seance-spec";
 import { dessinDe } from "./dessin";
 import { roleDe } from "./roles";
+import { textesDeStructure } from "../pivot/textes";
 import { composerCas, composerTableau, harmoniser } from "./gabarits";
 import { structurer } from "./structure";
 import { estDeService, qualifier as qualifierDiapo, type Qualification } from "./figures";
@@ -205,7 +206,8 @@ function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): { bloc: Bloc
     source: { diapo: d.n },
     ...(d.masquee ? { masquee: true as const } : {}),
     titre: titre ? texteDe(titre as Forme) : null,
-    textes,
+    // Un texte organisé : son inventaire se dérive de sa structure (le même calcul que la lecture du PPT de validation).
+    textes: structure ? textesDeStructure(structure) : textes,
     visuels,
     tableaux,
     pas,

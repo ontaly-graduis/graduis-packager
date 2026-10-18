@@ -12,6 +12,7 @@ import {
 } from "./gabarit";
 import { EMU, ESPACES, ETIQUETTES, FIGURES_A_CAPTURE, LIBELLES_DE_ROLE, NOMS, PROPRIETES, SUFFIXES_DE_ZONE, couleurDeRole } from "./grammaire";
 import { ARBRE_VIDE, ENTETE, XMLNS, paragraphe, relations, x, xfrm } from "./xml";
+import { cadreXml, disposerStructure } from "./structure";
 
 export interface MediaDEmission {
   readonly ext: string;
@@ -126,15 +127,30 @@ function diapositive(b: Bloc, n: number, o: OptionsDEmission, medias: Medias): {
   d.rel("slideLayout", `../slideLayouts/slideLayout${DISPOSITIONS.indexOf(b.figure) + 1}.xml`);
   d.rel("notesSlide", `../notesSlides/notesSlide${n}.xml`);
   const rTags = d.rel("tags", `../tags/tag${n}.xml`);
-  const r = disposer(b);
+  const r0 = disposer(b);
+  // Un texte organisé : ses colonnes en cadres, leurs illustrations à leur gauche ; les autres visuels à droite.
+  const illustrations = new Set(b.structure?.rangees.flatMap((x) => x.colonnes.flatMap((c) => (c.visuel ? [c.visuel] : []))) ?? []);
+  const horsColonnes = b.visuels.filter((v) => !illustrations.has(v.media));
+  const r = b.structure && !horsColonnes.length && !FIGURES_A_CAPTURE.has(b.figure) && !b.pas.length ? { ...r0, contenu: REGIONS.texte.contenu } : r0;
+  const cadresDeStructure = b.structure
+    ? disposerStructure(b.structure, r.contenu, (h) => { const m = o.media(h); const v = b.visuels.find((x) => x.media === h); return rapportDe(m?.px ?? null, v?.rognage); })
+    : [];
+  // Les places d'illustration, par média, dans l'ordre des colonnes (une même icône peut illustrer deux fiches).
+  const placesDIllustration = new Map<string, Region[]>();
+  for (const c of cadresDeStructure) if (c.illustration) placesDIllustration.set(c.illustration.media, [...(placesDIllustration.get(c.illustration.media) ?? []), c.illustration.boite]);
+  const placeDIllustration = { has: (h: string) => placesDIllustration.has(h), prendre: (h: string) => placesDIllustration.get(h)?.shift() };
   if (b.titre !== null) espaceTexte(d, "Titre", '<p:ph type="title"/>', TITRE, b.titre.split("\n").map((l) => paragraphe(l)).join(""), '<a:bodyPr anchor="b"><a:normAutofit/></a:bodyPr>');
 
   // Les visuels, rognés, dans leur région ; on garde le cadre de chaque capture pour y poser les zones.
   const vus = b.visuels.map((v) => ({ v, m: o.media(v.media) }));
-  const boites = cadres(r.visuels, vus.map(({ v, m }) => rapportDe(m?.px ?? null, v.rognage)));
+  const reserve = new Map([...placesDIllustration].map(([h, l]) => [h, l.length]));
+  const estIllustration = vus.map(({ v }) => { const n = reserve.get(v.media) ?? 0; if (n > 0) { reserve.set(v.media, n - 1); return true; } return false; });
+  const enRegion = vus.filter((_, i) => !estIllustration[i]);
+  const boitesEnRegion = cadres(r.visuels, enRegion.map(({ v, m }) => rapportDe(m?.px ?? null, v.rognage)));
   const cadreDe = new Map<string, Region>();
+  let k = 0;
   vus.forEach(({ v, m }, i) => {
-    const boite = boites[i]!;
+    const boite = (estIllustration[i] ? placeDIllustration.prendre(v.media) : undefined) ?? boitesEnRegion[k++]!;
     if (!cadreDe.has(v.media)) cadreDe.set(v.media, boite);
     if (!m) throw new Error(`média absent : ${v.media}`);
     if (!medias.parties.has(v.media)) {
@@ -158,12 +174,13 @@ function diapositive(b: Bloc, n: number, o: OptionsDEmission, medias: Medias): {
 
   // Les textes : un paragraphe par texte ; les tableaux sous eux, ou à leur place.
   const contenu = r.contenu;
-  if (b.textes.length) {
+  for (const c of cadresDeStructure) d.formes.push(cadreXml(d.suivant(), c, xfrm));
+  if (b.textes.length && !b.structure) {
     const region: Region = b.tableaux.length ? [contenu[0], contenu[1], contenu[2], Math.round(contenu[3] * 0.4)] : contenu;
     espaceTexte(d, "Contenu", `<p:ph type="body" idx="${ESPACES.contenu}"/>`, region, b.textes.map((t) => paragraphe(t)).join(""));
   }
   if (b.tableaux.length) {
-    const y0 = b.textes.length ? contenu[1] + Math.round(contenu[3] * 0.4) + 91440 : contenu[1];
+    const y0 = b.textes.length && !b.structure ? contenu[1] + Math.round(contenu[3] * 0.4) + 91440 : contenu[1];
     const h = contenu[1] + contenu[3] - y0;
     const hk = Math.floor(h / b.tableaux.length);
     b.tableaux.forEach((t, k) => tableau(d, t, [contenu[0], y0 + k * hk, contenu[2], hk - 91440]));
@@ -194,7 +211,7 @@ function diapositive(b: Bloc, n: number, o: OptionsDEmission, medias: Medias): {
 
   const slide = `${ENTETE}<p:sld ${XMLNS}${b.masquee ? ' show="0"' : ""}><p:cSld><p:spTree>${ARBRE_VIDE}${d.formes.join("")}</p:spTree>`
     + `<p:custDataLst><p:tags r:id="${rTags}"/></p:custDataLst></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
-  const lectures = { ...(b.dessin ? { dessin: b.dessin } : {}), ...(b.structure ? { structure: b.structure } : {}), ...(b.composition ? { composition: b.composition } : {}) };
+  const lectures = { ...(b.dessin ? { dessin: b.dessin } : {}), ...(b.composition ? { composition: b.composition } : {}) };
   const tags = `${ENTETE}<p:tagLst ${XMLNS}><p:tag name="${ETIQUETTES.bloc}" val="${b.id}"/><p:tag name="${ETIQUETTES.source}" val="${b.source.diapo}"/>`
     + (Object.keys(lectures).length ? `<p:tag name="${ETIQUETTES.lectures}" val="${x(JSON.stringify(lectures))}"/>` : "") + "</p:tagLst>";
   const notes = `${ENTETE}<p:notes ${XMLNS}><p:cSld><p:spTree>${ARBRE_VIDE}`
