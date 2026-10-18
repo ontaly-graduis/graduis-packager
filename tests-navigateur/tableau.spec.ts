@@ -49,8 +49,8 @@ test("compose le tableau au thème, le dévoile phase par phase et relie les ét
   // Un lien par étape numérotée qui en suit une autre ; tous tracés, cachés avec leur phase.
   await expect(page.locator(".tab-lien")).toHaveCount(3);
   expect(await page.locator(".tab-lien").evaluateAll((ls) => ls.every((l) => /^M[\d.]+ [\d.]+L[\d.]+ [\d.]+$/.test(l.getAttribute("d") ?? "")))).toBe(true);
-  await expect(page.locator(".tab-case.cache")).toHaveCount(6);
-  await page.keyboard.press("ArrowRight");
+  // Le tableau s'ouvre sur sa première phase, parue sitôt le titre posé.
+  await expect(page).toHaveURL(/#b002\.1$/);
   await expect(page.locator(".tab-phase.cache")).toHaveCount(2);
   await expect(page.locator(".tab-case.apparait")).toHaveCount(2);
   await expect(page.locator(".tab-lien.trace")).toHaveCount(1);

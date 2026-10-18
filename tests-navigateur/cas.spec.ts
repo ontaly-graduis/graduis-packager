@@ -40,10 +40,12 @@ test("compose le cas au thème et le dévoile colonne par colonne, dans sa page"
   await expect(page.locator(".cas-etape.bord-tirets")).toHaveCount(3);
   await expect(page.locator(".cas-etape .detail")).toHaveCount(3);
   await expect(page.locator(".cas-legende li")).toHaveCount(2);
-  // Avant le premier pas, les colonnes attendent ; la légende est déjà là.
-  await expect(page.locator(".cas-colonne.cache")).toHaveCount(3);
-  await page.keyboard.press("ArrowRight");
+  // Le cas s'ouvre sur sa première colonne, parue sitôt le titre posé ; les autres attendent, la légende est déjà là.
+  await expect(page).toHaveURL(/#b002\.1$/);
   await expect(page.locator(".cas-colonne.cache")).toHaveCount(2);
+  await expect(page.locator(".cas-colonne.apparait")).toHaveCount(1);
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".cas-colonne.cache")).toHaveCount(1);
   await expect(page.locator(".cas-colonne.apparait")).toHaveCount(1);
   await page.keyboard.press("End");
   await expect(page.locator(".cas-colonne.cache")).toHaveCount(0);

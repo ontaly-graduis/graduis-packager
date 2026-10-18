@@ -28,9 +28,9 @@ ${ROLES.map((r) => `.dessin .f-${r}{fill:var(--dessin-${r})}.dessin .s-${r}{stro
 .dessin .pastille{fill:var(--color-badge-step);stroke:none}
 .dessin .bt-pastille span{color:var(--text-on-primary);font-weight:var(--fw-bold)}
 .dessin .pas-cache{visibility:hidden}
-.dessin .trace path{animation:aplatIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .45)}
-.dessin .trace path[pathLength]{stroke-dasharray:1;animation:traitIn calc(var(--mvt-entree) * 1.4) linear both,aplatIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--r) * var(--mvt-decalage)),calc(var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .45)}
-.dessin .trace foreignObject,.dessin .trace image{animation:fonduIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .7)}
+.dessin .trace path{animation:aplatIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--apres-titre,0s) + var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .45)}
+.dessin .trace path[pathLength]{stroke-dasharray:1;animation:traitIn calc(var(--mvt-entree) * 1.4) linear both,aplatIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--apres-titre,0s) + var(--r) * var(--mvt-decalage)),calc(var(--apres-titre,0s) + var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .45)}
+.dessin .trace foreignObject,.dessin .trace image{animation:fonduIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--apres-titre,0s) + var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .7)}
 @keyframes traitIn{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
 /* Le gabarit « cas » : colonnes en regard, bandeau numéroté, étapes numérotées à leur manière, légende. Angles droits (DS Onet).
    Tout se dimensionne sur --echelle, que le lecteur resserre (jusqu'à 70 %) pour que le cas tienne dans sa page. */
@@ -55,8 +55,8 @@ ${ROLES.map((r) => `.dessin .f-${r}{fill:var(--dessin-${r})}.dessin .s-${r}{stro
 .compo .bord-plein{border-style:solid}
 .compo .b-aucun.bord-plein{border-color:var(--text-strong)}
 .compo .b-aucun{background:var(--color-background);color:var(--text-strong)}
-.cas-colonne.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both}
-.cas-colonne.apparait .cas-etape{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:calc(var(--mvt-decalage-depart) + var(--i) * var(--mvt-decalage))}
+.cas-colonne.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:var(--apres-titre,0s)}
+.cas-colonne.apparait .cas-etape{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:calc(var(--apres-titre,0s) + var(--mvt-decalage-depart) + var(--i) * var(--mvt-decalage))}
 /* Le gabarit « tableau » : des couloirs (bandes nommées, leur signe) sous des phases (cadres à leur couleur) ; dans les cases,
    les étapes à leur manière, numérotées, avec leur signal ; des liens suivent les numéros. Tout se dimensionne sur --echelle. */
 .tab{--k:var(--echelle,1);flex:1 1 auto;display:flex;flex-direction:column;gap:calc(18px * var(--k));width:100%;min-height:0;min-width:0}
@@ -71,7 +71,7 @@ ${ROLES.map((r) => `.dessin .f-${r}{fill:var(--dessin-${r})}.dessin .s-${r}{stro
 .tab-flux{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible}
 .tab-lien{fill:none;stroke:var(--dessin-gris-fort);stroke-width:2}
 .tab-lien.cache{visibility:hidden}
-.tab-lien.trace{stroke-dasharray:1;animation:traitIn calc(var(--mvt-entree) * 1.2) linear both;animation-delay:calc(var(--mvt-decalage-depart) + (var(--i) + 1) * var(--mvt-decalage) * 2)}
+.tab-lien.trace{stroke-dasharray:1;animation:traitIn calc(var(--mvt-entree) * 1.2) linear both;animation-delay:calc(var(--apres-titre,0s) + var(--mvt-decalage-depart) + (var(--i) + 1) * var(--mvt-decalage) * 2)}
 .tab-case{z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:calc(8px * var(--k));padding:calc(5px * var(--k)) calc(6px * var(--k));min-width:0}
 .tab-case.cache,.tab-phase.cache,.tab-phase-titre.cache{visibility:hidden}
 .tab-etape{position:relative;display:flex;align-items:center;gap:.5em;max-width:100%;padding:.4em .6em .4em 0;font-size:calc(15px * var(--k));line-height:1.25;border:2px solid transparent;margin-left:.8em}
@@ -80,8 +80,8 @@ ${ROLES.map((r) => `.dessin .f-${r}{fill:var(--dessin-${r})}.dessin .s-${r}{stro
 .tab-texte{min-width:0;font-weight:var(--fw-semibold)}
 .compo .signal{flex:none;display:inline-block;width:1em;height:.9em;clip-path:polygon(50% 0,100% 100%,0 100%)}
 .cas-legende .echantillon.signal{width:1.2em;height:1.05em;border:0}
-.tab-case.apparait .tab-etape{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:calc(var(--mvt-decalage-depart) + var(--i) * var(--mvt-decalage) * 2)}
-.tab-phase.apparait,.tab-phase-titre.apparait{animation:fonduIn var(--mvt-temps) var(--courbe-douce) both}
+.tab-case.apparait .tab-etape{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:calc(var(--apres-titre,0s) + var(--mvt-decalage-depart) + var(--i) * var(--mvt-decalage) * 2)}
+.tab-phase.apparait,.tab-phase-titre.apparait{animation:fonduIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:var(--apres-titre,0s)}
 ${ROLES.map((r) => `.compo .b-${r}{background:var(--dessin-${r});color:${ROLES_SOMBRES.has(r) ? "var(--text-on-primary)" : "var(--text-strong)"}}.compo .sig-${r}{background:var(--dessin-${r})}`).join("\n")}
 @keyframes aplatIn{from{fill-opacity:0}to{fill-opacity:1}}
 @keyframes fonduIn{from{opacity:0}to{opacity:1}}
@@ -193,7 +193,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--color-nav-bg);fo
 .flux .terme{font-weight:var(--fw-bold);color:var(--text-strong)}
 .flux strong{font-weight:var(--fw-bold);color:var(--text-strong)}
 .flux li.courant{color:var(--text-strong)}
-.flux li.apparait,.structure .fiche.apparait,.structure .fiche-illustree.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both}
+.flux li.apparait,.structure .fiche.apparait,.structure .fiche-illustree.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:var(--apres-titre,0s)}
 .structure .cache{visibility:hidden}
 /* Défilement : un rail qui glisse dans une fenêtre ; fondus aux bords coupés, indice de suite pour les pages. */
 .defile{position:relative;flex:1;min-height:0;min-width:0;width:100%;overflow:hidden}
@@ -204,23 +204,29 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--color-nav-bg);fo
 .defile.haut::before,.defile.bas::after{opacity:1}
 .defile .indice{position:absolute;left:50%;bottom:4px;z-index:2;font-size:34px;line-height:1;color:var(--color-primary);opacity:0;pointer-events:none;transition:opacity var(--mvt-moyen) var(--courbe-standard)}
 .defile.bas .indice{opacity:1;animation:chevBob var(--mvt-volet) ease-in-out infinite}
-/* Mouvement du thème : entrée de diapositive en cascade, dévoilement de l'item courant, apparition des encadrés. */
-.diapo.entree .entete{animation:screenIn var(--mvt-entree) var(--courbe-ressort) both}
-.diapo.entree .corps>*{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:var(--mvt-decalage-max)}
-.diapo.entree .corps>:nth-child(1){animation-delay:var(--mvt-decalage-depart)}
-.diapo.entree .corps>:nth-child(2){animation-delay:calc(var(--mvt-decalage-depart) + var(--mvt-decalage))}
-.diapo.entree .corps>:nth-child(3){animation-delay:calc(var(--mvt-decalage-depart) + 2 * var(--mvt-decalage))}
-.diapo.entree .corps>:nth-child(4){animation-delay:calc(var(--mvt-decalage-depart) + 3 * var(--mvt-decalage))}
-.diapo.entree .puce{animation-name:ctaIn;animation-duration:var(--mvt-cta)}
+/* Mouvement du thème : le titre entre, puis le corps en cascade — et, d'un bloc dévoilé, sa première unité ; dévoilement de
+   l'item courant. --apres-titre : le moment où le titre est posé (0 hors entrée, et sur les diapositives sans en-tête). */
+.diapo{--debut-titre:0s;--apres-titre:var(--debut-titre)}
+.diapo.entree.apres-volet{--debut-titre:calc(var(--mvt-volet) / 2)}
+.diapo.entree:has(>.entete){--apres-titre:calc(var(--debut-titre) + var(--mvt-entree) * .7)}
+.diapo.entree .entete{animation:screenIn var(--mvt-entree) var(--courbe-ressort) both;animation-delay:var(--debut-titre)}
+.diapo.entree .titre-entete .section{animation:popIn var(--mvt-entree) var(--courbe-ressort) both;animation-delay:calc(var(--debut-titre) + var(--mvt-decalage))}
+.diapo.entree .corps>*{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:calc(var(--apres-titre) + var(--mvt-decalage-max))}
+.diapo.entree .corps>:nth-child(1){animation-delay:calc(var(--apres-titre) + var(--mvt-decalage-depart))}
+.diapo.entree .corps>:nth-child(2){animation-delay:calc(var(--apres-titre) + var(--mvt-decalage-depart) + var(--mvt-decalage))}
+.diapo.entree .corps>:nth-child(3){animation-delay:calc(var(--apres-titre) + var(--mvt-decalage-depart) + 2 * var(--mvt-decalage))}
+.diapo.entree .corps>:nth-child(4){animation-delay:calc(var(--apres-titre) + var(--mvt-decalage-depart) + 3 * var(--mvt-decalage))}
+/* Ce qui porte l'unité qui paraît se contente d'un fondu : l'unité monte seule. */
+.diapo.entree .corps>:has(.apparait,.trace){animation-name:fonduIn}
+.diapo.entree .puce{animation-name:ctaIn;animation-duration:var(--mvt-cta);animation-delay:var(--apres-titre)}
 .diapo.entree.f-transition .numero{animation-name:popIn}
 .diapo.entree.f-transition .sommaire li{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:calc(var(--mvt-decalage-depart) + 3 * var(--mvt-decalage))}
 .diapo.entree.f-transition .sommaire li:nth-child(n+2){animation-delay:var(--mvt-decalage-max)}
 .f-transition .filet{height:6px;width:240px;background:var(--color-button)}
 .diapo.entree .filet{animation:hairlineGrow var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--mvt-decalage-depart) + 2 * var(--mvt-decalage))}
 .diapo.entree.f-transition .sommaire{animation:none}
-.diapo.entree.apres-volet .entete,.diapo.entree.apres-volet .corps>:nth-child(n){animation-delay:calc(var(--mvt-volet) / 2)}
-li.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both}
-.zone.apparait{animation:popIn var(--mvt-entree) var(--courbe-ressort) both}
+li.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:var(--apres-titre,0s)}
+.zone.apparait{animation:popIn var(--mvt-entree) var(--courbe-ressort) both;animation-delay:var(--apres-titre,0s)}
 .volet{position:absolute;inset:0;z-index:5;background:var(--color-nav-bg);color:var(--text-on-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:0 160px;animation:voletOut var(--mvt-volet) var(--courbe-volet) forwards}
 .volet .surtitre{font-size:26px;font-weight:var(--fw-bold);letter-spacing:3px;text-transform:uppercase;opacity:.85;animation:voletLabel var(--mvt-entree) ease forwards}
 .volet .titre{font-size:64px;font-weight:var(--fw-bold);line-height:1.1;max-width:24ch;animation:voletLabel var(--mvt-entree) ease forwards}

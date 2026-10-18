@@ -10,9 +10,17 @@ export interface Contexte {
   readonly medias: Readonly<Record<string, string>>;
   /** Le zoom sur la zone courante (touche Z). */
   readonly zoom: boolean;
-  /** Ce qui s'anime au rendu : l'entrée du bloc, le seul dévoilement de l'étape, ou rien (présentateur). */
-  readonly anime: "bloc" | "etape" | "aucun";
+  /**
+   * Ce qui s'anime au rendu : l'entrée du bloc ; son entrée puis, sitôt le titre posé, sa première étape ; le seul
+   * dévoilement de l'étape ; ou rien (présentateur).
+   */
+  readonly anime: "bloc" | "premiere" | "etape" | "aucun";
 }
+
+/** L'entrée de la diapositive s'anime (titre, puis le corps). */
+const entre = (ctx: Contexte) => ctx.anime === "bloc" || ctx.anime === "premiere";
+/** L'étape courante paraît (après le titre, à l'entrée). */
+const paraitre = (ctx: Contexte) => ctx.anime === "etape" || ctx.anime === "premiere";
 
 const LARGEUR = 1920;
 const CORPS = { x: 96, largeur: LARGEUR - 192, hauteur: 780 };
@@ -33,7 +41,7 @@ export function liste(ctx: Contexte, lignes: readonly string[], etape: number, d
   lignes.forEach((l, i) => {
     const cache = devoile && i >= etape;
     const courant = devoile && i === etape - 1;
-    ul.append(el(ctx.doc, "li", cache ? "cache" : courant ? `courant${ctx.anime === "etape" ? " apparait" : ""}` : "", l));
+    ul.append(el(ctx.doc, "li", cache ? "cache" : courant ? `courant${paraitre(ctx) ? " apparait" : ""}` : "", l));
   });
   return ul;
 }
@@ -60,7 +68,7 @@ export function structure(ctx: Contexte, s: Structure, etape: number, devoile: b
   let dansFiche = false;
   const cache = (u: number) => devoile && u >= etape;
   // Dans une fiche, c'est la fiche qui paraît ; ses lignes ne s'animent pas une à une.
-  const etat = (u: number) => (cache(u) ? "cache" : devoile && u === etape - 1 ? `courant${ctx.anime === "etape" && !dansFiche ? " apparait" : ""}` : "");
+  const etat = (u: number) => (cache(u) ? "cache" : devoile && u === etape - 1 ? `courant${paraitre(ctx) && !dansFiche ? " apparait" : ""}` : "");
   /** L'atome suivant, dans l'ordre du plan : un `li` à l'état de son unité. */
   const atome = (classe: string) => {
     const li = el(ctx.doc, "li", `${classe} ${etat(plan.atomes[a] ?? 0)}`.trim());
@@ -107,7 +115,7 @@ export function structure(ctx: Contexte, s: Structure, etape: number, devoile: b
       if (c.visuel) boite.append(el(ctx.doc, "img", "illustration", undefined, { src: ctx.medias[c.visuel] ?? "", alt: "" }), flux);
       // Une fiche paraît entière : son cadre aussi se cache tant qu'elle n'est pas dévoilée.
       if (fiche && cache(uniteDeFiche)) boite.classList.add("cache");
-      if (fiche && devoile && uniteDeFiche === etape - 1 && ctx.anime === "etape") boite.classList.add("apparait");
+      if (fiche && devoile && uniteDeFiche === etape - 1 && paraitre(ctx)) boite.classList.add("apparait");
       rangee.append(boite);
     }
     racine.append(rangee);
@@ -189,7 +197,7 @@ function pasAPas(ctx: Contexte, b: BlocDeSalle, etape: number): HTMLElement {
       }
     } else if (zone) {
       const [x, y, w, h] = zone.z.rect;
-      const z = el(ctx.doc, "div", `zone${ctx.anime === "etape" ? " apparait" : ""}`);
+      const z = el(ctx.doc, "div", `zone${paraitre(ctx) ? " apparait" : ""}`);
       Object.assign(z.style, { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` });
       z.append(el(ctx.doc, "span", "num", courant!.id.slice(1)));
       c.plan.append(z);
@@ -201,7 +209,7 @@ function pasAPas(ctx: Contexte, b: BlocDeSalle, etape: number): HTMLElement {
     const ol = el(ctx.doc, "ol", "consignes");
     pas.forEach((p, i) => {
       const courant = i === etape - 1;
-      const li = el(ctx.doc, "li", i >= etape && b.etapes > 0 ? "cache" : courant ? `courant${ctx.anime === "etape" ? " apparait" : ""}` : "");
+      const li = el(ctx.doc, "li", i >= etape && b.etapes > 0 ? "cache" : courant ? `courant${paraitre(ctx) ? " apparait" : ""}` : "");
       li.append(el(ctx.doc, "span", "num", p.id.slice(1)), el(ctx.doc, "span", "", p.libelle || "—"));
       ol.append(li);
     });
@@ -225,6 +233,12 @@ function image(ctx: Contexte, v: VisuelDeSalle | undefined, classe: string): HTM
 
 const duVisuel = (b: BlocDeSalle, role: string) => b.visuels.find((v) => v.role === role);
 
+/** L'aplat d'un pictogramme, à la couleur de son rôle ; le lecteur le rend lisible une fois l'icône mesurée (contraste.ts). */
+function aplat(e: HTMLElement, fond: NonNullable<VisuelDeSalle["fond"]>): void {
+  e.style.background = `var(--dessin-${fond})`;
+  e.dataset.fond = fond;
+}
+
 /** La durée d'un écran : son icône (le minuteur du deck) et ses minutes. */
 function duree(ctx: Contexte, b: BlocDeSalle): HTMLElement | null {
   if (!b.duree) return null;
@@ -244,7 +258,7 @@ function ecran(ctx: Contexte, b: BlocDeSalle, texte: HTMLElement[]): HTMLElement
   const picto = image(ctx, v, "");
   if (picto) {
     const disque = el(ctx.doc, "div", "disque");
-    if (v?.fond) disque.style.background = `var(--dessin-${v.fond})`;
+    if (v?.fond) aplat(disque, v.fond);
     disque.append(picto);
     racine.append(disque);
   }
@@ -293,7 +307,7 @@ export function schema(ctx: Contexte, b: BlocDeSalle, etape: number): HTMLElemen
       if (pas > etape) g.classList.add("pas-cache");
       else if (pas === etape) {
         g.classList.add("pas-courant");
-        if (ctx.anime === "etape") {
+        if (paraitre(ctx)) {
           g.classList.add("trace");
           g.querySelectorAll("path").forEach((p) => {
             if (p.getAttribute("class")?.includes("s-") && !p.hasAttribute("stroke-dasharray")) p.setAttribute("pathLength", "1");
@@ -318,7 +332,7 @@ export function cas(ctx: Contexte, c: Extract<Composition, { gabarit: "cas" }>, 
   c.cas.forEach((k, i) => {
     const col = el(ctx.doc, "section", "cas-colonne");
     if (devoile && i >= etape) col.classList.add("cache");
-    if (devoile && i === etape - 1 && ctx.anime === "etape") col.classList.add("apparait");
+    if (devoile && i === etape - 1 && paraitre(ctx)) col.classList.add("apparait");
     const tete = el(ctx.doc, "header", `cas-tete ${k.couleur ? `b-${k.couleur}` : "b-aucun"}`);
     tete.append(el(ctx.doc, "span", "cas-numero", String(k.numero)), el(ctx.doc, "span", "cas-titre", k.titre));
     const ol = el(ctx.doc, "ol", "cas-etapes");
@@ -373,7 +387,7 @@ export function composerTableau(ctx: Contexte, t: Extract<Composition, { gabarit
   const grille = el(ctx.doc, "div", "tab-grille");
   grille.style.setProperty("--n", String(t.colonnes.length));
   grille.style.setProperty("--m", String(t.lignes.length));
-  const etat = (j: number) => (!devoile ? "" : j >= etape ? " cache" : j === etape - 1 && ctx.anime === "etape" ? " apparait" : "");
+  const etat = (j: number) => (!devoile ? "" : j >= etape ? " cache" : j === etape - 1 && paraitre(ctx) ? " apparait" : "");
   const place = (e: HTMLElement, ligne: string, colonne: string) => { e.style.gridRow = ligne; e.style.gridColumn = colonne; return e; };
   // Le coin : l'illustration (le persona).
   const coin = place(el(ctx.doc, "div", "tab-coin"), "1", "1");
@@ -444,7 +458,7 @@ function pictogrammeDeCote(ctx: Contexte, b: BlocDeSalle, corps: HTMLElement): v
   // Posé à l'origine sur un aplat (une icône blanche sur un bandeau) : il le garde, en disque, à la couleur de son rôle.
   if (v?.fond && v.fond !== "papier") {
     const disque = el(ctx.doc, "div", "disque");
-    disque.style.background = `var(--dessin-${v.fond})`;
+    aplat(disque, v.fond);
     disque.append(i);
     cote.append(disque);
   } else cote.append(i);
@@ -457,14 +471,14 @@ function puce(ctx: Contexte, texte: string, classe: string): HTMLElement {
 
 /** La diapositive d'un bloc à une étape donnée. */
 export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle, rang: number, etape: number): HTMLElement {
-  const d = el(ctx.doc, "section", `diapo f-${b.figure}${ctx.anime === "bloc" ? " entree" : ""}`);
+  const d = el(ctx.doc, "section", `diapo f-${b.figure}${entre(ctx) ? " entree" : ""}`);
   const devoile = b.etapes > 0;
   const plein = ["couverture", "transition", "ecran-animation", "demonstration"].includes(b.figure);
   if (!plein) {
     const entete = el(ctx.doc, "header", "entete");
     const vs = duVisuel(b, "section");
     const section = image(ctx, vs, "section");
-    if (section && vs?.fond) section.style.background = `var(--dessin-${vs.fond})`;
+    if (section && vs?.fond) aplat(section, vs.fond);
     const titre = el(ctx.doc, "div", "titre-entete");
     if (section) titre.append(section);
     titre.append(el(ctx.doc, "h1", "", b.titre ?? ""));
