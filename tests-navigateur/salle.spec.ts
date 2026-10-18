@@ -68,6 +68,67 @@ test("ouvre le présentateur, qui pilote la salle", async ({ page }) => {
   await presentateur.keyboard.press("ArrowRight");
   await expect(page).toHaveURL(/#b002\.1$/);
   await expect(presentateur.locator("#position")).toContainText("2 / 3");
+  // Le plan demandé au présentateur s'ouvre chez lui : la salle n'en voit rien.
+  await presentateur.keyboard.press("m");
+  await expect(presentateur.locator(".plan-seance")).toHaveCount(1);
+  await expect(page.locator(".plan-seance")).toHaveCount(0);
+  await presentateur.keyboard.press("3");
+  await presentateur.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#b003\.0$/);
+  await expect(presentateur.locator(".plan-seance")).toHaveCount(0);
+});
+
+test("affiche toute la diapositive d'un coup (A, Maj →) ; un contenu statique reste tel quel", async ({ page }) => {
+  await page.goto(url + "#b002.1");
+  await page.keyboard.press("a");
+  await expect(page).toHaveURL(/#b002\.2$/);
+  await expect(page.locator(".consignes li.cache")).toHaveCount(0);
+  await page.keyboard.press("a");
+  await expect(page).toHaveURL(/#b002\.2$/);
+  await page.goto(url + "#b002.1");
+  await page.keyboard.press("Shift+ArrowRight");
+  await expect(page).toHaveURL(/#b002\.2$/);
+  await page.goto(url + "#b001.0");
+  await page.keyboard.press("a");
+  await expect(page).toHaveURL(/#b001\.0$/);
+});
+
+test("ouvre le plan de la séance (M, bouton ☰) : filtrer, choisir au clavier ou à la souris, fermer", async ({ page }) => {
+  await page.goto(url + "#b001.0");
+  await page.keyboard.press("m");
+  const plan = page.locator(".plan-seance");
+  await expect(plan).toHaveCount(1);
+  await expect(plan.locator("h3")).toHaveText(["Ouverture"]);
+  await expect(plan.locator("li")).toHaveCount(3);
+  await expect(plan.locator("li.courant .num")).toHaveText("1");
+  await expect(plan.locator("input")).toBeFocused();
+  // Les touches sont celles du plan : → ne fait pas avancer la salle.
+  await page.keyboard.press("ArrowRight");
+  await expect(page).toHaveURL(/#b001\.0$/);
+  // Filtrer sans accents ni casse, sur la figure ; Entrée y mène, sur la première étape.
+  await page.keyboard.type("pas a pas".replace(/ /g, "-"));
+  await expect(plan.locator("li:not([hidden])")).toHaveCount(1);
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#b002\.1$/);
+  await expect(plan).toHaveCount(0);
+  // ↓ choisit la suivante.
+  await page.keyboard.press("m");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#b003\.0$/);
+  // Échap, ou un clic à côté, ferme sans bouger ; le bouton ☰ l'ouvre aussi ; un clic sur une diapositive y mène.
+  await page.keyboard.press("m");
+  await page.keyboard.press("Escape");
+  await expect(plan).toHaveCount(0);
+  await page.mouse.move(10, 10);
+  await page.locator(".plan-bouton").click();
+  await expect(plan).toHaveCount(1);
+  await page.mouse.click(5, 5);
+  await expect(plan).toHaveCount(0);
+  await expect(page).toHaveURL(/#b003\.0$/);
+  await page.keyboard.press("m");
+  await plan.locator("li").first().click();
+  await expect(page).toHaveURL(/#b001\.0$/);
 });
 
 test.describe("débordement", () => {

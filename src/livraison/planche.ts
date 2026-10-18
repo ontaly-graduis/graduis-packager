@@ -10,12 +10,7 @@ import { esc, STYLE_DOCUMENT } from "../diagnostic/rapport-html";
 import type { SeanceSpec } from "../pivot/seance-spec";
 import type { DonneesDeSalle } from "../salle/donnees";
 import type { Theme } from "../theme/theme";
-
-const LIBELLES: Readonly<Record<string, string>> = {
-  couverture: "Couverture", "ecran-animation": "Écran d'animation", transition: "Transition", objectifs: "Objectifs", contenu: "Contenu",
-  processus: "Processus", schema: "Schéma", demonstration: "Démonstration", "pas-a-pas": "Pas-à-pas", capture: "Capture",
-  "mise-en-pratique": "Mise en pratique", "etapes-cles": "Étapes clés", synthese: "Synthèse", glossaire: "Glossaire", renvoi: "Renvoi",
-};
+import { LIBELLES } from "../pivot/libelles";
 
 /** Les diapositives d'un deck, rendues par LibreOffice puis pdftoppm : numéro → JPEG. */
 function apercus(deck: string, pages: readonly number[]): Map<number, Uint8Array> {

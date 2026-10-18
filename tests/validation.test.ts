@@ -52,8 +52,10 @@ describe("le PPT de validation (PKG-C1)", () => {
   });
 
   it("est déterministe : même pivot, mêmes octets", async () => {
-    const a = await valider(await deckSynthetique(), "s.pptx");
-    const b = await valider(await deckSynthetique(), "s.pptx");
+    // Un seul deck : pptxgenjs date ce qu'il écrit, deux decks fabriqués à une seconde d'écart ne sont pas la même source.
+    const deck = await deckSynthetique();
+    const a = await valider(deck, "s.pptx");
+    const b = await valider(deck, "s.pptx");
     expect(Buffer.from(a.octets).equals(Buffer.from(b.octets))).toBe(true);
   });
 

@@ -1,14 +1,8 @@
 // La grammaire du PPT de validation (PKG-C) : ce que `emettre` écrit et que `lire` lit, en un seul endroit. Une
 // disposition par figure, nommée par elle ; des formes nommées (pastille, zone, capture) ; des espaces réservés
 // (titre, contenu, consignes) ; l'identité du bloc dans des étiquettes OOXML, la source dans les propriétés du document.
+import { LIBELLES } from "../pivot/libelles";
 import { FIGURES, ROLES, ROLES_DE_VISUEL, type Figure, type Role } from "../pivot/seance-spec";
-
-export const LIBELLES: Readonly<Record<Figure, string>> = {
-  couverture: "Couverture", "ecran-animation": "Écran d'animation", transition: "Transition", objectifs: "Objectifs",
-  contenu: "Contenu", processus: "Processus", schema: "Schéma", demonstration: "Démonstration", "pas-a-pas": "Pas-à-pas",
-  capture: "Capture", "mise-en-pratique": "Mise en pratique", "etapes-cles": "Étapes clés", synthese: "Synthèse",
-  glossaire: "Glossaire", renvoi: "Renvoi",
-};
 
 /** Le nom de la disposition d'une figure : le contrat que `lire` lit, sans rien deviner. */
 export const disposition = (f: Figure) => `G · ${LIBELLES[f]}`;

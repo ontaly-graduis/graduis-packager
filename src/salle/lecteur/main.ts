@@ -5,6 +5,7 @@ import { debut, fin, precedent, premieresEtapes, suivant, type Position } from "
 import { rendreDiapo, type Contexte } from "./rendu";
 import { ajusterTextes } from "./textes";
 import { relier } from "./liens";
+import { panneauDuPlan, sequencesDuPlan } from "./plan";
 import { debutsDePages, decalageCourant, decalagePage, type Item } from "./defilement";
 
 const lire = <T>(id: string): T => JSON.parse(document.getElementById(id)?.textContent ?? "null") as T;
@@ -14,12 +15,15 @@ const plats = donnees.sequences.flatMap((s) => s.blocs.map((b, rang) => ({ s, b,
 /** Les étapes de chaque bloc : celles du dévoilement, ou les pages d'un contenu statique qui déborde (mesurées au rendu). */
 const etapes = plats.map((x) => x.b.etapes);
 const premieres = premieresEtapes(etapes);
+const sequencesDeLaSeance = sequencesDuPlan(donnees);
 
 let pos: Position = debut(premieres);
 let zoom = false;
 let noir = false;
 let notes = false;
 let aide = false;
+/** Le plan ouvert (dans la salle ou chez le présentateur) : tant qu'il l'est, les touches sont les siennes. */
+let plan: HTMLElement | null = null;
 const debutSeance = Date.now();
 let minuteur: { fin: number; pause: number | null } | null = null;
 let presentateur: Window | null = null;
@@ -37,6 +41,8 @@ const surcouche = document.getElementById("surcouche")!;
 const COMMANDES: readonly (readonly [readonly string[], string])[] = [
   [["→", "↓", "Espace", "Entrée", "Page ↓"], "Avancer : pas suivant, page suivante, diapositive suivante"],
   [["←", "↑", "Page ↑", "⌫"], "Reculer"],
+  [["A", "Maj →"], "Tout afficher : la diapositive entière, d'un coup"],
+  [["M"], "Plan de la séance : aller à une diapositive (filtrer, ↑ ↓, Entrée)"],
   [["Origine", "Fin"], "Aller au début, à la fin"],
   [["Z"], "Zoomer sur le pas courant d'une capture (et revenir)"],
   [["T"], "Minuteur de l'activité : démarrer, mettre en pause"],
@@ -58,13 +64,36 @@ boutonAide.addEventListener("click", () => {
   aide = !aide;
   rendreSurcouche();
 });
-document.body.append(boutonAide);
+/** Le bouton du plan, à côté : discret de même. */
+const boutonPlan = document.createElement("button");
+boutonPlan.className = "plan-bouton";
+boutonPlan.type = "button";
+boutonPlan.textContent = "☰";
+boutonPlan.setAttribute("aria-label", "Plan de la séance : aller à une diapositive (touche M)");
+boutonPlan.addEventListener("click", () => basculerPlan(document));
+document.body.append(boutonAide, boutonPlan);
 let veille: number | undefined;
 document.addEventListener("mousemove", () => {
-  boutonAide.classList.add("visible");
+  for (const b of [boutonAide, boutonPlan]) b.classList.add("visible");
   clearTimeout(veille);
-  veille = window.setTimeout(() => boutonAide.classList.remove("visible"), 2500);
+  veille = window.setTimeout(() => [boutonAide, boutonPlan].forEach((b) => b.classList.remove("visible")), 2500);
 });
+
+/** Ouvre le plan dans ce document, ou le ferme ; choisir une diapositive y mène, sur sa première étape. */
+function basculerPlan(doc: Document): void {
+  const fermer = () => {
+    plan?.remove();
+    plan = null;
+  };
+  if (plan) return fermer();
+  plan = panneauDuPlan(doc, sequencesDeLaSeance, pos.bloc, (bloc) => {
+    fermer();
+    if (bloc !== pos.bloc) minuteur = null;
+    pos = { bloc, etape: premieres[bloc] ?? 0 };
+    sens = "saut";
+    rendre();
+  }, fermer);
+}
 
 function panneauAide(): HTMLElement {
   const p = document.createElement("div");
@@ -291,13 +320,16 @@ function ouvrirPresentateur(): void {
   w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Présentateur — ${document.title}</title><style>${styles}</style></head>`
     + `<body class="presentateur"><div class="colonne-g"><div class="vignette" id="courante"></div><div class="barre"><span id="position"></span><span id="chrono"></span></div></div>`
     + `<div class="colonne-d"><div class="vignette petite" id="suivante"></div><div class="notes-p" id="notes"></div>`
-    + `<div class="rappel">→ avancer · ← reculer · Z zoom · T minuteur · B noir · ? aide (dans la salle)</div></div></body></html>`);
+    + `<div class="rappel">→ avancer · ← reculer · A tout afficher · M plan · Z zoom · T minuteur · B noir · ? aide (dans la salle)</div></div></body></html>`);
   w.document.close();
   w.document.addEventListener("keydown", touche);
   w.addEventListener("resize", rendrePresentateur);
   presentateur = w;
   rendrePresentateur();
 }
+
+/** Toute la diapositive : la dernière étape de son dévoilement (un contenu statique se lit toujours page à page). */
+const toutAfficher = (p: Position): Position => ({ bloc: p.bloc, etape: Math.max(p.etape, plats[p.bloc]?.b.etapes ?? 0) });
 
 function basculerMinuteur(): void {
   const duree = (plats[pos.bloc]?.b.duree ?? 10) * 60000;
@@ -307,10 +339,16 @@ function basculerMinuteur(): void {
 }
 
 function touche(e: KeyboardEvent): void {
+  // Plan ouvert : ses touches ne passent pas par ici ; une frappe égarée hors de lui lui rend la main.
+  if (plan) return plan.querySelector("input")?.focus();
   const avant = pos;
   switch (e.key) {
     case "ArrowRight": case "ArrowDown": case "PageDown": case " ": case "Enter":
-      pos = suivant(pos, etapes, premieres); sens = "avant"; break;
+      if (e.key === "ArrowRight" && e.shiftKey) pos = toutAfficher(pos);
+      else pos = suivant(pos, etapes, premieres);
+      sens = "avant"; break;
+    case "a": case "A": pos = toutAfficher(pos); sens = "avant"; break;
+    case "m": case "M": basculerPlan(e.view?.document ?? document); e.preventDefault(); return;
     case "ArrowLeft": case "ArrowUp": case "PageUp": case "Backspace":
       pos = precedent(pos, etapes, premieres); sens = "arriere"; break;
     case "Home": pos = debut(premieres); sens = "saut"; break;

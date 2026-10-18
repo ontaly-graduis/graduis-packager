@@ -1,6 +1,7 @@
 // Le rapport d'anomalies et d'équilibrage en page HTML autonome, au thème ONET (0 hex hors jetons).
 import type { Theme } from "../theme/theme";
 import { NIVEAUX, REGLES, type Constat, type Niveau, type Rapport } from "./regles";
+import { LIBELLES } from "../pivot/libelles";
 
 export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -8,12 +9,6 @@ const LIBELLE_NIVEAU: Readonly<Record<Niveau, string>> = {
   bloquant: "Bloquant", avis: "Avis", "a-valider": "À valider", info: "Info",
 };
 
-const LIBELLE_FIGURE: Readonly<Record<string, string>> = {
-  couverture: "Couverture", "ecran-animation": "Écran d'animation", transition: "Transition", objectifs: "Objectifs",
-  contenu: "Contenu", processus: "Processus", schema: "Schéma", demonstration: "Démonstration", "pas-a-pas": "Pas-à-pas",
-  capture: "Capture", "mise-en-pratique": "Mise en pratique", "etapes-cles": "Étapes clés", synthese: "Synthèse",
-  glossaire: "Glossaire", renvoi: "Renvoi",
-};
 
 /** La feuille des pages de travail au thème ONET : le rapport, le diff d'une livraison, la fiche de revue. */
 export const STYLE_DOCUMENT = `
@@ -78,7 +73,7 @@ export function rapportHtml(r: Rapport, theme: Theme): string {
     return `<section class="regle"><h3><span>${esc(cle)} · ${esc(regle.libelle)}</span><small>${liste.length} constat${liste.length > 1 ? "s" : ""}</small></h3>`
       + `<p class="action">${esc(regle.action)}</p><ul>${liste.map((k) => constat(k, numeros)).join("")}</ul></section>`;
   }).join("");
-  const qualification = r.qualification.map((q) => `<tr><td class="n">${q.diapo}</td><td>${esc(LIBELLE_FIGURE[q.figure] ?? q.figure)}</td>`
+  const qualification = r.qualification.map((q) => `<tr><td class="n">${q.diapo}</td><td>${esc(LIBELLES[q.figure] ?? q.figure)}</td>`
     + `<td>${q.temps ?? "—"}</td><td>${esc(q.titre ?? "")}</td><td>${esc(q.signal)}</td></tr>`).join("");
   return `<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
