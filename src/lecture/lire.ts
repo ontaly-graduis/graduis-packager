@@ -7,7 +7,10 @@ import { sha256 } from "../lib/json";
 import { formesDeDiapositive, type Forme } from "../ooxml/formes";
 import { Paquet } from "../ooxml/paquet";
 import { SCHEMA_SEANCE, SeanceSpec, type Bloc, type Pas, type Sequence, type Visuel } from "../pivot/seance-spec";
-import { ESPACES, ETIQUETTES, NOMS, PROPRIETES, ancrageDeZone, figureDeDisposition } from "../emission/grammaire";
+import { ESPACES, ETIQUETTES, NOMS, PROPRIETES, ROLES_DE_COULEUR, ancrageDeZone, couleurDeRole, figureDeDisposition, roleDeVisuel } from "../emission/grammaire";
+import { lireCouleur, paletteDuMasque } from "../ooxml/couleurs";
+import { roleDe } from "../qualification/roles";
+import type { Role } from "../pivot/seance-spec";
 
 export interface Ecart {
   readonly diapo: number;
@@ -83,6 +86,30 @@ function pasDe(formes: readonly Forme[], hashDe: (f: Forme) => string | undefine
   return pas.map((p, k) => ({ ...p, consigne: consignes[k]?.trim() ? consignes[k]! : null }));
 }
 
+/**
+ * Le rôle d'une couleur de remplissage : celui dont la couleur du thème (émise par la grammaire) donne ce RVB dans le
+ * thème du paquet ; une autre couleur (choisie dans PowerPoint) va au rôle le plus proche, par la projection du relevé.
+ */
+const parPaquet = new WeakMap<Paquet, Map<string, (rgb: string) => Role>>();
+function rolesDeCouleur(p: Paquet, diapo: string): (rgb: string) => Role {
+  const masque = p.masqueDe(p.disposition(diapo)?.chemin ?? "") ?? "";
+  let parMasque = parPaquet.get(p);
+  if (!parMasque) { parMasque = new Map(); parPaquet.set(p, parMasque); }
+  let f = parMasque.get(masque);
+  if (!f) {
+    const palette = paletteDuMasque(p, masque || undefined);
+    const table = new Map<string, Role>();
+    for (const r of ROLES_DE_COULEUR) {
+      const el = new DOMParser().parseFromString(`<a:solidFill xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">${couleurDeRole(r)}</a:solidFill>`, "text/xml").documentElement!;
+      const c = lireCouleur(el.firstChild as Element, palette);
+      if (c && !table.has(c.rgb.toUpperCase())) table.set(c.rgb.toUpperCase(), r);
+    }
+    f = (rgb) => table.get(rgb.toUpperCase()) ?? roleDe({ rgb });
+    parMasque.set(masque, f);
+  }
+  return f;
+}
+
 /** PPT de validation → pivot, et les écarts à la grammaire. */
 export function lire(octets: Uint8Array): { spec: SeanceSpec; ecarts: Ecart[] } {
   const paquet = new Paquet(octets);
@@ -99,11 +126,20 @@ export function lire(octets: Uint8Array): { spec: SeanceSpec; ecarts: Ecart[] } 
     const hashDe = (f: Forme) => { const o = f.media ? paquet.octets(f.media) : undefined; return o ? sha256(o) : undefined; };
     const titre = formes.find((f) => f.espace?.type === "title" || f.espace?.type === "ctrTitle");
     const contenu = espace(formes, ESPACES.contenu);
-    const visuels: Visuel[] = formes.filter((f) => f.nature === "image" && f.media).map((f) => ({
-      media: hashDe(f)!,
-      capture: f.nom.startsWith(NOMS.capture),
-      ...(f.rognage ? { rognage: [...f.rognage] as [number, number, number, number] } : {}),
-    }));
+    const roleDeFond = rolesDeCouleur(paquet, d.chemin);
+    const visuels: Visuel[] = formes.filter((f) => f.nature === "image" && f.media).map((f) => {
+      const role = roleDeVisuel(f.nom);
+      const fond = f.style?.fond && f.style.fond !== "aucun" ? roleDeFond(f.style.fond.rgb) : undefined;
+      return {
+        media: hashDe(f)!,
+        capture: f.nom.startsWith(NOMS.capture),
+        ...(f.rognage ? { rognage: [...f.rognage] as [number, number, number, number] } : {}),
+        ...(role ? { role } : {}),
+        // La légende est le texte de remplacement d'un visuel de la grammaire (pas celui qu'Office génère pour une image ajoutée).
+        ...(f.alt !== undefined && f.nom.startsWith("G·") ? { legende: f.alt } : {}),
+        ...(fond ? { fond } : {}),
+      };
+    });
     const tableaux = formes.filter((f) => f.nature === "tableau").map((f) => (f.lignes ?? []).map((l) => [...l]));
     const source = Number.parseInt(tags.get(ETIQUETTES.source) ?? "", 10);
     if (!Number.isFinite(source)) ecart("diapositive sans source (ajoutée dans PowerPoint ?)");

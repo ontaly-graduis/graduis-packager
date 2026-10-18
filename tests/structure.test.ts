@@ -6,7 +6,7 @@ import { relever } from "../src/releve/releve";
 import { planDeDevoilement } from "../src/salle/unites";
 import { habiller, type Maniere } from "../src/theme/maniere";
 import { composerCas, composerTableau, harmoniser } from "../src/qualification/gabarits";
-import { deckDeCas, deckDeSchema, deckDeTableau } from "./fixture";
+import { deckDEcrans, deckDeCas, deckDeSchema, deckDeTableau } from "./fixture";
 
 describe("le dévoilement par niveau de hiérarchie 1", () => {
   it("une fiche paraît entière, une section avec son intertitre, hors section chaque élément seul", () => {
@@ -131,6 +131,37 @@ describe("la fiche persona en couloirs recomposée au gabarit « tableau » du w
     expect(composerTableau(cas.dessin!)).toBeNull();
     const schema = qualifierReleve(relever(await deckDeSchema(), "schema.pptx").releve).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
     expect(composerTableau(schema.dessin!)).toBeNull();
+  });
+});
+
+describe("les visuels d'origine : pictogrammes, minuteur, météo, icônes de section, photos (PKG-B6)", async () => {
+  const { releve } = relever(await deckDEcrans(), "ecrans.pptx");
+  const blocs = qualifierReleve(releve).spec.sequences.flatMap((s) => s.blocs);
+  const ext = (h: string) => releve.medias[h]?.ext;
+  const lus = (i: number) => blocs[i]!.visuels.map((v) => ({ ext: ext(v.media), role: v.role ?? null, fond: v.fond ?? null, legende: v.legende ?? null, capture: v.capture }));
+
+  it("garde la photo de la couverture, pas son logo", () => {
+    expect(blocs[0]!.figure).toBe("couverture");
+    expect(lus(0)).toEqual([{ ext: "png", role: null, fond: null, legende: null, capture: false }]);
+  });
+
+  it("lit le pictogramme d'un écran (le SVG, pas son repli), son disque d'origine, et l'icône de sa durée", () => {
+    expect(blocs[1]!.figure).toBe("ecran-animation");
+    expect(lus(1)).toEqual([
+      { ext: "svg", role: "pictogramme", fond: "papier", legende: null, capture: false },
+      { ext: "png", role: "duree", fond: null, legende: null, capture: false },
+    ]);
+  });
+
+  it("prend à la disposition les icônes d'une météo et les légende de leurs libellés, qui ne sont plus des textes", () => {
+    expect(lus(2).map((v) => v.legende)).toEqual(["Grand soleil", "Nuageux", "Orageux"]);
+    expect(blocs[2]!.textes).toEqual([]);
+  });
+
+  it("prend à la disposition le pictogramme d'une mise en pratique sur son bandeau, et l'icône de section sur son disque", () => {
+    expect(blocs[3]!.figure).toBe("mise-en-pratique");
+    expect(lus(3)).toEqual([{ ext: "png", role: "pictogramme", fond: "rouge-fort", legende: null, capture: false }]);
+    expect(lus(4)).toEqual([{ ext: "png", role: "section", fond: "ciel-moyen", legende: null, capture: false }]);
   });
 });
 

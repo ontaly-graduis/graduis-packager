@@ -338,7 +338,8 @@ export function styleDe(el: Element, ctx: ContexteDeStyle, espace: boolean): Sty
   const base = { ...(espace ? m.corps : m.autre), ...(couleurPolice ? { couleur: couleurPolice } : {}), ...(policeRef ? { police: policeRef } : {}) };
   const trait = el.localName === "pic" && !(spPr && enfant(spPr, NS.a, "ln")) ? null : traitDe(spPr ? enfant(spPr, NS.a, "ln") : undefined, ref("lnRef"), m);
   return {
-    fond: el.localName === "sp" ? fondDe(spPr, ref("fillRef"), m, ctx.fondDeGroupe) : "aucun",
+    // Une image peut avoir un remplissage direct, sous ses transparences (l'aplat d'un pictogramme, PKG-B6).
+    fond: el.localName === "sp" ? fondDe(spPr, ref("fillRef"), m, ctx.fondDeGroupe) : el.localName === "pic" ? couleurDeRemplissage(spPr, m.palette) ?? "aucun" : "aucun",
     trait,
     ...(rotation ? { rotation } : {}),
     ...(h || v ? { retournement: h && v ? "hv" as const : h ? "h" as const : "v" as const } : {}),

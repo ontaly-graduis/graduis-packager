@@ -33,6 +33,8 @@ export interface Forme {
   readonly lignes?: readonly (readonly string[])[];
   /** Remplissage, trait, texte mis en forme, géométrie fine : ce qu'il faut pour redessiner (lu si le contexte porte le masque). */
   readonly style?: Style;
+  /** Le texte de remplacement d'une image (`cNvPr@descr`). */
+  readonly alt?: string;
 }
 
 interface Espace {
@@ -49,6 +51,8 @@ export interface Contexte {
 }
 
 type Transformation = (b: Boite) => Boite;
+
+const SVG_BLIP = "http://schemas.microsoft.com/office/drawing/2016/SVG/main";
 
 const IDENTITE: Transformation = (b) => b;
 
@@ -127,12 +131,16 @@ export function aplatir(arbre: Element, ctx: Contexte, tf: Transformation = IDEN
     if (el.localName === "pic") {
       const nv = enfant(el, NS.p, "nvPicPr");
       const { id, nom } = identite(nv);
+      const alt = (nv ? enfant(nv, NS.p, "cNvPr") : undefined)?.getAttribute("descr") || undefined;
       const espace = espaceDe(nv ? enfant(nv, NS.p, "nvPr") : undefined);
       const boite = boiteXfrm(chemin(el, ["p:spPr", "a:xfrm"])) ?? (espace ? ctx.heritage(espace) : undefined);
       if (!boite) continue;
       const blipFill = enfant(el, NS.p, "blipFill");
       const blip = blipFill && enfant(blipFill, NS.a, "blip");
-      const media = blip ? ctx.media(blip.getAttributeNS(NS.r, "embed") ?? "") : undefined;
+      // Une image vectorielle (SVG) se lit dans l'extension `asvg:svgBlip` ; son repli PNG, s'il existe, est ignoré.
+      const svg = blip ? blip.getElementsByTagNameNS(SVG_BLIP, "svgBlip")[0] : undefined;
+      const rSvg = svg?.getAttributeNS(NS.r, "embed");
+      const media = (rSvg ? ctx.media(rSvg) : undefined) ?? (blip ? ctx.media(blip.getAttributeNS(NS.r, "embed") ?? "") : undefined);
       const src = blipFill && enfant(blipFill, NS.a, "srcRect");
       const rognage = src ? ([entier(src, "l") ?? 0, entier(src, "t") ?? 0, entier(src, "r") ?? 0, entier(src, "b") ?? 0] as const) : undefined;
       const prst = chemin(el, ["p:spPr", "a:prstGeom"])?.getAttribute("prst");
@@ -142,6 +150,7 @@ export function aplatir(arbre: Element, ctx: Contexte, tf: Transformation = IDEN
         ...(espace ? { espace } : {}),
         ...(media ? { media } : {}),
         ...(rognage && rognage.some((v) => v !== 0) ? { rognage } : {}),
+        ...(alt ? { alt } : {}),
         ...dansGroupe,
         ...style(el, false),
       });
@@ -205,6 +214,19 @@ function typeDeMasque(type: string): string {
   if (type === "title" || type === "ctrTitle") return "title";
   if (type === "dt" || type === "ftr" || type === "sldNum") return type;
   return "body";
+}
+
+/**
+ * Les formes propres d'une disposition (hors espaces réservés) : ce qu'elle dessine sur chaque diapositive qui l'emploie
+ * — une icône de section, l'illustration d'un écran, les libellés d'une météo.
+ */
+export function formesDeDisposition(paquet: Paquet, disposition: string): Forme[] {
+  const masque = paquet.masqueDe(disposition);
+  const medias = new Map(paquet.relations(disposition).filter((r) => r.type === "image").map((r) => [r.id, r.cible]));
+  const arbre = chemin(paquet.racine(disposition), ["p:cSld", "p:spTree"]);
+  if (!arbre) return [];
+  return aplatir(arbre, { heritage: () => undefined, media: (rId) => medias.get(rId), styles: stylesDuMasque(paquet, masque) })
+    .filter((f) => !f.espace);
 }
 
 /** Les formes aplaties d'une diapositive, espaces réservés résolus par la disposition puis le masque. */

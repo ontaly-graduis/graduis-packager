@@ -148,7 +148,9 @@ export function mesurer(r: Releve): Mesures {
   }
 
   const nonWeb: Record<string, number> = {};
-  for (const { ext } of Object.values(r.medias)) if (!WEB.has(ext)) nonWeb[ext] = (nonWeb[ext] ?? 0) + 1;
+  // Les médias des diapositives (ceux des dispositions, repris en PKG-B6, n'entrent pas dans la mesure de parité).
+  const desDiapositives = new Set(r.diapositives.flatMap((d) => d.formes.flatMap((f) => (f.media ? [f.media] : []))));
+  for (const [h, { ext }] of Object.entries(r.medias)) if (desDiapositives.has(h) && !WEB.has(ext)) nonWeb[ext] = (nonWeb[ext] ?? 0) + 1;
   const graphiques: Record<string, number> = {};
   for (const d of r.diapositives) for (const f of d.formes) if (f.nature === "graphique") graphiques[f.graphique ?? ""] = (graphiques[f.graphique ?? ""] ?? 0) + 1;
 

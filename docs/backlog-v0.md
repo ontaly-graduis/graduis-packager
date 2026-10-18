@@ -99,6 +99,17 @@ Ce qui reste à faire, session par session. Chaque session a ses « À trancher 
 
 ---
 
+## PKG-B6 · Les visuels d'origine dans la salle — Sortie atteinte le 18/10
+
+**Livré** (demande de David, 18/10) : les pictogrammes, minuteurs, icônes météo, icônes de section et photos du diaporama d'origine, dans la salle et dans le PPT de validation. Le relevé lit les SVG et ce que dessinent les dispositions ; la qualification donne à chaque visuel son rôle, sa légende, son aplat ; la salle les compose au thème ; les EMF se convertissent par LibreOffice (`src/medias/convertir.ts`).
+
+**Sortie** (67 témoins Vitest — 52 sur le dépôt, 15 sur le corpus — et 11 Playwright, verts ; fumée : 164 blocs, 0 erreur, 0 requête ; « tous les médias sont affichables »)
+- Les 12 écrans (animation, démonstration) ont leur pictogramme, sauf la météo, qui a sa galerie de quatre icônes légendées ; les minuteurs des diapositives 3, 5 et 42 ; 15 icônes de section ; les pictogrammes des mises en pratique, étapes clés, synthèse, glossaire, objectifs ; la photo de couverture.
+- L'aller-retour par le PPT de validation reste exact (166 diapositives) ; la salle construite depuis le PPT est identique à l'octet à celle construite depuis le deck ; le PPT valide contre les schémas (875 parties).
+- Non couvert, nommé : le décor d'origine des écrans (bandeaux, disques, ornements) n'est pas repris, le thème s'en charge ; « Votre \npromotion » garde sa coupure de ligne d'origine.
+
+---
+
 ## PKG-C · Le PPT de validation et l'aller-retour
 
 Découpé en trois sessions : C1, la grammaire des figures et l'aller-retour (faite) ; C2, la structure des textes en
@@ -117,6 +128,10 @@ grammaire ; C3, les schémas, leur partition et leurs recompositions en grammair
 - Le paquet valide contre les schémas ISO/IEC 29500 (875 parties, 0 erreur ; `scripts/valider_pptx.py`), s'ouvre dans python-pptx et se rend dans LibreOffice ; aucune couleur hors du thème (I-PKG-6).
 - Non couvert, nommé : l'ouverture dans PowerPoint lui-même (à faire sur un poste) ; les notes structurées (`Durée :`, `Consigne :`…) et les propositions ✦, faute de consommateur encore.
 
+### Les deux ingestions (David, 18/10)
+
+L'**initiale** lit le deck hérité et produit le PPT de validation ; la **complémentaire** relit le PPT revu et modifié par ONET, à chaque itération. La complémentaire doit tolérer ce qu'ONET ajoute librement (un cadre de texte, une image, une diapositive sans disposition `G ·`) : le lire par l'heuristique de l'initiale et le signaler, plutôt que le perdre (→ C2, C3).
+
 ### PKG-C2 · La structure des textes en grammaire
 
 **Livrer** : la structure d'un texte (`bloc.structure` : rangées, colonnes, fiches, intertitres, listes et leurs détails, définitions, graisse) montrée dans le PPT de validation dans les formes natives de PowerPoint, et relue par `lire` ; l'étiquette provisoire `GRADUIS.LECTURES` n'en porte plus.
@@ -132,8 +147,8 @@ grammaire ; C3, les schémas, leur partition et leurs recompositions en grammair
 **À trancher au démarrage**
 - Ce que montre une diapositive recomposée : la composition (ce qui sera livré) en formes natives, le dessin d'origine en repli (masqué, ou sur une diapositive annexe) ?
 - La grammaire du dévoilement : les animations natives de PowerPoint (l'ordre des clics est la partition, il se joue au diaporama et se corrige dans le volet Animation) ou le nom des formes (« pas 2 ») ?
-- Le repli de police : Montserrat manque sur une partie des postes, et PowerPoint ne l'embarque pas toujours. Police embarquée, police système de repli, ou installation demandée à ONET ?
-- Les animations de dévoilement dans le PPT d'animation : en v0 ou en option ? (Liées à la grammaire du dévoilement.)
+- ~~Le repli de police~~ : tranché le 18/10 — le PPT de validation est un support de relecture, PowerPoint remplace Montserrat sans dommage.
+- Les animations de dévoilement : le PPT étant un support de validation, les animations natives valent-elles leur coût, ou le nom des formes suffit-il ?
 
 ---
 

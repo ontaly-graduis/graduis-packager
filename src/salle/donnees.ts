@@ -84,12 +84,14 @@ function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, h: Habillage)
     lignes = lignes.filter((l) => !/vous de jouer|aider du/i.test(l));
     if (/vous de jouer/i.test(titre ?? "") && lignes.length) [titre, lignes] = [lignes[0]!, lignes.slice(1)];
   }
+  // La durée d'un écran se dit dans sa puce (avec l'icône du minuteur) : la ligne qui ne dit qu'elle n'est pas répétée.
+  const minutes = MINUTEES.has(b.figure) ? lignes.join(" ").match(/(\d{1,3})\s*min/i) : null;
+  if (minutes) lignes = lignes.filter((l) => !/^\s*\d{1,3}\s*min(utes?)?\s*\.?\s*$/i.test(l));
   const pastille = prise.devoilement === "pastille";
   const etapes = !pastille ? 0 : b.figure === "pas-a-pas" ? b.pas.length
     : b.figure === "schema" ? (b.composition ? (b.composition.gabarit === "cas" ? b.composition.cas.length : b.composition.colonnes.length) : b.dessin?.partition?.pas ?? 0)
       : DEVOILEES.has(b.figure) ? (b.structure ? planDeDevoilement(b.structure).total : lignes.length) : 0;
   const dessin = b.dessin ? compenserChasse(b.dessin, h.chasse ?? {}) : undefined;
-  const minutes = MINUTEES.has(b.figure) ? lignes.join(" ").match(/(\d{1,3})\s*min/i) : null;
   return {
     id: b.id,
     figure: b.figure,

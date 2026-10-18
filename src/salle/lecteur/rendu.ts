@@ -213,7 +213,59 @@ function pasAPas(ctx: Contexte, b: BlocDeSalle, etape: number): HTMLElement {
 }
 
 function visuels(ctx: Contexte, b: BlocDeSalle, maxL: number, maxH: number): HTMLElement[] {
-  return b.visuels.slice(0, 2).map((v) => capture(ctx, v, maxL, maxH / Math.min(2, b.visuels.length)).boite);
+  const vs = b.visuels.filter((v) => v.role !== "section" && v.role !== "duree").slice(0, 2);
+  return vs.map((v) => capture(ctx, v, maxL, maxH / Math.max(1, vs.length)).boite);
+}
+
+/** Une image telle quelle (pictogramme, icône, photo), ou rien si elle n'est pas affichable. */
+function image(ctx: Contexte, v: VisuelDeSalle | undefined, classe: string): HTMLElement | null {
+  const src = v ? ctx.medias[v.media] : undefined;
+  return src ? el(ctx.doc, "img", classe, undefined, { src, alt: v?.legende ?? "" }) : null;
+}
+
+const duVisuel = (b: BlocDeSalle, role: string) => b.visuels.find((v) => v.role === role);
+
+/** La durée d'un écran : son icône (le minuteur du deck) et ses minutes. */
+function duree(ctx: Contexte, b: BlocDeSalle): HTMLElement | null {
+  if (!b.duree) return null;
+  const p = puce(ctx, `${b.duree} minutes`, "duree");
+  const icone = image(ctx, duVisuel(b, "duree"), "icone-duree");
+  if (icone) p.prepend(icone);
+  return p;
+}
+
+/**
+ * Un écran (animation, démonstration) : son pictogramme dans un disque, son texte, sa galerie (des images légendées : la
+ * météo) et sa durée. Les autres images d'un écran sont son décor d'origine (un disque, un ornement) : le thème s'en charge.
+ */
+function ecran(ctx: Contexte, b: BlocDeSalle, texte: HTMLElement[]): HTMLElement {
+  const racine = el(ctx.doc, "div", "ecran");
+  const v = duVisuel(b, "pictogramme");
+  const picto = image(ctx, v, "");
+  if (picto) {
+    const disque = el(ctx.doc, "div", "disque");
+    if (v?.fond) disque.style.background = `var(--dessin-${v.fond})`;
+    disque.append(picto);
+    racine.append(disque);
+  }
+  const colonne = el(ctx.doc, "div", "texte-ecran");
+  colonne.append(...texte);
+  const legendes = b.visuels.filter((v) => v.legende !== undefined);
+  if (legendes.length) {
+    const galerie = el(ctx.doc, "div", "galerie");
+    for (const v of legendes) {
+      const f = el(ctx.doc, "figure", "");
+      const i = image(ctx, v, "");
+      if (i) f.append(i);
+      f.append(el(ctx.doc, "figcaption", "", v.legende));
+      galerie.append(f);
+    }
+    colonne.append(galerie);
+  }
+  const d = duree(ctx, b);
+  if (d) colonne.append(d);
+  racine.append(colonne);
+  return racine;
 }
 
 function tableau(ctx: Contexte, lignes: readonly (readonly string[])[]): HTMLElement {
@@ -383,6 +435,22 @@ function composerTableau(ctx: Contexte, t: Extract<Composition, { gabarit: "tabl
   return racine;
 }
 
+/** Le pictogramme d'une diapositive de texte (celui de sa disposition d'origine : objectifs, règles du jeu…), sur le côté. */
+function pictogrammeDeCote(ctx: Contexte, b: BlocDeSalle, corps: HTMLElement): void {
+  const v = duVisuel(b, "pictogramme");
+  const i = image(ctx, v, "");
+  if (!i) return;
+  const cote = el(ctx.doc, "div", "pictogramme-cote");
+  // Posé à l'origine sur un aplat (une icône blanche sur un bandeau) : il le garde, en disque, à la couleur de son rôle.
+  if (v?.fond && v.fond !== "papier") {
+    const disque = el(ctx.doc, "div", "disque");
+    disque.style.background = `var(--dessin-${v.fond})`;
+    disque.append(i);
+    cote.append(disque);
+  } else cote.append(i);
+  corps.append(cote);
+}
+
 function puce(ctx: Contexte, texte: string, classe: string): HTMLElement {
   return el(ctx.doc, "span", `puce ${classe}`, texte);
 }
@@ -394,7 +462,13 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
   const plein = ["couverture", "transition", "ecran-animation", "demonstration"].includes(b.figure);
   if (!plein) {
     const entete = el(ctx.doc, "header", "entete");
-    entete.append(el(ctx.doc, "h1", "", b.titre ?? ""), el(ctx.doc, "img", "logo", undefined, { src: ctx.medias.logo ?? "", alt: "Onet" }));
+    const vs = duVisuel(b, "section");
+    const section = image(ctx, vs, "section");
+    if (section && vs?.fond) section.style.background = `var(--dessin-${vs.fond})`;
+    const titre = el(ctx.doc, "div", "titre-entete");
+    if (section) titre.append(section);
+    titre.append(el(ctx.doc, "h1", "", b.titre ?? ""));
+    entete.append(titre, el(ctx.doc, "img", "logo", undefined, { src: ctx.medias.logo ?? "", alt: "Onet" }));
     d.append(entete);
   }
   const corps = el(ctx.doc, "div", "corps");
@@ -403,6 +477,13 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
       corps.append(el(ctx.doc, "img", "logo-grand", undefined, { src: ctx.medias.logo ?? "", alt: "Onet" }));
       const [premier, ...reste] = [b.titre ?? "", ...b.lignes].filter(Boolean);
       corps.append(el(ctx.doc, "h1", "titre-couverture", premier ?? ""), liste(ctx, reste, 0, false, "sous-titres"));
+      // La photo de la couverture d'origine, en panneau.
+      const photo = b.visuels.find((v) => !v.role && ctx.medias[v.media]);
+      if (photo) {
+        const panneau = el(ctx.doc, "div", "photo-couverture");
+        panneau.style.backgroundImage = `url("${ctx.medias[photo.media]}")`;
+        d.append(panneau);
+      }
       break;
     }
     case "transition":
@@ -410,22 +491,25 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
       break;
     case "ecran-animation": {
       const [premier, ...reste] = b.lignes;
-      corps.append(el(ctx.doc, "div", "grand", premier ?? b.titre ?? ""));
-      for (const l of reste) corps.append(el(ctx.doc, "p", "", l));
-      if (b.duree) corps.append(puce(ctx, `${b.duree} minutes`, "duree"));
+      corps.append(ecran(ctx, b, [el(ctx.doc, "div", "grand", premier ?? b.titre ?? ""), ...reste.map((l) => el(ctx.doc, "p", "", l))]));
       break;
     }
     case "demonstration":
-      corps.append(el(ctx.doc, "div", "etiquette", "Démonstration"), el(ctx.doc, "div", "grand", b.lignes.filter((l) => !/démonstration/i.test(l)).join(" ") || b.titre || ""));
+      corps.append(ecran(ctx, b, [el(ctx.doc, "div", "etiquette", "Démonstration"), el(ctx.doc, "div", "grand", b.lignes.filter((l) => !/démonstration/i.test(l)).join(" ") || b.titre || "")]));
       break;
     case "mise-en-pratique": {
-      corps.append(puce(ctx, "À vous de jouer", "a-vous"), defile(ctx, liste(ctx, b.lignes, etape, devoile)));
-      if (b.aide) corps.append(el(ctx.doc, "p", "aide", "Vous pouvez vous aider du pas-à-pas."));
-      if (b.duree) corps.append(puce(ctx, `${b.duree} minutes`, "duree"));
+      const texte = el(ctx.doc, "div", "texte");
+      texte.append(puce(ctx, "À vous de jouer", "a-vous"), defile(ctx, liste(ctx, b.lignes, etape, devoile)));
+      if (b.aide) texte.append(el(ctx.doc, "p", "aide", "Vous pouvez vous aider du pas-à-pas."));
+      const d = duree(ctx, b);
+      if (d) texte.append(d);
+      corps.append(texte);
+      pictogrammeDeCote(ctx, b, corps);
       break;
     }
     case "etapes-cles":
       corps.append(defile(ctx, b.structure ? structure(ctx, b.structure, etape, devoile) : liste(ctx, b.lignes, etape, devoile, "liste numerotee")));
+      pictogrammeDeCote(ctx, b, corps);
       break;
     case "pas-a-pas":
       corps.append(pasAPas(ctx, b, etape));
@@ -459,7 +543,8 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
       texte.append(defile(ctx, b.structure ? structure(ctx, b.structure, etape, devoile) : liste(ctx, b.lignes, etape, devoile), ...b.tableaux.map((t) => tableau(ctx, t))));
       corps.append(texte);
       const illustrations = new Set(b.structure?.rangees.flatMap((r) => r.colonnes.flatMap((c) => (c.visuel ? [c.visuel] : []))) ?? []);
-      const libres = b.visuels.filter((v) => !illustrations.has(v.media));
+      const libres = b.visuels.filter((v) => !illustrations.has(v.media) && v.role !== "section" && v.role !== "duree" && v.role !== "pictogramme");
+      if (!libres.length) pictogrammeDeCote(ctx, b, corps);
       if (libres.length) {
         const colonne = el(ctx.doc, "div", "visuels");
         colonne.append(...visuels(ctx, { ...b, visuels: libres }, 680, CORPS.hauteur));
