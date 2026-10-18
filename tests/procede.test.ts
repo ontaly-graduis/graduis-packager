@@ -9,6 +9,8 @@ import { ecartDeLivraison } from "../src/ecart/ecart";
 import { emettre } from "../src/emission/emettre";
 import { lire } from "../src/lecture/lire";
 import { chargerProcede, versionsEnEcart } from "../src/procede/procede";
+import { avecConversionsFigees, chargerConversions } from "../src/medias/convertir";
+import { sha256 } from "../src/lib/json";
 import type { SeanceSpec } from "../src/pivot/seance-spec";
 import { qualifierReleve } from "../src/qualification/qualifier";
 import { relever } from "../src/releve/releve";
@@ -49,6 +51,45 @@ describe("le procédé (GEN-1)", () => {
   });
 });
 
+describe("les conversions figées (MV-1)", () => {
+  const EMF = `sha256:${"a".repeat(64)}`;
+  function figer(svg: string) {
+    const d = mkdtempSync(join(tmpdir(), "conversions-"));
+    writeFileSync(join(d, "a.svg"), svg);
+    writeFileSync(join(d, "manifeste.json"), JSON.stringify({
+      schema: "graduis/conversions@0", outil: "témoin", banc_serveurs_conformes: { convertir_metafichier: { serveur: "libreoffice", version: "témoin" } },
+      document: "deck.pptx", document_sha256: `sha256:${"b".repeat(64)}`, genere_le: "2026-10-18",
+      assets: [{ source_sha256: EMF, source_ext: "emf", media_type: "image/svg+xml", path: "a.svg", asset_sha256: sha256(svg), transcode: "témoin" }],
+    }));
+    return d;
+  }
+
+  it("passent avant LibreOffice ; un média qui n'y est pas va au repli", () => {
+    const c = chargerConversions(join(figer("<svg/>"), "manifeste.json"));
+    const convertir = avecConversionsFigees(c, () => new Uint8Array([9]))!;
+    expect(new TextDecoder().decode(convertir(EMF, "emf", new Uint8Array()) ?? undefined)).toBe("<svg/>");
+    expect(convertir(`sha256:${"c".repeat(64)}`, "emf", new Uint8Array())).toEqual(new Uint8Array([9]));
+  });
+
+  it("refusent un SVG qui n'est plus celui du manifeste (G-4)", () => {
+    const d = figer("<svg/>");
+    writeFileSync(join(d, "a.svg"), "<svg>retouché</svg>");
+    expect(() => chargerConversions(join(d, "manifeste.json"))).toThrow(/n'est plus celui du manifeste/);
+  });
+
+  it("absentes (données du client hors dépôt), le procédé se charge et le dit", () => {
+    const dossier = mkdtempSync(join(tmpdir(), "procede-"));
+    mkdirSync(join(dossier, "procedes"));
+    const p = JSON.parse(readFileSync("procedes/onet-boost.json", "utf8"));
+    p.profil.chemin = resolve(p.profil.chemin);
+    p.theme.chemin = resolve(p.theme.chemin);
+    p.conversions.chemin = join(dossier, "absentes", "manifeste.json");
+    writeFileSync(join(dossier, "procedes", "sans-conversions.json"), JSON.stringify(p));
+    const charge = chargerProcede(join(dossier, "procedes", "sans-conversions.json"));
+    expect([charge.conversions, charge.absences.length]).toEqual([null, 1]);
+  });
+});
+
 describe("l'écart à la source (I-PKG-19)", () => {
   it("la chaîne n'invente aucun mot et garde l'ordre ; relu sans revue, rien ne change", async () => {
     const { releve, pivot0, ppt } = await chaine();
@@ -85,11 +126,7 @@ describe("le code ne nomme aucun client (GEN-1)", () => {
 
   it("aucune mention dans src/ : profil, thème, charte et procédé vivent dans gabarits/ et procedes/", () => {
     const mentions = fichiers("src").flatMap((f) => readFileSync(f, "utf8").split("\n")
-      .flatMap((l, i) => (TERMES.some((t) => t.test(l)) ? [{ f, l: l.trim() }] : [])));
-    // L'exception nommée (décision du 18/10) : le texte du logo dans le lecteur de la salle, qui garde la salle à l'octet de
-    // v0 ; elle part à la première montée de version. Elle ne s'étend pas.
-    const exception = (m: { f: string; l: string }) => m.f === join("src", "salle", "lecteur", "rendu.ts") && /alt: "Onet" \}\)\);$/.test(m.l);
-    expect(mentions.filter((m) => !exception(m))).toEqual([]);
-    expect(mentions.filter(exception)).toHaveLength(2);
+      .flatMap((l, i) => TERMES.filter((t) => t.test(l)).map((t) => `${f}:${i + 1} ${t}`)));
+    expect(mentions).toEqual([]);
   });
 });

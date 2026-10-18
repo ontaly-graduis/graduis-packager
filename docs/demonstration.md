@@ -8,7 +8,8 @@ Les sorties vivent dans `out/boost-acheteur/` (hors dépôt, I-PKG-9). Les comma
 (`npx tsx src/cli/packager.ts …`) et prennent le procédé ONET : `--procede onet-boost` (depuis GEN-1, le code ne nomme plus
 le client) ; imprimer demande le Chromium de Playwright (`npx playwright install chromium`, à défaut Google Chrome ou
 `PW_CHROMIUM`), la planche LibreOffice. `packager rejouer onet-boost "docs/sources/<deck>.pptx"` refait toute la chaîne et
-la compare à la référence v0.
+la compare à la référence du procédé (v0.1) ; les pictogrammes EMF viennent des conversions figées
+(`docs/sources/medias-converties/`).
 
 ## Préparer (la veille)
 

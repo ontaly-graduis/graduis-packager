@@ -6,7 +6,7 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 
 **Les indicateurs du chantier** : part des diapositives décidées aux étages 1 et 2 · heures humaines par deck, par sensibilité · coût IA par deck · taux d'acceptation par acte · écart à la source, par sensibilité · temps d'embarquement d'une famille de gabarit · mots inventés dans les activités dérivées (cible : zéro).
 
-**La référence v0** : le tag `v0` (5656a26) et `golden/reference-v0.json`, les empreintes de la chaîne v0 sur le deck acheteur (le deck reste hors dépôt). Chaque session qui touche à la chaîne rejoue le procédé ONET contre elle (I-PKG-18), ou dit pourquoi elle monte de version.
+**La référence** : celle du procédé ONET, `golden/reference-v0.1.json` (tag `v0.1`, depuis MV-1 ; `golden/reference-v0.json` et le tag `v0` restent, comme trace) — les empreintes de la chaîne sur le deck acheteur (le deck reste hors dépôt). Chaque session qui touche à la chaîne rejoue le procédé ONET contre elle (I-PKG-18), ou monte de version : rejeu, diff, décision, `rejouer --nouvelle-reference`, nouveau tag.
 
 ---
 
@@ -24,18 +24,17 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 
 ---
 
-## MV-1 · Première montée de version du procédé ONET
+## MV-1 · Première montée de version du procédé ONET — Sortie atteinte le 18/10
 
-**Livrer** : les conversions EMF → SVG figées en entrée du procédé (par empreinte, hors dépôt), si bien que la salle porte ses 16 visuels sans dépendre de LibreOffice au rejeu ; le texte du logo de la salle au nom du thème (fin de l'exception de GEN-1) ; la nouvelle référence et son tag.
+**Livré** : les conversions EMF → SVG figées en entrée du procédé — les 8 SVG du deck acheteur (LibreOffice, VM du 18/10) dans `docs/sources/medias-converties/` (hors dépôt) avec leur manifeste `graduis/conversions@0`, au contrat du harnais `ingest-visuels` du wizard (source, chemin, empreinte, transformation, banc de serveurs conformes), épinglé au procédé (`conversions`) ; la salle et le papier les lisent avant LibreOffice ; absentes, le rejeu le dit ; changées, refusées (G-4) ; le texte du logo de la salle au nom du thème (fin de l'exception de GEN-1) ; `rejouer --nouvelle-reference` ; `golden/reference-v0.1.json` et le tag `v0.1`.
 
-**À trancher au démarrage**
-- Où vivent les conversions figées (avec les sources du client, hors dépôt) et par quel LibreOffice on les produit (absent du poste de David).
-- Le nom du tag et de la référence (`v0.1` ?).
-- Le diff à accepter : seules les salles (visuels, lecteur) et les PDF si un visuel y entre.
+**Tranché le 18/10** : les SVG de la VM figés, sans installer LibreOffice ; le contrat du harnais du wizard repris dès maintenant, son producteur (la conversion comme capacité du compagnon partagé) à ETB-1 ; le tag `v0.1` et la référence écrite par le rejeu ; le diff accepté d'avance (les salles, les octets des PDF).
 
-**Sortie**
-- Le rejeu sur la nouvelle version : un diff limité à ce qui est attendu, accepté par une décision datée ; les 16 visuels présents.
-- Le témoin « aucune mention d'ONET » sans exception.
+**Sortie** (105 témoins Vitest et 20 Playwright, verts)
+- Le rejeu sur la nouvelle version contre v0 : trois empreintes de salle changent, et rien d'autre — les EMF embarqués, le lecteur renommé (même programme) ; PDF : couche texte, pages et recette identiques. Accepté (décision du 18/10) ; référence v0.1 écrite par le rejeu ; les quatre cas conformes à v0.1.
+- Les 16 visuels EMF présents dans la salle de la journée (8 médias sur 8).
+- Le témoin « aucune mention d'ONET dans `src/` » sans exception.
+- Non couvert, nommé : la version de LibreOffice qui a produit les SVG n'a pas été notée sur la VM ; reconvertir un EMF nouveau demande encore LibreOffice sur le poste (ou le compagnon, ETB-1).
 
 ---
 
@@ -82,6 +81,7 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 - La pile de l'établi (interface web locale) et sa couture sur la bibliothèque (I-PKG-16).
 - Les vignettes des diapositives héritées : par quel moteur (LibreOffice est absent du poste de David), et leur cache.
 - Le protocole de comparaison avec la revue dans PowerPoint (Arb-3) : même deck, même relecteur ou non, ce qui se mesure (temps, qualité).
+- La conversion des médias que le navigateur n'affiche pas (EMF → SVG) comme capacité déclarée du compagnon partagé — celui du wizard, son banc de serveurs conformes, couture jamais fork — produisant l'artefact `graduis/conversions@0` repris en MV-1 ; ce qui retire du packager l'appel synchrone à LibreOffice. Et la vectorisation vtracer du harnais (verdict de qualité), si la revue doit vectoriser des captures de schémas (MV-1, décision du 18/10).
 
 **Sortie**
 - Un deck ONET complet revu dans l'établi ; temps et qualité de revue comparés à ceux de la revue dans PowerPoint (tranche Arb-3).

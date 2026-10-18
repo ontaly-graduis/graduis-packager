@@ -8,6 +8,7 @@ import { Charte } from "../diagnostic/regles";
 import { sha256, stringify2 } from "../lib/json";
 import { chargerProfil, empreinteDuProfil, type ProfilSource } from "../profil/profil";
 import { chargerTheme, type Theme } from "../theme/theme";
+import { chargerConversions, type ConversionsFigees } from "../medias/convertir";
 
 const SCHEMA_PROCEDE = "graduis/procede@0";
 
@@ -20,6 +21,8 @@ export const Procede = z.object({
   /** Les chemins sont relatifs à la racine du dépôt, le dossier qui contient `procedes/`. */
   profil: Piece,
   theme: Piece,
+  /** Les conversions figées des médias que le navigateur n'affiche pas (EMF) : leur manifeste, hors dépôt avec les sources du client. */
+  conversions: Piece.optional(),
   charte: Charte,
   /** La minimale seule en GEN-1 : la moyenne s'ouvre en ACT-1, l'élevée en REI-1. Les bornes de chaque niveau vivent dans le code. */
   sensibilite: z.enum(["minimale"]),
@@ -43,6 +46,9 @@ export interface ProcedeCharge {
   readonly racine: string;
   readonly profil: ProfilSource;
   readonly theme: Theme;
+  readonly conversions: ConversionsFigees | null;
+  /** Ce qui manque ici des entrées du procédé (des données du client hors dépôt) : le rejeu le dit, il ne peut être conforme. */
+  readonly absences: readonly string[];
 }
 
 /** L'empreinte d'un thème chargé : celle que porte la prise au manifeste. */
@@ -62,14 +68,18 @@ export function chargerProcede(nomOuChemin: string): ProcedeCharge {
   const racine = resolve(dirname(fichier), "..");
   const profil = chargerProfil(resolve(racine, procede.profil.chemin));
   const theme = chargerTheme(resolve(racine, procede.theme.chemin));
+  const manifeste = procede.conversions && resolve(racine, procede.conversions.chemin);
+  const conversions = manifeste && existsSync(manifeste) ? chargerConversions(manifeste) : null;
+  const absences = procede.conversions && !conversions ? [`les conversions figées (${procede.conversions.chemin})`] : [];
   const changes = [
     ...(empreinteDuProfil(profil) !== procede.profil.empreinte ? [`le profil ${procede.profil.chemin} (${empreinteDuProfil(profil)})`] : []),
     ...(empreinteDuTheme(theme) !== procede.theme.empreinte ? [`le thème ${procede.theme.chemin} (${empreinteDuTheme(theme)})`] : []),
+    ...(conversions && conversions.empreinte !== procede.conversions?.empreinte ? [`les conversions ${procede.conversions?.chemin} (${conversions.empreinte})`] : []),
   ];
   if (changes.length) {
-    throw new Error(`procédé ${procede.nom} : ${changes.join(" et ")} ne correspond(ent) plus à l'empreinte épinglée. Un profil ou un thème ne change que par décision (G-4) : rejouer, lire le diff, puis porter la nouvelle empreinte au procédé.`);
+    throw new Error(`procédé ${procede.nom} : ${changes.join(" et ")} ne correspond(ent) plus à l'empreinte épinglée. Un profil, un thème ou des conversions ne changent que par décision (G-4) : rejouer, lire le diff, puis porter la nouvelle empreinte au procédé.`);
   }
-  return { procede, empreinte: sha256(stringify2(procede)), racine, profil, theme };
+  return { procede, empreinte: sha256(stringify2(procede)), racine, profil, theme, conversions, absences };
 }
 
 export interface Version {

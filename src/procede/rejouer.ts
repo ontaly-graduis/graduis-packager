@@ -1,6 +1,10 @@
 // Rejouer un procédé (I-PKG-18) : sur un deck, et le PPT revu s'il y en a un, la chaîne entière — relever, qualifier, émettre,
-// livrer — puis chaque empreinte comparée à la référence du procédé. Le rejeu dit ce qui diffère ; monter de version reste un acte.
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+// livrer — puis chaque empreinte comparée à la référence du procédé. Le rejeu dit ce qui diffère ; monter de version reste un
+// acte, que le rejeu outille en écrivant, à la demande, les empreintes obtenues dans une nouvelle référence.
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { arch, platform } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { diagnostiquer } from "../diagnostic/regles";
 import { rapportHtml } from "../diagnostic/rapport-html";
@@ -23,10 +27,17 @@ interface LivraisonAttendue {
   readonly ecarts?: number;
 }
 
+/** Ce qu'une référence attend d'un cas : la qualification (deck seul), le PPT de validation, et chaque livraison par extrait. */
+type CasAttendu = { qualification?: Record<string, string>; "validation.pptx": string; entrees?: string } & Record<string, unknown>;
+
 /** La référence d'un procédé (`golden/`) : par cas, les empreintes de chaque étape. */
 interface Reference {
-  readonly version: { readonly tag: string };
-  readonly cas: Readonly<Record<string, { readonly qualification?: Readonly<Record<string, string>>; readonly "validation.pptx": string } & Readonly<Record<string, unknown>>>>;
+  nom: string;
+  version: { tag: string; commit: string | null };
+  date: string;
+  environnement: Record<string, string | null>;
+  deck: { nom: string; empreinte: string };
+  cas: Record<string, CasAttendu>;
 }
 
 interface Comparaison {
@@ -56,6 +67,8 @@ interface OptionsDeRejeu {
   readonly imprimer?: (html: string) => Promise<Impression>;
   readonly convertir?: ((hash: string, ext: string, octets: Uint8Array) => Uint8Array | null) | null;
   readonly moteurs: { readonly chromium: string | null; readonly libreoffice: string | null };
+  /** Monter de version : le fichier de la nouvelle référence où écrire les empreintes obtenues (le cas et l'extrait rejoués). */
+  readonly nouvelleReference?: string;
 }
 
 const refusEnLignes = (l: Livraison) => l.bloquants.map((k) => `diapo ${k.diapo ?? "—"} · ${k.regle} · ${k.message}`);
@@ -121,5 +134,40 @@ export async function rejouer(p: ProcedeCharge, o: OptionsDeRejeu): Promise<Reje
   const conforme = comparaisons.every((c) => c.attendue !== null && c.attendue === c.obtenue);
   const r: Rejeu = { procede: p.procede.nom, cas, extrait, versions, comparaisons, ecart: l.ecart, refus, conforme };
   writeFileSync(join(o.sortie, `rejeu-${cas}-${extrait}.json`), stringify2({ ...r, ecart: undefined }));
+  if (o.nouvelleReference) {
+    const qualification = cas === "deck" ? Object.fromEntries(ecrits.filter(([f]) => f !== "validation.pptx").map(([f, c]) => [f === "seance-spec.json" ? "pivot" : f, sha256(c)])) : undefined;
+    const m = l.manifeste;
+    const livraison = refus.length ? { refusee: refus, code: 1 } : {
+      ppt: m.ppt.empreinte, pivot: m.pivot,
+      sorties: Object.fromEntries(Object.entries(m.sorties).map(([f, s]) => [f, s.texte ? { texte: s.texte, pages: s.pages, recette: s.recette } : s.empreinte])),
+      "rapport.json": sha256(stringify2(l.rapport)), ecarts: m.ecarts.length,
+    };
+    ecrireReference(p, o, releve.deck, cas, extrait, sha256(ppt), qualification, livraison);
+  }
   return r;
+}
+
+/** Écrit (ou complète) une nouvelle référence : le cas et l'extrait rejoués, sous la version et l'environnement courants. */
+function ecrireReference(p: ProcedeCharge, o: OptionsDeRejeu, deck: { nom: string; empreinte: string }, cas: string, extrait: string,
+  validation: string, qualification: Record<string, string> | undefined, livraison: Record<string, unknown>): void {
+  const fichier = resolve(o.nouvelleReference!);
+  const ref: Reference = existsSync(fichier) ? JSON.parse(readFileSync(fichier, "utf8")) as Reference : {
+    nom: `Référence ${p.procede.versions.bibliotheque} — le procédé ${p.procede.nom} sur ${deck.nom}`,
+    version: { tag: p.procede.versions.bibliotheque, commit: null }, date: "", environnement: {}, deck, cas: {},
+  };
+  if (ref.deck.empreinte !== deck.empreinte) throw new Error(`${o.nouvelleReference} porte un autre deck (${ref.deck.nom}) : une référence, un deck`);
+  const git = (...args: string[]) => { const x = spawnSync("git", args, { cwd: p.racine, encoding: "utf8" }); return x.status === 0 ? x.stdout.trim() : null; };
+  const modifie = git("status", "--porcelain", "--untracked-files=no", "--", "src", "package.json", "package-lock.json");
+  ref.version.commit = `${git("rev-parse", "HEAD") ?? "inconnu"}${modifie ? " (modifiée)" : ""}`;
+  ref.date = new Date().toISOString().slice(0, 10);
+  const verrou = resolve(p.racine, "package-lock.json");
+  ref.environnement = {
+    systeme: `${platform()} ${arch()}`, node: process.version, verrou: existsSync(verrou) ? sha256(readFileSync(verrou)) : null,
+    "playwright-core": (createRequire(resolve(p.racine, "package.json"))("playwright-core/package.json") as { version: string }).version,
+    chromium: o.moteurs.chromium, libreoffice: o.moteurs.libreoffice, conversions: p.conversions?.empreinte ?? null,
+  };
+  const entrees = cas === "revue" ? `le deck et le PPT de validation revu (${basename(o.revue ?? "")})` : "le deck seul, sans revue";
+  const c: CasAttendu = ref.cas[cas] ?? { entrees, "validation.pptx": validation };
+  ref.cas[cas] = { ...c, entrees, ...(qualification ? { qualification } : {}), "validation.pptx": validation, [extrait]: livraison };
+  writeFileSync(fichier, stringify2(ref));
 }

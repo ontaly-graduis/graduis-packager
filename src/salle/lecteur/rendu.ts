@@ -4,6 +4,9 @@ import type { Composition, Structure, Vignette } from "../../pivot/seance-spec";
 import type { BlocDeSalle, SequenceDeSalle, VisuelDeSalle } from "../donnees";
 import { planDeDevoilement } from "../unites";
 
+/** Le nom du thème (le texte de remplacement du logo), injecté à la construction du lecteur. */
+declare const NOM_DU_THEME: string;
+
 export interface Contexte {
   readonly doc: Document;
   /** Hash de média → data-URI ; `logo` → le logo du thème. */
@@ -482,15 +485,13 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
     const titre = el(ctx.doc, "div", "titre-entete");
     if (section) titre.append(section);
     titre.append(el(ctx.doc, "h1", "", b.titre ?? ""));
-    // Exception nommée de GEN-1 (décision du 18/10) : le texte du logo reste un littéral, qui garde le lecteur minifié — donc
-    // la salle — identique à v0 ; il passe au nom du thème à la première montée de version (celle des EMF).
-    entete.append(titre, el(ctx.doc, "img", "logo", undefined, { src: ctx.medias.logo ?? "", alt: "Onet" }));
+    entete.append(titre, el(ctx.doc, "img", "logo", undefined, { src: ctx.medias.logo ?? "", alt: NOM_DU_THEME }));
     d.append(entete);
   }
   const corps = el(ctx.doc, "div", "corps");
   switch (b.figure) {
     case "couverture": {
-      corps.append(el(ctx.doc, "img", "logo-grand", undefined, { src: ctx.medias.logo ?? "", alt: "Onet" }));
+      corps.append(el(ctx.doc, "img", "logo-grand", undefined, { src: ctx.medias.logo ?? "", alt: NOM_DU_THEME }));
       const [premier, ...reste] = [b.titre ?? "", ...b.lignes].filter(Boolean);
       corps.append(el(ctx.doc, "h1", "titre-couverture", premier ?? ""), liste(ctx, reste, 0, false, "sous-titres"));
       // La photo de la couverture d'origine, en panneau.

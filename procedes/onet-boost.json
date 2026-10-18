@@ -9,6 +9,10 @@
     "chemin": "gabarits/theme-onet",
     "empreinte": "sha256:ceebc5d7b5da9cb3b9b77d810f7db4518bb7e6f5e231f0766a324d5778e601e3"
   },
+  "conversions": {
+    "chemin": "docs/sources/medias-converties/manifeste.json",
+    "empreinte": "sha256:8fbeba383f67ed511c622fd22dc0b26654a1c5314624ec0bad7936a734d96237"
+  },
   "charte": {
     "motsParEcran": 60,
     "pastillesParCapture": 9,
@@ -19,7 +23,7 @@
     "devoilement": "pastille"
   },
   "versions": {
-    "bibliotheque": "v0",
+    "bibliotheque": "v0.1",
     "verrou": "sha256:2f1e8cc4fc7f08a6984f13907edf0a69b6f648ec2fae5d03a02d2bd386010697",
     "moteurs": {
       "node": "v22.22.3",
@@ -27,5 +31,5 @@
       "libreoffice": null
     }
   },
-  "reference": "golden/reference-v0.json"
+  "reference": "golden/reference-v0.1.json"
 }
