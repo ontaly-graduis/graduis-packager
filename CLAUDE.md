@@ -41,6 +41,7 @@ graduis-packager/
     theme/         chargement du thème d'un procédé (identité, jetons, polices, logo), compensation de chasse
     dessin/        dessin du pivot → SVG à classes de rôle (géométries DrawingML), module pur : salle et papier
     salle/         pivot → salle.html : données de salle, RegionMap, assemblage ; lecteur/ (navigateur, sans framework)
+    medias/        conversions EMF → SVG : figées (`graduis/conversions@0`, au contrat du harnais du wizard), sinon LibreOffice
     cli/           `npm run packager -- relever|qualifier|emettre|lire|salle|papier|revue|livrer <deck> --procede <procédé>` ; `imprimer`, `diff`, `planche` ; `rejouer <procédé> <deck>`
     emission/      pivot → PPT de validation : grammaire (un seul endroit), gabarit du thème du procédé, écrivain OOXML
     lecture/       PPT de validation → pivot : la lecture grammaticale (lire)
@@ -49,7 +50,7 @@ graduis-packager/
   tests-navigateur/ Playwright : la salle jouée en file://, le papier imprimé et recetté (`npm run test:navigateur`)
   gabarits/    theme-onet/ (thème DS Onet repris, PROVENANCE.md, identite.json) ; profil-onet.json (profil de source) ; le gabarit d'auteur PPT se génère du thème
   procedes/    les procédés (`onet-boost.json`) : ce qui fait une production, épinglé
-  golden/      les références des procédés : empreintes des sorties (reference-v0.json) ; les decks restent hors dépôt
+  golden/      les références des procédés : empreintes des sorties (reference-v0.1.json, celle d'onet-boost ; reference-v0.json, la trace) ; les decks et les conversions figées restent hors dépôt
   tests/
 ```
 
