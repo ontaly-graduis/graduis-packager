@@ -141,6 +141,19 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     expect(stringify2(relu)).toBe(stringify2(SeanceSpec.parse(spec)));
   });
 
+  it("garde les visuels d'origine : pictogrammes, minuteurs, météo, icônes de section, photo de couverture (PKG-B6)", () => {
+    const blocs = spec.sequences.flatMap((s) => s.blocs);
+    const avec = (role: string) => blocs.filter((b) => b.visuels.some((v) => v.role === role)).map((b) => b.source.diapo);
+    expect(avec("duree")).toEqual([3, 5, 42]);
+    expect(blocs.filter((b) => b.figure === "ecran-animation" || b.figure === "demonstration").filter((b) => !b.visuels.some((v) => v.role === "pictogramme")).map((b) => b.source.diapo)).toEqual([10]);
+    expect(blocs.find((b) => b.source.diapo === 10)!.visuels.map((v) => v.legende)).toEqual(["Grand soleil", "Alternance \nd’éclaircies", "Pluvieux", "Orageux"]);
+    expect(avec("section")).toEqual([14, 15, 16, 17, 18, 19, 20, 21, 22, 44, 49, 50, 54, 103, 139]);
+    // Les écrans de pause, de déjeuner, de promotion, de remerciement : leur pictogramme vient de leur disposition, en EMF.
+    const ext = (n: number) => releve.medias[blocs.find((b) => b.source.diapo === n)!.visuels.find((v) => v.role === "pictogramme")!.media]?.ext;
+    expect([29, 41, 98, 164, 3, 33].map(ext)).toEqual(["emf", "emf", "emf", "emf", "svg", "svg"]);
+    expect(blocs[0]!.visuels.map((v) => [v.role ?? null, v.capture])).toEqual([[null, false]]);
+  });
+
   it("qualifie de façon déterministe", () => {
     expect(stringify2(qualifierReleve(relever(octets, NOM).releve).spec)).toBe(stringify2(spec));
   });

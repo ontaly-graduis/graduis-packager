@@ -36,12 +36,6 @@ export const Pas = z.object({
   consigne: z.string().nullable(),
 }).strict();
 
-export const Visuel = z.object({
-  media: hash,
-  capture: z.boolean(),
-  rognage: z.tuple([z.number(), z.number(), z.number(), z.number()]).optional(),
-}).strict();
-
 /**
  * Les rôles de couleur d'un dessin : six familles en trois tons, plus le papier et l'encre. Le thème donne à chaque rôle
  * sa valeur (`--dessin-<rôle>`) ; le pivot ne porte jamais de couleur.
@@ -60,6 +54,24 @@ export const FLECHES = ["triangle", "stealth", "arrow", "diamond", "oval"] as co
 export const TIRETS = ["dot", "dash", "lgDash", "dashDot", "lgDashDot", "lgDashDotDot", "sysDash", "sysDot", "sysDashDot", "sysDashDotDot"] as const;
 
 const role = z.enum(ROLES);
+
+/**
+ * Le rôle d'un visuel qui n'est pas une capture (PKG-B6) : le pictogramme d'un écran ou d'une diapositive, l'icône de sa
+ * section (en tête), l'icône de la durée (à côté des minutes). Sans rôle : une illustration, une photo.
+ */
+export const ROLES_DE_VISUEL = ["pictogramme", "section", "duree"] as const;
+
+export const Visuel = z.object({
+  media: hash,
+  capture: z.boolean(),
+  rognage: z.tuple([z.number(), z.number(), z.number(), z.number()]).optional(),
+  role: z.enum(ROLES_DE_VISUEL).optional(),
+  /** Le libellé posé sous le visuel (« Grand soleil ») : il le légende, il n'est plus un texte de la diapositive. */
+  legende: z.string().optional(),
+  /** L'aplat sur lequel le pictogramme est posé à l'origine (une icône blanche sur un disque de couleur), en rôle. */
+  fond: role.optional(),
+}).strict();
+
 /** Une boîte de dessin [x, y, largeur, hauteur] en points, au centième. */
 const boite = z.tuple([z.number(), z.number(), z.number(), z.number()]);
 

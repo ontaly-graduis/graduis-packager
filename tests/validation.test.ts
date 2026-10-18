@@ -11,7 +11,7 @@ import { FIGURES, SeanceSpec } from "../src/pivot/seance-spec";
 import { qualifierReleve } from "../src/qualification/qualifier";
 import { relever } from "../src/releve/releve";
 import { chargerTheme } from "../src/theme/theme";
-import { CONSIGNES, deckDeCas, deckDeSchema, deckDeTableau, deckSynthetique } from "./fixture";
+import { CONSIGNES, deckDEcrans, deckDeCas, deckDeSchema, deckDeTableau, deckSynthetique } from "./fixture";
 
 const jetons = chargerTheme("gabarits/theme-onet").jetons;
 
@@ -40,8 +40,8 @@ function dupliquer(octets: Uint8Array, n: number): Uint8Array {
 }
 
 describe("le PPT de validation (PKG-C1)", () => {
-  it("se relit à l'identique : lire(émettre(pivot₀)) ≡ pivot₀, sur les quatre decks synthétiques", async () => {
-    for (const [nom, deck] of [["synthetique", deckSynthetique], ["schema", deckDeSchema], ["cas", deckDeCas], ["tableau", deckDeTableau]] as const) {
+  it("se relit à l'identique : lire(émettre(pivot₀)) ≡ pivot₀, sur les cinq decks synthétiques", async () => {
+    for (const [nom, deck] of [["synthetique", deckSynthetique], ["schema", deckDeSchema], ["cas", deckDeCas], ["tableau", deckDeTableau], ["ecrans", deckDEcrans]] as const) {
       const { spec, octets } = await valider(await deck(), `${nom}.pptx`);
       const { spec: relu, ecarts } = lire(octets);
       expect(ecarts, nom).toEqual([]);
@@ -68,8 +68,20 @@ describe("le PPT de validation (PKG-C1)", () => {
     expect(strFromU8(p["docProps/custom.xml"]!)).toContain("graduis.source.empreinte");
   });
 
+  it("porte les visuels d'origine : le rôle dans le nom, la légende en texte de remplacement, l'aplat en couleur du thème, le SVG en SVG", async () => {
+    const p = unzipSync((await valider(await deckDEcrans(), "e.pptx")).octets);
+    const ecran = strFromU8(p["ppt/slides/slide2.xml"]!);
+    expect(ecran).toContain('name="G·visuel · pictogramme"');
+    expect(ecran).toContain('name="G·visuel · durée"');
+    expect(ecran).toMatch(/<asvg:svgBlip [^>]*r:embed="rId\d+"\/>/);
+    expect(ecran).toContain('<a:solidFill><a:schemeClr val="bg1"/></a:solidFill></p:spPr></p:pic>');
+    expect(strFromU8(p["ppt/slides/slide3.xml"]!)).toContain('descr="Grand soleil"');
+    expect(strFromU8(p["ppt/slides/slide4.xml"]!)).toContain('<a:solidFill><a:schemeClr val="accent5"/></a:solidFill>');
+    expect(Object.keys(p).some((c) => c.startsWith("ppt/media/") && c.endsWith(".svg"))).toBe(true);
+  });
+
   it("ne cite que les couleurs du thème : aucune valeur hors de theme1 et theme2 (I-PKG-6)", async () => {
-    for (const deck of [deckSynthetique, deckDeSchema, deckDeTableau]) {
+    for (const deck of [deckSynthetique, deckDeSchema, deckDeTableau, deckDEcrans]) {
       const p = unzipSync((await valider(await deck(), "d.pptx")).octets);
       const fautifs = Object.keys(p).filter((c) => c.endsWith(".xml") && !c.startsWith("ppt/theme/") && /srgbClr|sysClr/.test(strFromU8(p[c]!)));
       expect(fautifs).toEqual([]);

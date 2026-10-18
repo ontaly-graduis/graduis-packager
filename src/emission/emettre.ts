@@ -10,7 +10,7 @@ import {
   DISPOSITIONS, PRES_PROPS, REGIONS, STYLE_CONSIGNES, TABLE_STYLES, TITRE, VIEW_PROPS,
   dispositionXml, masque, masqueDeNotes, paletteDesJetons, theme, type Region,
 } from "./gabarit";
-import { EMU, ESPACES, ETIQUETTES, FIGURES_A_CAPTURE, NOMS, PROPRIETES, SUFFIXES_DE_ZONE } from "./grammaire";
+import { EMU, ESPACES, ETIQUETTES, FIGURES_A_CAPTURE, LIBELLES_DE_ROLE, NOMS, PROPRIETES, SUFFIXES_DE_ZONE, couleurDeRole } from "./grammaire";
 import { ARBRE_VIDE, ENTETE, XMLNS, paragraphe, relations, x, xfrm } from "./xml";
 
 export interface MediaDEmission {
@@ -143,9 +143,17 @@ function diapositive(b: Bloc, n: number, o: OptionsDEmission, medias: Medias): {
     }
     const rId = d.rel("image", `../media/${medias.parties.get(v.media)!.chemin.split("/").pop()}`);
     const rognage = v.rognage ? `<a:srcRect l="${v.rognage[0]}" t="${v.rognage[1]}" r="${v.rognage[2]}" b="${v.rognage[3]}"/>` : "";
-    d.formes.push(`<p:pic><p:nvPicPr><p:cNvPr id="${d.suivant()}" name="${v.capture ? NOMS.capture : NOMS.visuel}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>`
-      + `<p:blipFill><a:blip r:embed="${rId}"/>${rognage}<a:stretch><a:fillRect/></a:stretch></p:blipFill>`
-      + `<p:spPr>${xfrm(boite)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`);
+    // Le rôle dans le nom, la légende en texte de remplacement, l'aplat d'origine en remplissage (couleur du thème).
+    const nom = (v.capture ? NOMS.capture : NOMS.visuel) + (v.role ? ` · ${LIBELLES_DE_ROLE[v.role]}` : "");
+    const descr = v.legende !== undefined ? ` descr="${x(v.legende)}"` : "";
+    // Une image vectorielle : PowerPoint la lit dans l'extension SVG de son blip (comme le deck d'origine).
+    const blip = medias.parties.get(v.media)!.ext === "svg"
+      ? `<a:blip><a:extLst><a:ext uri="{96DAC541-7B7A-43D3-8B79-37D633B846F1}"><asvg:svgBlip xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main" r:embed="${rId}"/></a:ext></a:extLst></a:blip>`
+      : `<a:blip r:embed="${rId}"/>`;
+    const fond = v.fond ? `<a:solidFill>${couleurDeRole(v.fond)}</a:solidFill>` : "";
+    d.formes.push(`<p:pic><p:nvPicPr><p:cNvPr id="${d.suivant()}" name="${x(nom)}"${descr}/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>`
+      + `<p:blipFill>${blip}${rognage}<a:stretch><a:fillRect/></a:stretch></p:blipFill>`
+      + `<p:spPr>${xfrm(boite)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fond}</p:spPr></p:pic>`);
   });
 
   // Les textes : un paragraphe par texte ; les tableaux sous eux, ou à leur place.

@@ -13,6 +13,7 @@ import { construireSalle } from "../salle/construire";
 import type { Devoilement } from "../salle/donnees";
 import { emettre } from "../emission/emettre";
 import { estUnPptDeValidation, lire } from "../lecture/lire";
+import { convertisseur } from "../medias/convertir";
 
 /** Relève un deck et écrit `releve.json` et les médias hashés dans le dossier de sortie. */
 function ecrireReleve(deck: string, sortie: string | undefined) {
@@ -89,6 +90,7 @@ async function salleCommande(deck: string, sortie: string | undefined, dossierTh
       return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined;
     },
     ...(sequences ? { sequences } : {}),
+    convertir: convertisseur(join(dossier, "medias-converties")),
   });
   const nom = sequences ? `salle-${sequences.join("-")}.html` : "salle.html";
   writeFileSync(join(dossier, nom), html);

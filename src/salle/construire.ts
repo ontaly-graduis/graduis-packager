@@ -23,6 +23,8 @@ export interface OptionsDeSalle {
   readonly media: (hash: string) => MediaSource | undefined;
   /** Les séquences retenues (identifiants `sNNN`) ; toutes si absent. */
   readonly sequences?: readonly string[];
+  /** Convertit un média que le navigateur n'affiche pas (EMF, WMF) en SVG ; sans lui, il reste « à convertir ». */
+  readonly convertir?: ((hash: string, ext: string, octets: Uint8Array) => Uint8Array | null) | null;
 }
 
 /** Le lecteur, regroupé en un script : même source et même version d'esbuild ⇒ mêmes octets. */
@@ -44,7 +46,9 @@ export async function construireSalle(spec: SeanceSpec, o: OptionsDeSalle): Prom
   for (const h of [...new Set(donnees.sequences.flatMap((s) => s.blocs.flatMap((b) => b.visuels.map((v) => v.media))))].sort()) {
     const m = o.media(h);
     const mime = m && MIME[m.ext];
+    const converti = m && !mime ? o.convertir?.(h, m.ext, m.octets) : null;
     if (m && mime) medias[h] = `data:${mime};base64,${Buffer.from(m.octets).toString("base64")}`;
+    else if (converti) medias[h] = `data:image/svg+xml;base64,${Buffer.from(converti).toString("base64")}`;
     else nonAffichables.push(h);
   }
   const titre = donnees.sequences.length === 1 ? donnees.sequences[0]!.titre : donnees.source.nom.replace(/\.pptx?$/i, "");

@@ -95,6 +95,24 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--color-nav-bg);fo
 .entete{display:flex;justify-content:space-between;align-items:flex-start;gap:48px;border-left:var(--filet-width) solid var(--color-primary);padding-left:28px}
 .entete h1{margin:0;font-size:46px;line-height:1.15;color:var(--text-strong);font-weight:var(--fw-bold);max-width:1480px}
 .entete .logo{height:46px;flex:none}
+.titre-entete{display:flex;align-items:center;gap:24px;min-width:0}
+.titre-entete .section{flex:none;box-sizing:border-box;width:72px;height:72px;padding:14px;border-radius:50%;background:var(--color-primary);object-fit:contain}
+.pictogramme-cote{flex:none;width:360px;display:flex;align-items:center;justify-content:center}
+.pictogramme-cote>img{max-width:320px;max-height:420px;object-fit:contain}
+.pictogramme-cote .disque{width:320px;height:320px;border-radius:50%;display:grid;place-items:center}
+.pictogramme-cote .disque img{width:58%;height:58%;object-fit:contain}
+.f-mise-en-pratique .corps>.texte{flex:1;min-width:0;display:flex;flex-direction:column;gap:32px}
+.ecran{display:flex;align-items:center;gap:96px;width:100%}
+.ecran .disque{flex:none;width:440px;height:440px;border-radius:50%;background:var(--color-background);box-shadow:var(--shadow-raised);display:grid;place-items:center}
+.ecran .disque img{width:62%;height:62%;object-fit:contain}
+.texte-ecran{flex:1;min-width:0;display:flex;flex-direction:column;gap:32px}
+.galerie{display:flex;flex-wrap:wrap;gap:24px 56px;align-items:flex-end}
+.galerie figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:16px;width:220px}
+.galerie img{width:180px;height:150px;object-fit:contain}
+.galerie figcaption{font-size:28px;line-height:1.2;text-align:center;font-weight:var(--fw-semibold);color:var(--text-strong)}
+.puce .icone-duree{width:1.3em;height:1.3em;object-fit:contain;vertical-align:-.3em;margin-right:.5em}
+.photo-couverture{position:absolute;top:0;right:0;bottom:28px;width:44%;background-size:cover;background-position:center;z-index:0}
+.f-couverture .corps{position:relative;z-index:1;max-width:52%}
 .corps{flex:1;display:flex;gap:56px;margin-top:44px;min-height:0;overflow:hidden}
 .corps.centre{flex-direction:column;align-items:center;justify-content:center;gap:28px}
 .corps.colonne{flex-direction:column;gap:28px}
@@ -136,7 +154,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--color-nav-bg);fo
 .puce{display:inline-block;align-self:flex-start;padding:10px 26px;border-radius:var(--radius-pill);font-size:26px;font-weight:var(--fw-semibold)}
 .puce.duree{background:var(--color-background);color:var(--text-strong);box-shadow:var(--shadow-card)}
 .puce.a-vous{background:var(--color-badge-step);color:var(--text-on-primary);text-transform:uppercase;letter-spacing:1px}
-.f-mise-en-pratique .corps{flex-direction:column;gap:32px}
+.f-mise-en-pratique .corps{flex-direction:row;gap:56px}
 .aide{margin:0;font-size:24px;color:var(--text-secondary)}
 .etiquette{font-size:28px;text-transform:uppercase;letter-spacing:3px;color:var(--text-secondary);font-weight:var(--fw-semibold)}
 .grand{font-size:84px;line-height:1.1;font-weight:var(--fw-bold);color:var(--text-strong);max-width:1500px}

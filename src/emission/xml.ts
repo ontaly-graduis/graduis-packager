@@ -8,7 +8,9 @@ export const REL = "http://schemas.openxmlformats.org/officeDocument/2006/relati
 export function x(s: string): string {
   return s
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f￾￿]/g, "")
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+    // Dans un attribut, un retour à la ligne se normaliserait en espace : on l'écrit en référence de caractère.
+    .replace(/\n/g, "&#10;").replace(/\r/g, "&#13;").replace(/\t/g, "&#9;");
 }
 
 /** Un run de texte. */

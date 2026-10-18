@@ -2,7 +2,7 @@
 import { posix } from "node:path";
 import { imageSize } from "image-size";
 import { sha256 } from "../lib/json";
-import { formesDeDiapositive, type Forme } from "../ooxml/formes";
+import { formesDeDiapositive, formesDeDisposition, type Forme } from "../ooxml/formes";
 import { Paquet } from "../ooxml/paquet";
 import { apparier, type PasAPas } from "./appariement";
 
@@ -23,6 +23,11 @@ export interface DiapositiveReleve {
   readonly masquee: boolean;
   readonly disposition: string;
   readonly formes: readonly FormeReleve[];
+  /**
+   * Ce que la disposition dessine sur la diapositive (PKG-B6) : ses images et ses textes propres, hors espaces réservés.
+   * Hors des mesures et de la classification (qui ne lisent que la diapositive) ; la qualification y prend les visuels.
+   */
+  readonly heritees?: readonly FormeReleve[];
   readonly notes: string;
   readonly liens: readonly string[];
   readonly pas_a_pas?: PasAPas;
@@ -76,6 +81,13 @@ export function relever(octets: Uint8Array, nom: string): { releve: Releve; medi
     return h;
   };
 
+  const parDisposition = new Map<string, Forme[]>();
+  const formesDeDispositionEnCache = (d: string) => {
+    let f = parDisposition.get(d);
+    if (!f) { f = formesDeDisposition(paquet, d); parDisposition.set(d, f); }
+    return f;
+  };
+
   const diapositives = paquet.diapositives().map(({ n, chemin, masquee }): DiapositiveReleve => {
     const formes = formesDeDiapositive(paquet, chemin);
     const releves: FormeReleve[] = formes.map(({ media, ...f }) => {
@@ -83,11 +95,17 @@ export function relever(octets: Uint8Array, nom: string): { releve: Releve; medi
       return h ? { ...f, media: h } : f;
     });
     const pas = apparier(formes, largeur, (f) => hashDe(f.media));
+    const disposition = paquet.disposition(chemin);
+    const heritees = (disposition ? formesDeDispositionEnCache(disposition.chemin) : [])
+      // Ses images, ses textes, et ses aplats (le disque ou le bandeau sur lequel une icône est posée).
+      .filter((f) => (f.nature === "image" && f.media) || (f.texte ?? []).join("").trim() || (f.style?.fond && f.style.fond !== "aucun"))
+      .map(({ media, ...f }) => { const h = hashDe(media); return h ? { ...f, media: h } : f; });
     return {
       n,
       masquee,
-      disposition: paquet.disposition(chemin)?.nom ?? "",
+      disposition: disposition?.nom ?? "",
       formes: releves,
+      ...(heritees.length ? { heritees } : {}),
       notes: paquet.notes(chemin),
       liens: paquet.relations(chemin).filter((r) => r.externe && r.type === "hyperlink").map((r) => r.cible),
       ...(pas ? { pas_a_pas: pas } : {}),

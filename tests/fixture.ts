@@ -168,3 +168,54 @@ export async function deckDeTableau(): Promise<Uint8Array> {
   s.addImage({ data: `data:image/png;base64,${png(60, 60).toString("base64")}`, x: 8.9, y: 0.05, w: 0.7, h: 0.7 });
   return new Uint8Array((await pptx.write({ outputType: "nodebuffer" })) as Buffer);
 }
+
+const SVG_PICTO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#003058"/></svg>`;
+const svg = (s: string) => `data:image/svg+xml;base64,${Buffer.from(s).toString("base64")}`;
+const pngData = (l: number, h: number) => `data:image/png;base64,${png(l, h).toString("base64")}`;
+
+/**
+ * Les visuels d'origine (PKG-B6) : une couverture et sa photo (et un logo, écarté) ; un écran d'animation, son
+ * pictogramme vectoriel posé sur le disque de sa disposition, son minuteur et ses minutes ; une météo dont la disposition
+ * porte les icônes et leurs libellés ; une mise en pratique dont la disposition porte le pictogramme sur son bandeau ;
+ * un contenu dont la disposition porte l'icône de section sur son disque, en haut à droite.
+ */
+export async function deckDEcrans(): Promise<Uint8Array> {
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_16x9";
+  pptx.defineSlideMaster({ title: "Titre seul", background: { color: "FFFFFF" }, objects: [] });
+  pptx.defineSlideMaster({ title: "1_Ecran Votre promotion", background: { color: "FFFFFF" }, objects: [
+    { rect: { x: 0, y: 1.0, w: 10, h: 3.6, fill: { color: "00B3C3" } } },
+    { rect: { x: 1.1, y: 1.3, w: 3.0, h: 3.0, fill: { color: "FFFFFF" } } },
+  ] });
+  pptx.defineSlideMaster({ title: "Meteo contenu", background: { color: "FFFFFF" }, objects: [
+    ...[0, 1, 2].flatMap((i) => [
+      { image: { x: 1.5 + i * 2.6, y: 1.8, w: 1.4, h: 1.2, data: pngData(140, 120) } },
+      { text: { text: ["Grand soleil", "Nuageux", "Orageux"][i]!, options: { x: 1.3 + i * 2.6, y: 3.15, w: 1.8, h: 0.35, fontSize: 12, align: "center" as const } } },
+    ]),
+  ] });
+  pptx.defineSlideMaster({ title: "01_Regles du jeu contenu", background: { color: "FFFFFF" }, objects: [
+    { rect: { x: 7.8, y: 0.85, w: 2.2, h: 4.8, fill: { color: "C00418" } } },
+    { image: { x: 8.1, y: 1.8, w: 1.6, h: 2.2, data: pngData(160, 220) } },
+  ] });
+  pptx.defineSlideMaster({ title: "02_Objectifs contenu", background: { color: "FFFFFF" }, objects: [
+    { rect: { x: 9.0, y: 0.08, w: 0.85, h: 0.85, fill: { color: "6FBFE5" } } },
+    { image: { x: 9.1, y: 0.18, w: 0.65, h: 0.65, data: pngData(64, 64) } },
+  ] });
+  const c = pptx.addSlide({ masterName: "Titre seul" });
+  c.addImage({ data: pngData(1280, 720), x: 0, y: 0, w: 10, h: 5.625 });
+  c.addImage({ data: svg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 100"><rect width="240" height="100" fill="#D2001A"/></svg>'), x: 0.2, y: 0.15, w: 1.2, h: 0.5 });
+  c.addText("Campus Onet", { x: 0.6, y: 2.0, w: 6, h: 0.8, fontSize: 32, bold: true });
+  const e = pptx.addSlide({ masterName: "1_Ecran Votre promotion" });
+  e.addImage({ data: svg(SVG_PICTO), x: 1.6, y: 1.8, w: 2.0, h: 2.0 });
+  e.addText("Emargement", { x: 4.6, y: 2.2, w: 5, h: 0.8, fontSize: 32, bold: true });
+  e.addText("15 minutes", { x: 8.2, y: 4.15, w: 1.5, h: 0.35, fontSize: 11 });
+  e.addImage({ data: pngData(48, 48), x: 7.75, y: 4.15, w: 0.4, h: 0.4 });
+  pptx.addSlide({ masterName: "Meteo contenu" }).addText("Votre météo du jour ?", { x: 0.4, y: 0.3, w: 9, h: 0.6, fontSize: 24, bold: true });
+  const r = pptx.addSlide({ masterName: "01_Regles du jeu contenu" });
+  r.addText("À vous de jouer", { x: 0.4, y: 0.3, w: 7, h: 0.6, fontSize: 24, bold: true });
+  r.addText("Créer une commande à partir d'une demande d'achat validée.", { x: 0.4, y: 1.2, w: 7, h: 1.0, fontSize: 14 });
+  const o = pptx.addSlide({ masterName: "02_Objectifs contenu" });
+  o.addText("Les décisions clés", { x: 0.4, y: 0.3, w: 8, h: 0.6, fontSize: 24, bold: true });
+  o.addText("Centraliser la création des fournisseurs.", { x: 0.4, y: 1.2, w: 8, h: 1.0, fontSize: 14 });
+  return new Uint8Array((await pptx.write({ outputType: "nodebuffer" })) as Buffer);
+}

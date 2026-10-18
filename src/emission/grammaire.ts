@@ -1,7 +1,7 @@
 // La grammaire du PPT de validation (PKG-C) : ce que `emettre` écrit et que `lire` lit, en un seul endroit. Une
 // disposition par figure, nommée par elle ; des formes nommées (pastille, zone, capture) ; des espaces réservés
 // (titre, contenu, consignes) ; l'identité du bloc dans des étiquettes OOXML, la source dans les propriétés du document.
-import { FIGURES, type Figure } from "../pivot/seance-spec";
+import { FIGURES, ROLES, ROLES_DE_VISUEL, type Figure, type Role } from "../pivot/seance-spec";
 
 export const LIBELLES: Readonly<Record<Figure, string>> = {
   couverture: "Couverture", "ecran-animation": "Écran d'animation", transition: "Transition", objectifs: "Objectifs",
@@ -52,3 +52,25 @@ export const PROPRIETES = { nom: "graduis.source.nom", empreinte: "graduis.sourc
 
 /** La diapositive 16:9 et ses unités. */
 export const EMU = { largeur: 12192000, hauteur: 6858000, pouce: 914400, point: 12700 } as const;
+
+/** Le rôle d'un visuel se lit dans son nom : « G·visuel · pictogramme », « · section », « · durée » ; sa légende est son texte de remplacement. */
+export const LIBELLES_DE_ROLE: Readonly<Record<(typeof ROLES_DE_VISUEL)[number], string>> = { pictogramme: "pictogramme", section: "section", duree: "durée" };
+export function roleDeVisuel(nom: string): (typeof ROLES_DE_VISUEL)[number] | undefined {
+  return ROLES_DE_VISUEL.find((r) => nom.endsWith(` · ${LIBELLES_DE_ROLE[r]}`));
+}
+
+/**
+ * Un rôle de couleur en couleur du thème Office : la famille par son accent (marine 1, ciel 2, vert 3, ambre 4, rouge 5,
+ * gris 6), le ton par les modificateurs d'Office (« plus clair 40 % », « plus clair 80 % ») ; le papier et l'encre par
+ * le fond et le texte. Aucune valeur : le thème la donne.
+ */
+const ACCENTS: Readonly<Record<string, string>> = { marine: "accent1", ciel: "accent2", vert: "accent3", ambre: "accent4", rouge: "accent5", gris: "accent6" };
+export function couleurDeRole(r: Role): string {
+  if (r === "papier") return '<a:schemeClr val="bg1"/>';
+  if (r === "encre") return '<a:schemeClr val="tx1"/>';
+  const [famille, ton] = r.split("-") as [string, string];
+  const mods = ton === "moyen" ? '<a:lumMod val="60000"/><a:lumOff val="40000"/>' : ton === "pale" ? '<a:lumMod val="20000"/><a:lumOff val="80000"/>' : "";
+  return mods ? `<a:schemeClr val="${ACCENTS[famille]}">${mods}</a:schemeClr>` : `<a:schemeClr val="${ACCENTS[famille]}"/>`;
+}
+export const ROLES_DE_COULEUR: readonly Role[] = ROLES;
+
