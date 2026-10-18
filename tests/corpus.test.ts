@@ -140,7 +140,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     const { spec: relu, ecarts } = lire(pptx);
     expect(ecarts).toEqual([]);
     expect(stringify2(relu)).toBe(stringify2(SeanceSpec.parse(spec)));
-  });
+  }, 30_000); // l'aller-retour des 166 diapositives frôle les 5 s par défaut quand la suite tourne en parallèle
 
   it("garde les visuels d'origine : pictogrammes, minuteurs, météo, icônes de section, photo de couverture (PKG-B6)", () => {
     const blocs = spec.sequences.flatMap((s) => s.blocs);

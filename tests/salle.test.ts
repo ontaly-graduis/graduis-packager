@@ -75,6 +75,10 @@ describe("salle du deck synthétique", async () => {
     expect(etapes("ecran")).toEqual([0, 0, 0]);
   });
 
+  it("refuse une séquence inconnue, et dit celles de la séance", () => {
+    expect(() => mettreEnSalle(spec, { devoilement: "pastille" }, () => null, ["S001"])).toThrow("séquence inconnue : S001 — celles de la séance : s001");
+  });
+
   it("assemble un fichier unique, identique à l'octet d'une construction à l'autre", async () => {
     const a = await construireSalle(spec, options);
     const b = await construireSalle(spec, options);

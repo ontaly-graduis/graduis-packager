@@ -1,7 +1,7 @@
 // Le pivot mis sur papier (PKG-D) : la même mise en salle, à l'état final (tout déplié), redistribuée pour le participant —
 // une page de garde, les séquences retenues (intercalaire, blocs, une page « Mes notes »), les annexes (synthèse,
 // glossaire). Ce qui ne va pas au papier y est nommé ; ce qui y va se recette sur la couche texte du PDF.
-import type { Figure, SeanceSpec } from "../pivot/seance-spec";
+import { verifierSequences, type Figure, type SeanceSpec } from "../pivot/seance-spec";
 import { mettreEnSalle, type BlocDeSalle, type DonneesDeSalle, type Habillage } from "../salle/donnees";
 
 const SCHEMA_PAPIER = "graduis/papier@0";
@@ -37,6 +37,7 @@ export interface DonneesDePapier {
  * est retenue.
  */
 export function mettreSurPapier(spec: SeanceSpec, px: (media: string) => readonly [number, number] | null, retenues?: readonly string[], habillage: Habillage = {}): DonneesDePapier {
+  if (retenues) verifierSequences(spec, retenues);
   const salle = mettreEnSalle(spec, { devoilement: "ecran" }, px, undefined, habillage);
   const tous = salle.sequences.flatMap((s) => s.blocs);
   const couverture = tous.find((b) => b.figure === "couverture") ?? null;

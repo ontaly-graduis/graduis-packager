@@ -42,7 +42,11 @@ describe("la mise sur papier", () => {
     const tout = mettreSurPapier(modifie, px);
     expect(tout.annexes.map((b) => b.figure)).toEqual(["synthese", "glossaire"]);
     expect(tout.sequences.flatMap((s) => s.blocs.map((b) => b.figure))).not.toContain("glossaire");
-    const extrait = mettreSurPapier(modifie, px, ["s999"]);
+    // Le glossaire seul dans une seconde séquence : n'imprimer qu'elle ne garde que lui, en annexe.
+    const [s1] = modifie.sequences;
+    const glossaire = s1!.blocs.find((b) => b.figure === "glossaire")!;
+    const deux = SeanceSpec.parse({ ...modifie, sequences: [{ id: "s001", blocs: s1!.blocs.filter((b) => b !== glossaire) }, { id: "s002", blocs: [glossaire] }] });
+    const extrait = mettreSurPapier(deux, px, ["s002"]);
     expect(extrait.sequences).toEqual([]);
     expect(extrait.annexes.map((b) => b.figure)).toEqual(["glossaire"]);
     expect(extrait.titre).toBe("Campus Onet");

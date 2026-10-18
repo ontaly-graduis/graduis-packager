@@ -302,23 +302,25 @@ const option = (nom: string) => {
   const i = args.indexOf(nom);
   return i >= 0 ? args[i + 1] : undefined;
 };
+// Les identifiants de séquence s'écrivent en minuscules (s030) ; « S030 » vaut « s030 ».
+const sequences = option("--sequences")?.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 if (commande === "relever" && args[0]) releverCommande(args[0], option("--sortie"));
 else if (commande === "qualifier" && args[0]) qualifierCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet");
 else if (commande === "emettre" && args[0]) emettreCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet");
 else if (commande === "lire" && args[0]) lireCommande(args[0], option("--sortie"));
 else if (commande === "salle" && args[0]) {
   const devoilement = option("--devoilement") === "ecran" ? "ecran" : "pastille";
-  await salleCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", option("--sequences")?.split(","), devoilement);
+  await salleCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", sequences, devoilement);
 } else if (commande === "papier" && args[0]) {
-  await papierCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", option("--sequences")?.split(","));
+  await papierCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", sequences);
 } else if (commande === "imprimer" && args[0]) {
   await imprimerCommande(args[0], option("--sortie"));
 } else if (commande === "planche" && args[0] && args[1] && !args[1].startsWith("--")) {
   await plancheCommande(args[0], args[1], option("--theme") ?? "gabarits/theme-onet");
 } else if (commande === "revue" && args[0]) {
-  revueCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", option("--sequences")?.split(","));
+  revueCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", sequences);
 } else if (commande === "livrer" && args[0]) {
-  await livrerCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", option("--sequences")?.split(","));
+  await livrerCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", sequences);
 } else if (commande === "diff" && args[0] && args[1] && !args[1].startsWith("--")) {
   diffCommande(args[0], args[1], option("--sortie"), option("--theme") ?? "gabarits/theme-onet");
 } else {
