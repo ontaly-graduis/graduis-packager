@@ -10,7 +10,7 @@
     "node": "v22.22.3",
     "verrou": "sha256:2f1e8cc4fc7f08a6984f13907edf0a69b6f648ec2fae5d03a02d2bd386010697",
     "playwright-core": "1.64.1",
-    "chromium": "155.0.8059.80 — Google Chrome installé (repli : Chromium de Playwright absent)",
+    "chromium": "156.0.8078.4 — chromium de Playwright",
     "libreoffice": null
   },
   "deck": {
@@ -40,7 +40,6 @@
       "s030": {
         "ppt": "sha256:fee11d03e200e41afce5aaf5f50214ef57d3865ca43c1fd14cdb8bc1aff58728",
         "pivot": "sha256:6ec5d3374167a7a7d9c8d953f1afd1489fc207f715a92ca3f4cd7b416078c9bf",
-        "theme": "sha256:477d4cb3c577095bc5c0391c1647c52df9ad9e2fe2ef7c38cdb608f40e352a9e",
         "sorties": {
           "salle-s030.html": "sha256:7c1b7a1ed46196e9e8dba4d62af73d6dbbbf019e4f2ee511c42ef09c411a70c2",
           "participant-s030.pdf": {
@@ -56,12 +55,11 @@
       }
     },
     "revue": {
-      "entrees": "le deck et le PPT de validation revu par David (out/boost-acheteur/validation.pptx, 18/10 15:08)",
+      "entrees": "le deck et le PPT de validation revu par David le 18/10 (docs/sources/boost acheteur validation revue 2026-10-18.pptx)",
       "validation.pptx": "sha256:d8f39d2066bb8e68892c0901aab2082c63d5d3d554644d5366e9d124d0aa05cd",
       "journee": {
         "ppt": "sha256:d8f39d2066bb8e68892c0901aab2082c63d5d3d554644d5366e9d124d0aa05cd",
         "pivot": "sha256:dfb726770cdd3ef368bbea970678bfe2c338a9c81b58f4ecbd1db0c36c794cb8",
-        "theme": "sha256:477d4cb3c577095bc5c0391c1647c52df9ad9e2fe2ef7c38cdb608f40e352a9e",
         "sorties": {
           "salle.html": "sha256:802e352ed2bce372078b64bfbf288258543b9fdc3fe2d39508d2c262d33fe4c5",
           "participant.pdf": {
@@ -78,7 +76,6 @@
       "s030": {
         "ppt": "sha256:d8f39d2066bb8e68892c0901aab2082c63d5d3d554644d5366e9d124d0aa05cd",
         "pivot": "sha256:dfb726770cdd3ef368bbea970678bfe2c338a9c81b58f4ecbd1db0c36c794cb8",
-        "theme": "sha256:477d4cb3c577095bc5c0391c1647c52df9ad9e2fe2ef7c38cdb608f40e352a9e",
         "sorties": {
           "salle-s030.html": "sha256:7c1b7a1ed46196e9e8dba4d62af73d6dbbbf019e4f2ee511c42ef09c411a70c2",
           "participant-s030.pdf": {
