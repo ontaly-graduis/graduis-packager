@@ -167,20 +167,20 @@ pivot₀ ── émettre ──► PPT d'auteur (gabarit à grammaire, thème ON
 
 | Figure | Temps | Signal dans le deck hérité | Salle | Papier | Animation (PPT) |
 |---|---|---|---|---|---|
-| `couverture` | — | 1ʳᵉ diapositive | titre, public, durée | page de garde | idem |
+| `couverture` | — | 1ʳᵉ diapositive | titre, public, durée | page de garde, puis le sommaire paginé | idem |
 | `ecran-animation` | animation | « Ecran Votre promotion », Pause, Déjeuner, Météo, et leur texte : émargement, tour de table, météo, questions, remerciement | écran plein, minuteur si une durée est notée | absent (horaires en tête) | idem, consigne en notes |
-| `transition` | — | « Slide transition » (13/13) | carte de séquence, au mode de transition de la prise | intercalaire de chapitre | idem |
+| `transition` | — | « Slide transition » (13/13) | carte de séquence, au mode de transition de la prise | intercalaire de chapitre ; une page « Mes notes » ferme la séquence | idem |
 | `objectifs` | E | titre « Objectifs… » | liste dévoilée | encadré | idem |
 | `contenu` | E | texte, avec ou sans visuel | organisé (fiches, sections, listes, définitions), dévoilé par niveau 1 | texte intégral, organisé | idem |
 | `processus` | E | tableau d'étapes (ex. PTP-040-010) | tableau, ligne active | tableau | idem |
 | `schema` | E | groupe dense de formes (fiches personae, architecture S2P) | recomposé par un gabarit du wizard quand il en relève (PKG-B4), sinon redessiné en SVG à la manière du thème ; dévoilé pas à pas (colonnes, étapes numérotées), chaque pas se trace | le même SVG, état final | formes natives réémises du dessin, ou sa composition en formes éditables et le dessin d'origine en annexe « pour contrôle » (PKG-C3) |
 | `demonstration` | E | écran « Démonstration » | écran signal : ce qui va être montré dans Oracle | renvoi au pas-à-pas | idem |
-| `pas-a-pas` | E (aide en R) | capture + pastilles (61) | **dévoilement pastille par pastille**, zoom sur la zone | capture, toutes pastilles, consignes numérotées | capture + pastilles, consignes en liste |
+| `pas-a-pas` | E (aide en R) | capture + pastilles (61) | **dévoilement pastille par pastille**, zoom sur la zone | son texte, la capture pleine largeur et toutes ses pastilles, les consignes numérotées dessous | capture + pastilles, consignes en liste |
 | `capture` | E | capture sans pastille (39) | image, zoom | image | idem ; diagnostic « capture muette » (H5) |
 | `mise-en-pratique` | R | « À vous de jouer » + « Règles du jeu » | énoncé, données, minuteur, aide repliée (renvoi au pas-à-pas) | énoncé et données | énoncé ; corrigé en notes |
 | `etapes-cles` | R* | « Que retenez-vous » (6/6) | liste dévoilée | encadré récapitulatif | idem |
 | `synthese` | R* | « Synthèse contenu » | liste | annexe | idem |
-| `glossaire` | — | glossaire Oracle ↔ Onet | infobulle sur chaque terme, dans toute la salle | annexe + index | idem |
+| `glossaire` | — | glossaire Oracle ↔ Onet | infobulle sur chaque terme, dans toute la salle | annexe (l'index attend un glossaire structuré, H7) | idem |
 | `renvoi` | — | lien vers un autre deck (Boost FA, navigation Fusion) | carte de renvoi (module partagé) | référence | idem |
 
 `pas-a-pas` reprend l'identifiant et le contrat de `figure-pas-a-pas`. La route de salle le joue en mode `reveal` (dévoiler, sans gate, l'animateur avance), la route papier en état final.
@@ -232,7 +232,7 @@ Les seuils (N, 9, celui de H9) se valident une fois avec ONET, sur le démonstra
 | Un thème, une table (PE1) ; `graduis/theme@1` | le thème ONET | principe repris ; le thème est celui du module NDF (primitives + couche sémantique), tel quel ; sa conversion en `theme@1` n'est pas requise en v0 |
 | Transitions à la prise (didactique · motion · narratif ; T1–T4) | prise de salle | repris ; didactique seul en v0 |
 | La prise : interprétation figée, hashée, hors signifié | prise de salle | transposé (thème, transitions, dévoilement) |
-| Route papier (`imprimer.html`, impression Chromium, recette pdf.js) | `participant.pdf` | transposé |
+| Route papier (`imprimer.html`, impression Chromium, recette pdf.js) | `participant.pdf` | transposé (PKG-D : la page imprimable composée par le rendu de la salle, deux passes pour le sommaire paginé, recette sur le contenu balisé, images à 200 ppp en JPEG) |
 | Compagnon (worker Python local ; couture, jamais fork) | le relevé | transposé : l'ingestion héritée, en lecture seule, en Python (proposition, A-1) |
 | Registre des actes IA (I-WIZ-8) ; ✦ = acte IA | propositions IA | repris : optionnel, gâté, tracé |
 | `decisions.md` seul document de trace ; clôture et reprise | idem | repris |

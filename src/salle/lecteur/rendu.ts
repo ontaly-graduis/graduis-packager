@@ -20,7 +20,7 @@ const ZOOM_MAX = 2.2;
 
 type Attrs = Readonly<Record<string, string>>;
 
-function el<K extends keyof HTMLElementTagNameMap>(doc: Document, tag: K, classe = "", texte?: string, attrs: Attrs = {}): HTMLElementTagNameMap[K] {
+export function el<K extends keyof HTMLElementTagNameMap>(doc: Document, tag: K, classe = "", texte?: string, attrs: Attrs = {}): HTMLElementTagNameMap[K] {
   const e = doc.createElement(tag);
   if (classe) e.className = classe;
   if (texte !== undefined) e.textContent = texte;
@@ -28,7 +28,7 @@ function el<K extends keyof HTMLElementTagNameMap>(doc: Document, tag: K, classe
   return e;
 }
 
-function liste(ctx: Contexte, lignes: readonly string[], etape: number, devoile: boolean, classe = "liste"): HTMLElement {
+export function liste(ctx: Contexte, lignes: readonly string[], etape: number, devoile: boolean, classe = "liste"): HTMLElement {
   const ul = el(ctx.doc, "ul", classe);
   lignes.forEach((l, i) => {
     const cache = devoile && i >= etape;
@@ -53,7 +53,7 @@ function riche(ctx: Contexte, parent: HTMLElement, texte: string): HTMLElement {
  * chaque colonne un flux d'unités — paragraphes, items, définitions — qui se dévoilent une à une ; un intertitre paraît
  * avec la première unité qu'il annonce.
  */
-function structure(ctx: Contexte, s: Structure, etape: number, devoile: boolean): HTMLElement {
+export function structure(ctx: Contexte, s: Structure, etape: number, devoile: boolean): HTMLElement {
   const racine = el(ctx.doc, "div", "structure");
   const plan = planDeDevoilement(s);
   let a = 0;
@@ -129,7 +129,7 @@ function defile(ctx: Contexte, ...contenus: HTMLElement[]): HTMLElement {
 }
 
 /** Une capture à sa taille d'affichage, rognée comme dans le deck, avec un plan zoomable qui porte image et zones. */
-function capture(ctx: Contexte, v: VisuelDeSalle, maxL: number, maxH: number): { boite: HTMLElement; plan: HTMLElement; l: number; h: number } {
+export function capture(ctx: Contexte, v: VisuelDeSalle, maxL: number, maxH: number): { boite: HTMLElement; plan: HTMLElement; l: number; h: number } {
   const [nl, nh] = v.px ?? [1600, 900];
   const [rg, rh, rd, rb] = (v.rognage ?? [0, 0, 0, 0]).map((x) => x / 100000) as [number, number, number, number];
   const vl = nl * (1 - rg - rd);
@@ -268,7 +268,7 @@ function ecran(ctx: Contexte, b: BlocDeSalle, texte: HTMLElement[]): HTMLElement
   return racine;
 }
 
-function tableau(ctx: Contexte, lignes: readonly (readonly string[])[]): HTMLElement {
+export function tableau(ctx: Contexte, lignes: readonly (readonly string[])[]): HTMLElement {
   const t = el(ctx.doc, "table", "tableau");
   lignes.forEach((ligne, i) => {
     const tr = el(ctx.doc, "tr");
@@ -282,7 +282,7 @@ function tableau(ctx: Contexte, lignes: readonly (readonly string[])[]): HTMLEle
  * Le schéma redessiné : le SVG du dessin, ses images résolues depuis les médias inline. S'il a une partition, l'étape
  * montre le décor et les pas atteints ; le pas qui arrive se trace (ses traits courent, ses aplats et ses textes suivent).
  */
-function schema(ctx: Contexte, b: BlocDeSalle, etape: number): HTMLElement {
+export function schema(ctx: Contexte, b: BlocDeSalle, etape: number): HTMLElement {
   const conteneur = el(ctx.doc, "div", "schema");
   if (!b.dessin) return conteneur;
   conteneur.innerHTML = dessinEnSvg(b.dessin, b.id);
@@ -310,7 +310,7 @@ function schema(ctx: Contexte, b: BlocDeSalle, etape: number): HTMLElement {
  * d'étapes numérotées gardant leur manière (fond, bord) ; la légende dit ce que les manières veulent dire. Le dévoilement
  * joue « cas en entier » : une colonne par étape, ses étapes en cascade dans l'ordre de leurs numéros.
  */
-function cas(ctx: Contexte, c: Extract<Composition, { gabarit: "cas" }>, etape: number, devoile: boolean): HTMLElement {
+export function cas(ctx: Contexte, c: Extract<Composition, { gabarit: "cas" }>, etape: number, devoile: boolean): HTMLElement {
   const racine = el(ctx.doc, "div", "cas compo");
   const colonnes = el(ctx.doc, "div", "cas-colonnes");
   colonnes.style.setProperty("--n", String(c.cas.length));
@@ -368,7 +368,7 @@ function vignette(ctx: Contexte, v: Vignette, prefixe: string, classe: string): 
  * suivante (le lecteur les trace une fois la mise en page faite). Le dévoilement joue phase par phase, ses étapes en
  * cascade dans l'ordre de leurs numéros.
  */
-function composerTableau(ctx: Contexte, t: Extract<Composition, { gabarit: "tableau" }>, etape: number, devoile: boolean, prefixe: string): HTMLElement {
+export function composerTableau(ctx: Contexte, t: Extract<Composition, { gabarit: "tableau" }>, etape: number, devoile: boolean, prefixe: string): HTMLElement {
   const racine = el(ctx.doc, "div", "tab compo");
   const grille = el(ctx.doc, "div", "tab-grille");
   grille.style.setProperty("--n", String(t.colonnes.length));
