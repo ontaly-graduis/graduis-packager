@@ -53,15 +53,18 @@ test("dessine le schéma au thème, textes dans leurs formes, sans requête ni e
   expect(erreurs).toEqual([]);
 });
 
-test("joue le schéma pas à pas : le décor d'abord, puis chaque étape se trace", async ({ page }) => {
+test("joue le schéma pas à pas : le décor et la première étape sitôt le titre posé, puis chaque étape se trace", async ({ page }) => {
   await page.goto(url + "#b002.0");
   await page.evaluate(() => document.fonts.ready);
-  // Six étapes, leurs six pastilles et les cinq traits qui les relient attendent leur pas.
-  await expect(page.locator(".dessin g[data-pas].pas-cache")).toHaveCount(17);
-  await page.keyboard.press("ArrowRight");
+  // Le schéma s'ouvre sur sa première étape, tracée sitôt le titre posé ; les cinq autres, leurs pastilles et les traits
+  // qui les relient (17 groupes en tout) attendent leur pas.
+  await expect(page).toHaveURL(/#b002\.1$/);
   await expect(page.locator(".dessin g[data-pas='1'].pas-courant.trace")).toHaveCount(3);
   expect(await page.locator(".dessin g[data-pas='1'] path[pathLength='1']").count()).toBeGreaterThan(0);
   await expect(page.locator(".dessin g[data-pas].pas-cache")).toHaveCount(14);
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".dessin g[data-pas='2'].pas-courant.trace").first()).toBeAttached();
+  await expect(page.locator(".dessin g[data-pas='1'].pas-fait")).toHaveCount(3);
   await page.keyboard.press("End");
   await expect(page.locator(".dessin g[data-pas].pas-cache")).toHaveCount(0);
 });

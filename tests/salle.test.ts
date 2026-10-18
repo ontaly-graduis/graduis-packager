@@ -5,23 +5,49 @@ import { qualifierReleve } from "../src/qualification/qualifier";
 import { regionMap } from "../src/salle/region-map";
 import { mettreEnSalle } from "../src/salle/donnees";
 import { construireSalle } from "../src/salle/construire";
-import { debut, fin, precedent, suivant } from "../src/salle/lecteur/etat";
+import { debut, fin, precedent, premieresEtapes, suivant } from "../src/salle/lecteur/etat";
+import { fondLisible } from "../src/salle/lecteur/contraste";
+import type { Role } from "../src/pivot/seance-spec";
 import { chargerTheme } from "../src/theme/theme";
 import { CONSIGNES, deckSynthetique } from "./fixture";
 
 describe("navigation", () => {
   const etapes = [0, 2, 0];
-  it("avance par dévoilement puis par bloc, recule vers le bloc précédent entièrement dévoilé", () => {
-    let p = debut();
+  const premieres = premieresEtapes(etapes);
+  it("ouvre un bloc dévoilé sur sa première unité, avance par dévoilement puis par bloc, recule vers le bloc précédent entièrement dévoilé", () => {
+    expect(premieres).toEqual([0, 1, 0]);
+    let p = debut(premieres);
     const vus: string[] = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 4; i++) {
       vus.push(`${p.bloc}.${p.etape}`);
-      p = suivant(p, etapes);
+      p = suivant(p, etapes, premieres);
     }
-    expect(vus).toEqual(["0.0", "1.0", "1.1", "1.2", "2.0"]);
-    expect(suivant(fin(etapes), etapes)).toEqual(fin(etapes));
-    expect(precedent({ bloc: 2, etape: 0 }, etapes)).toEqual({ bloc: 1, etape: 2 });
-    expect(precedent(debut(), etapes)).toEqual(debut());
+    expect(vus).toEqual(["0.0", "1.1", "1.2", "2.0"]);
+    expect(suivant(fin(etapes), etapes, premieres)).toEqual(fin(etapes));
+    expect(precedent({ bloc: 2, etape: 0 }, etapes, premieres)).toEqual({ bloc: 1, etape: 2 });
+    expect(precedent({ bloc: 1, etape: 1 }, etapes, premieres)).toEqual({ bloc: 0, etape: 0 });
+    expect(precedent(debut(premieres), etapes, premieres)).toEqual(debut(premieres));
+    expect(debut(premieresEtapes([3, 0]))).toEqual({ bloc: 0, etape: 1 });
+  });
+});
+
+describe("contraste des pictogrammes", () => {
+  // Luminances relatives du thème ONET : l'ambre (#b26a00, son mélange au papier, son fond pâle), le ciel ; le papier.
+  const L: Partial<Record<Role, number>> = {
+    "ambre-fort": 0.197, "ambre-moyen": 0.45, "ambre-pale": 0.887, "ciel-fort": 0.47, "ciel-moyen": 0.669, "ciel-pale": 0.879, papier: 1,
+  };
+  const luminance = (r: Role) => L[r] ?? Number.NaN;
+  const marine = 0.041;
+  const blanc = 1;
+  it("garde l'aplat qui porte l'icône à 3:1, sinon prend le ton lisible le plus proche de sa famille", () => {
+    expect(fondLisible("ciel-moyen", marine, luminance)).toBe("ciel-moyen");
+    // L'ampoule marine sur la terre (2,7:1) : le ton moyen (5,5:1) plutôt que le pâle, plus contrasté mais plus loin.
+    expect(fondLisible("ambre-fort", marine, luminance)).toBe("ambre-moyen");
+  });
+  it("à défaut, prend le ton le plus contrasté de la famille ; laisse le papier, l'encre et l'inconnu tels quels", () => {
+    expect(fondLisible("ciel-moyen", blanc, luminance)).toBe("ciel-fort");
+    expect(fondLisible("papier", blanc, luminance)).toBe("papier");
+    expect(fondLisible("rouge-fort", marine, luminance)).toBe("rouge-fort");
   });
 });
 

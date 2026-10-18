@@ -38,14 +38,22 @@ test("joue hors ligne : aucune requête réseau, aucune erreur", async ({ page }
   expect(erreurs).toEqual([]);
 });
 
-test("dévoile le pas-à-pas pastille par pastille, et zoome sur la zone courante", async ({ page }) => {
-  await page.goto(url + "#b002.0");
-  await expect(page.locator(".zone")).toHaveCount(0);
-  await expect(page.locator(".consignes li.cache")).toHaveCount(2);
+test("dévoile le pas-à-pas pastille par pastille, la première sitôt le titre posé, et zoome sur la zone courante", async ({ page }) => {
+  const delai = (selecteur: string) => page.locator(selecteur).first().evaluate((e) => parseFloat(getComputedStyle(e).animationDelay));
+  await page.goto(url + "#b001.0");
   await page.keyboard.press("ArrowRight");
+  // À l'entrée, le titre d'abord ; la première pastille paraît ensuite, sans attendre l'animateur.
   await expect(page).toHaveURL(/#b002\.1$/);
-  await expect(page.locator(".zone .num")).toHaveText("1");
-  await expect(page.locator(".consignes li.courant")).toContainText("Cliquer sur le menu");
+  await expect(page.locator(".diapo.entree")).toHaveCount(1);
+  await expect(page.locator(".zone.apparait .num")).toHaveText("1");
+  await expect(page.locator(".consignes li.courant.apparait")).toContainText("Cliquer sur le menu");
+  await expect(page.locator(".consignes li.cache")).toHaveCount(1);
+  expect(await delai(".diapo.entree .entete")).toBe(0);
+  expect(await delai(".zone.apparait")).toBeGreaterThan(0.2);
+  // L'étape suivante paraît sur-le-champ.
+  await page.keyboard.press("ArrowRight");
+  await expect(page).toHaveURL(/#b002\.2$/);
+  expect(await delai(".zone.apparait")).toBe(0);
   await page.keyboard.press("z");
   await expect(page.locator(".capture .plan")).toHaveAttribute("style", /scale\(/);
   await page.keyboard.press("ArrowLeft");
@@ -58,7 +66,7 @@ test("ouvre le présentateur, qui pilote la salle", async ({ page }) => {
   const [presentateur] = await Promise.all([page.waitForEvent("popup"), page.keyboard.press("p")]);
   await expect(presentateur.locator("#courante .diapo")).toHaveCount(1);
   await presentateur.keyboard.press("ArrowRight");
-  await expect(page).toHaveURL(/#b002\.0$/);
+  await expect(page).toHaveURL(/#b002\.1$/);
   await expect(presentateur.locator("#position")).toContainText("2 / 3");
 });
 

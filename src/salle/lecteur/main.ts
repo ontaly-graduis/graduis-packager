@@ -1,6 +1,7 @@
 // Le lecteur de salle : charge les données embarquées, met la scène à l'échelle, navigue au clavier, pilote le présentateur.
 import type { DonneesDeSalle } from "../donnees";
-import { debut, fin, precedent, suivant, type Position } from "./etat";
+import { contraster } from "./contraste";
+import { debut, fin, precedent, premieresEtapes, suivant, type Position } from "./etat";
 import { rendreDiapo, type Contexte } from "./rendu";
 import { ajusterTextes } from "./textes";
 import { relier } from "./liens";
@@ -12,8 +13,9 @@ const medias = lire<Record<string, string>>("medias");
 const plats = donnees.sequences.flatMap((s) => s.blocs.map((b, rang) => ({ s, b, rang })));
 /** Les étapes de chaque bloc : celles du dévoilement, ou les pages d'un contenu statique qui déborde (mesurées au rendu). */
 const etapes = plats.map((x) => x.b.etapes);
+const premieres = premieresEtapes(etapes);
 
-let pos: Position = debut();
+let pos: Position = debut(premieres);
 let zoom = false;
 let noir = false;
 let notes = false;
@@ -96,7 +98,7 @@ function depuisAncre(): void {
   const [id, e] = decodeURIComponent(location.hash.slice(1)).split(".");
   const i = plats.findIndex((x) => x.b.id === id);
   // Un contenu statique n'a ses pages qu'une fois mesuré : son étape se borne au rendu.
-  if (i >= 0) pos = { bloc: i, etape: plats[i]!.b.etapes > 0 ? Math.min(Number(e) || 0, etapes[i] ?? 0) : Number(e) || 0 };
+  if (i >= 0) pos = { bloc: i, etape: plats[i]!.b.etapes > 0 ? Math.max(premieres[i] ?? 0, Math.min(Number(e) || 0, etapes[i] ?? 0)) : Number(e) || 0 };
 }
 
 function echelle(): void {
@@ -225,10 +227,11 @@ function rendre(): void {
   const memeBloc = blocRendu === pos.bloc;
   const avant = plats[blocRendu];
   const avecVolet = !memeBloc && sens === "avant" && avant?.b.figure === "transition" && avant.s === x.s;
-  const anime = !memeBloc ? "bloc" : etapeRendue !== pos.etape ? "etape" : "aucun";
+  const anime = !memeBloc ? (pos.etape > 0 && pos.etape === premieres[pos.bloc] ? "premiere" : "bloc") : etapeRendue !== pos.etape ? "etape" : "aucun";
   const diapo = rendreDiapo(contexte(document, zoom, anime), x.s, x.b, x.rang, pos.etape);
   if (avecVolet) diapo.classList.add("apres-volet");
   scene.replaceChildren(diapo, ...(avecVolet ? [volet(x)] : []));
+  contraster(diapo);
   if (!memeBloc) glisses.clear();
   if (x.b.etapes === 0) {
     const pages = ajuster(diapo, 0, pos.etape);
@@ -256,7 +259,7 @@ function rendrePresentateur(): void {
   const d = w.document;
   const x = plats[pos.bloc];
   if (!x) return;
-  const ensuite = suivant(pos, etapes);
+  const ensuite = suivant(pos, etapes, premieres);
   const y = plats[ensuite.bloc]!;
   const cadre = (id: string, s: typeof x, etape: number) => {
     const v = d.getElementById(id)!;
@@ -266,6 +269,7 @@ function rendrePresentateur(): void {
     c.append(diapo);
     c.style.transform = `scale(${v.clientWidth / 1920})`;
     v.replaceChildren(c);
+    contraster(diapo);
     ajuster(diapo, s.b.etapes, etape);
   };
   cadre("courante", x, pos.etape);
@@ -306,10 +310,10 @@ function touche(e: KeyboardEvent): void {
   const avant = pos;
   switch (e.key) {
     case "ArrowRight": case "ArrowDown": case "PageDown": case " ": case "Enter":
-      pos = suivant(pos, etapes); sens = "avant"; break;
+      pos = suivant(pos, etapes, premieres); sens = "avant"; break;
     case "ArrowLeft": case "ArrowUp": case "PageUp": case "Backspace":
-      pos = precedent(pos, etapes); sens = "arriere"; break;
-    case "Home": pos = debut(); sens = "saut"; break;
+      pos = precedent(pos, etapes, premieres); sens = "arriere"; break;
+    case "Home": pos = debut(premieres); sens = "saut"; break;
     case "End": pos = fin(etapes); sens = "saut"; break;
     case "b": case "B": case ".": noir = !noir; break;
     case "z": case "Z": zoom = !zoom; break;
