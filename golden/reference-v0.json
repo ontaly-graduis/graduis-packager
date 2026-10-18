@@ -1,0 +1,97 @@
+{
+  "nom": "Référence v0 — la chaîne v0 sur le deck acheteur",
+  "version": {
+    "tag": "v0",
+    "commit": "5656a262d64cc7ed5fcf90aa36f174831cf8b57b"
+  },
+  "date": "2026-10-18",
+  "environnement": {
+    "systeme": "darwin arm64",
+    "node": "v22.22.3",
+    "verrou": "sha256:2f1e8cc4fc7f08a6984f13907edf0a69b6f648ec2fae5d03a02d2bd386010697",
+    "playwright-core": "1.64.1",
+    "chromium": "155.0.8059.80 — Google Chrome installé (repli : Chromium de Playwright absent)",
+    "libreoffice": null
+  },
+  "deck": {
+    "nom": "boost acheteur areprendre v1.pptx",
+    "empreinte": "sha256:98e27442a4c1aaaf1985333eae0087acd8c9a8d1d905e4e2e2995d8a1caa3ba1"
+  },
+  "cas": {
+    "deck": {
+      "entrees": "le deck seul, sans revue",
+      "qualification": {
+        "releve.json": "sha256:6050565c01fdf3f51be06a0610d87f1c4ffe9003710304c26f8bd57db197a6b9",
+        "pivot": "sha256:6ec5d3374167a7a7d9c8d953f1afd1489fc207f715a92ca3f4cd7b416078c9bf",
+        "rapport.json": "sha256:6ee442eba46299b3568d76fd5d0b61e47647efe04a1977723ec86cc68a23850e",
+        "rapport.html": "sha256:624ddbe294b30251c44a3200543a08c05c68bc5f185f26cb2c56297b3ff8f774"
+      },
+      "validation.pptx": "sha256:fee11d03e200e41afce5aaf5f50214ef57d3865ca43c1fd14cdb8bc1aff58728",
+      "journee": {
+        "refusee": [
+          "diapo 2 · H8 · Marqueur « A supprimer » (diapositive masquée).",
+          "diapo 16 · H8 · Marqueur « XXX ».",
+          "diapo 24 · H8 · Marqueur « Insérer ».",
+          "diapo 146 · H8 · Marqueur « XXX ».",
+          "diapo 159 · H8 · Marqueur « A rédiger »."
+        ],
+        "code": 1
+      },
+      "s030": {
+        "ppt": "sha256:fee11d03e200e41afce5aaf5f50214ef57d3865ca43c1fd14cdb8bc1aff58728",
+        "pivot": "sha256:6ec5d3374167a7a7d9c8d953f1afd1489fc207f715a92ca3f4cd7b416078c9bf",
+        "theme": "sha256:477d4cb3c577095bc5c0391c1647c52df9ad9e2fe2ef7c38cdb608f40e352a9e",
+        "sorties": {
+          "salle-s030.html": "sha256:7c1b7a1ed46196e9e8dba4d62af73d6dbbbf019e4f2ee511c42ef09c411a70c2",
+          "participant-s030.pdf": {
+            "texte": "sha256:9a812930f858996f2e81dc4f23dfba80ff0def587c17d1ce6a76027295dc8949",
+            "pages": 24,
+            "recette": "281/281"
+          },
+          "animation-s030.pptx": "sha256:2a3466d544087d0deb531727ee062a2948a0e9b1e033713518b42eb7a816a803",
+          "rapport.html": "sha256:624ddbe294b30251c44a3200543a08c05c68bc5f185f26cb2c56297b3ff8f774"
+        },
+        "rapport.json": "sha256:6ee442eba46299b3568d76fd5d0b61e47647efe04a1977723ec86cc68a23850e",
+        "ecarts": 0
+      }
+    },
+    "revue": {
+      "entrees": "le deck et le PPT de validation revu par David (out/boost-acheteur/validation.pptx, 18/10 15:08)",
+      "validation.pptx": "sha256:d8f39d2066bb8e68892c0901aab2082c63d5d3d554644d5366e9d124d0aa05cd",
+      "journee": {
+        "ppt": "sha256:d8f39d2066bb8e68892c0901aab2082c63d5d3d554644d5366e9d124d0aa05cd",
+        "pivot": "sha256:dfb726770cdd3ef368bbea970678bfe2c338a9c81b58f4ecbd1db0c36c794cb8",
+        "theme": "sha256:477d4cb3c577095bc5c0391c1647c52df9ad9e2fe2ef7c38cdb608f40e352a9e",
+        "sorties": {
+          "salle.html": "sha256:802e352ed2bce372078b64bfbf288258543b9fdc3fe2d39508d2c262d33fe4c5",
+          "participant.pdf": {
+            "texte": "sha256:b25e0601c9f5d344973450c465c61b331d9ebd0a26808244b7d84ba29621478d",
+            "pages": 112,
+            "recette": "942/942"
+          },
+          "animation.pptx": "sha256:2f6e3a09c51882d086eb501625792d1b0e5ead4ed88ddd019a7255e85bccbe56",
+          "rapport.html": "sha256:7844207ec04ee2bce799916fa1ab88b085cbc5737bb41c5dc21ee40c01b20f51"
+        },
+        "rapport.json": "sha256:42f52cbec1f33632c20bf101bb8883a07e8ce383a138cdf7fe07b23138f89144",
+        "ecarts": 0
+      },
+      "s030": {
+        "ppt": "sha256:d8f39d2066bb8e68892c0901aab2082c63d5d3d554644d5366e9d124d0aa05cd",
+        "pivot": "sha256:dfb726770cdd3ef368bbea970678bfe2c338a9c81b58f4ecbd1db0c36c794cb8",
+        "theme": "sha256:477d4cb3c577095bc5c0391c1647c52df9ad9e2fe2ef7c38cdb608f40e352a9e",
+        "sorties": {
+          "salle-s030.html": "sha256:7c1b7a1ed46196e9e8dba4d62af73d6dbbbf019e4f2ee511c42ef09c411a70c2",
+          "participant-s030.pdf": {
+            "texte": "sha256:9a812930f858996f2e81dc4f23dfba80ff0def587c17d1ce6a76027295dc8949",
+            "pages": 24,
+            "recette": "281/281"
+          },
+          "animation-s030.pptx": "sha256:2a3466d544087d0deb531727ee062a2948a0e9b1e033713518b42eb7a816a803",
+          "rapport.html": "sha256:7844207ec04ee2bce799916fa1ab88b085cbc5737bb41c5dc21ee40c01b20f51"
+        },
+        "rapport.json": "sha256:42f52cbec1f33632c20bf101bb8883a07e8ce383a138cdf7fe07b23138f89144",
+        "ecarts": 0
+      }
+    }
+  }
+}
