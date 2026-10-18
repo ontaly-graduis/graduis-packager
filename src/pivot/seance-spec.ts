@@ -283,6 +283,13 @@ export const SeanceSpec = z.object({
 }).strict();
 
 export type SeanceSpec = z.infer<typeof SeanceSpec>;
+
+/** Les séquences retenues (`--sequences`) sont des séquences de la séance : une inconnue arrête tout, et l'erreur dit les bonnes. */
+export function verifierSequences(spec: SeanceSpec, retenues: readonly string[]): void {
+  const ids = spec.sequences.map((q) => q.id);
+  const inconnues = retenues.filter((r) => !ids.includes(r));
+  if (inconnues.length) throw new Error(`séquence inconnue : ${inconnues.join(", ")} — celles de la séance : ${ids.join(", ")}`);
+}
 export type Sequence = z.infer<typeof Sequence>;
 export type Bloc = z.infer<typeof Bloc>;
 export type Pas = z.infer<typeof Pas>;

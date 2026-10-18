@@ -1,5 +1,5 @@
 // Le pivot mis en salle : blocs projetés, étapes de dévoilement, durées, numéros dérivés, zones en `RegionMap`.
-import type { Bloc, Composition, Dessin, Figure, SeanceSpec, Structure, Visuel } from "../pivot/seance-spec";
+import { verifierSequences, type Bloc, type Composition, type Dessin, type Figure, type SeanceSpec, type Structure, type Visuel } from "../pivot/seance-spec";
 import { compenserChasse, type TableDeChasse } from "../theme/chasse";
 import { habiller, type Maniere } from "../theme/maniere";
 import { regionMap, type RegionMap } from "./region-map";
@@ -123,6 +123,7 @@ export function mediasDuBloc(b: Pick<BlocDeSalle, "visuels" | "dessin" | "compos
 
 /** Met un pivot en salle : séquences retenues (toutes par défaut), blocs masqués écartés, textes des schémas à la chasse du thème. */
 export function mettreEnSalle(spec: SeanceSpec, prise: PriseDeSalle, px: Dimensions, retenues?: readonly string[], habillage: Habillage = {}): DonneesDeSalle {
+  if (retenues) verifierSequences(spec, retenues);
   let rang = 0;
   const sequences: SequenceDeSalle[] = [];
   for (const s of spec.sequences) {
