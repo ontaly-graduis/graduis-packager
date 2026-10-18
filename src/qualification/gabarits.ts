@@ -114,7 +114,8 @@ function vignette(elements: readonly ElementDeDessin[]): Vignette {
   const x1 = Math.max(...elements.map((e) => e.boite[0] + e.boite[2]));
   const y1 = Math.max(...elements.map((e) => e.boite[1] + e.boite[3]));
   return {
-    cadre: [x0, y0, x1 - x0, y1 - y0],
+    // Au centième de point, comme tout le dessin (le PPT de validation le relit exactement).
+    cadre: [x0, y0, x1 - x0, y1 - y0].map((v) => Math.round(v * 100) / 100 + 0) as [number, number, number, number],
     elements: elements.map((e) => {
       const { pas: _p, ...r } = e as ElementDeDessin & { pas?: number; ordre?: number; marque?: string };
       const { ordre: _o, marque: _m, ...sans } = r as typeof r & { ordre?: number; marque?: string };

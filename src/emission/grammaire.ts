@@ -27,7 +27,60 @@ export const NOMS = {
   tableau: "G·tableau",
   /** Une colonne de la structure d'un texte (une fiche) : « G·colonne r.c », rangée et colonne comptées de 1. */
   colonne: "G·colonne",
+  /** Le dessin d'un schéma (PKG-C3) : un groupe dont le repère enfant est celui du dessin, en EMU. */
+  schema: "G·schéma",
+  forme: "G·forme",
+  image: "G·image",
+  /** Un tableau du dessin : hors du groupe (PowerPoint ne groupe pas les tableaux), « G·grille · <groupe> · rang k ». */
+  grille: "G·grille",
+  /** Les formes d'une composition : « G·cas n » (bandeau), « G·étape n », « G·phase n », « G·couloir n », « G·signal ». */
+  cas: "G·cas",
+  etape: "G·étape",
+  phase: "G·phase",
+  couloir: "G·couloir",
+  signal: "G·signal",
+  /** Les vignettes d'une composition, en groupes : « G·signe n » (d'un couloir), « G·illustration ». */
+  signe: "G·signe",
+  illustration: "G·illustration",
+  /** Une entrée de légende : « G·légende n » (son texte) et « G·légende n · case | · triangle » (son échantillon). */
+  legende: "G·légende",
+  /** Ce qui habille sans rien dire (le fond d'un couloir) : jamais relu. */
+  decor: "G·décor",
+  /** L'étiquette de la diapositive annexe. */
+  etiquette: "G·étiquette",
 } as const;
+
+/** La diapositive annexe d'un schéma recomposé : masquée, elle montre le dessin d'origine, pour contrôle uniquement. */
+export const ANNEXE = { etiquette: "Pour contrôle uniquement", suffixeDeTitre: " — dessin d'origine" } as const;
+
+/** Le dévoilement d'un dessin se lit dans le nom de son groupe : « G·schéma · colonnes · 4 pas », « · étapes · 9 pas ». */
+const MODES = { colonnes: "colonnes", etapes: "étapes" } as const;
+type Partition = { mode: keyof typeof MODES; pas: number };
+export const nomDeSchema = (p?: Partition) => NOMS.schema + (p ? ` · ${MODES[p.mode]} · ${p.pas} pas` : "");
+export function partitionDeNom(nom: string): Partition | undefined {
+  const m = nom.match(/· (colonnes|étapes) · (\d+) pas/);
+  return m ? { mode: m[1] === "étapes" ? "etapes" : "colonnes", pas: Number(m[2]) } : undefined;
+}
+
+/** Le pas, le rang et la marque d'un élément de dessin se lisent dans son nom : « G·forme · pas 2 · ordre 1 · pastille ». */
+interface Marques { readonly pas?: number | undefined; readonly ordre?: number | undefined; readonly marque?: "pastille" | undefined }
+export const nomDElement = (base: string, e: Marques) =>
+  base + (e.pas !== undefined ? ` · pas ${e.pas}` : "") + (e.ordre !== undefined ? ` · ordre ${e.ordre}` : "") + (e.marque ? " · pastille" : "");
+export function marquesDeNom(nom: string): { pas?: number; ordre?: number; marque?: "pastille" } {
+  const pas = nom.match(/· pas (\d+)/);
+  const ordre = nom.match(/· ordre (\d+)/);
+  return {
+    ...(pas && Number(pas[1]) > 0 ? { pas: Number(pas[1]) } : {}),
+    ...(ordre ? { ordre: Number(ordre[1]) } : {}),
+    ...(/· pastille\b/.test(nom) ? { marque: "pastille" as const } : {}),
+  };
+}
+
+/** Le numéro porté par un nom (« G·étape 3 » → 3). */
+export function numeroDeNom(nom: string, base: string): number | undefined {
+  const m = nom.startsWith(base) ? nom.slice(base.length).match(/^ (\d+)/) : null;
+  return m ? Number(m[1]) : undefined;
+}
 
 /**
  * La structure d'un texte en paragraphes (PKG-C2) : un intertitre en gras au corps du titre ; un paragraphe sans puce ;
@@ -54,8 +107,10 @@ export const ESPACES = { contenu: 1, consignes: 2 } as const;
 export const ETIQUETTES = {
   bloc: "GRADUIS.BLOC",
   source: "GRADUIS.SOURCE",
-  /** Provisoire (PKG-C1) : les lectures heuristiques sans grammaire encore (dessin, structure, composition), en JSON. */
+  /** Retirée (PKG-C3) : les lectures sans grammaire d'alors (dessin, structure, composition), en JSON — encore lue. */
   lectures: "GRADUIS.LECTURES",
+  /** La diapositive annexe d'un bloc : l'identifiant du bloc dont elle montre le dessin d'origine. */
+  annexe: "GRADUIS.ANNEXE",
 } as const;
 
 /** Les propriétés personnalisées du document : le deck hérité dont le pivot procède. */

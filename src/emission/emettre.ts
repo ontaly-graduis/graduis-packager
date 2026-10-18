@@ -1,7 +1,8 @@
 // `emettre` : pivot → PPT de validation (PKG-C). Une diapositive par bloc, à la disposition de sa figure ; le titre, les
 // textes, les consignes dans leurs espaces réservés ; les captures et visuels, rognés comme à l'origine ; les pas en
-// pastilles numérotées et zones posées sur leur capture ; les tableaux en tableaux natifs ; les notes ; l'identité du
-// bloc en étiquettes OOXML. Aucune couleur en dur : les formes ne citent que les couleurs du thème (I-PKG-6).
+// pastilles numérotées et zones posées sur leur capture ; les tableaux en tableaux natifs ; les schémas en formes natives
+// (leur composition éditable, le dessin d'origine en annexe masquée, PKG-C3) ; les notes ; l'identité du bloc en
+// étiquettes OOXML. Aucune couleur en dur : les formes ne citent que les couleurs du thème (I-PKG-6).
 // Le paquet est déterministe : même pivot, mêmes octets.
 import { strToU8, zipSync, type Zippable } from "fflate";
 import { stringify2 } from "../lib/json";
@@ -10,9 +11,11 @@ import {
   DISPOSITIONS, PRES_PROPS, REGIONS, STYLE_CONSIGNES, TABLE_STYLES, TITRE, VIEW_PROPS,
   dispositionXml, masque, masqueDeNotes, paletteDesJetons, theme, type Region,
 } from "./gabarit";
-import { EMU, ESPACES, ETIQUETTES, FIGURES_A_CAPTURE, LIBELLES_DE_ROLE, NOMS, PROPRIETES, SUFFIXES_DE_ZONE, couleurDeRole } from "./grammaire";
+import { ANNEXE, EMU, ESPACES, ETIQUETTES, FIGURES_A_CAPTURE, LIBELLES_DE_ROLE, NOMS, PROPRIETES, SUFFIXES_DE_ZONE, couleurDeRole, nomDeSchema } from "./grammaire";
 import { ARBRE_VIDE, ENTETE, XMLNS, paragraphe, relations, x, xfrm } from "./xml";
 import { cadreXml, disposerStructure } from "./structure";
+import { blipXml, groupeXml, placer, type ContexteDeDessin } from "./dessin";
+import { compositionXml } from "./composition";
 
 export interface MediaDEmission {
   readonly ext: string;
@@ -111,8 +114,15 @@ function tableau(d: Diapositive, lignes: readonly (readonly string[])[], b: Regi
     + `<a:tblGrid>${`<a:gridCol w="${largeur}"/>`.repeat(colonnes)}</a:tblGrid>${tr}</a:tbl></a:graphicData></a:graphic></p:graphicFrame>`);
 }
 
+/** Un schéma dessiné ou recomposé (PKG-C3) : il prend toute la place sous le titre, ses visuels (l'icône de section) en tête. */
+const schematique = (b: Bloc) => b.figure === "schema" && (b.dessin !== undefined || b.composition !== undefined);
+const MARGE = 457200;
+const REGION_SCHEMA: Region = [MARGE, 1280160, EMU.largeur - 2 * MARGE, EMU.hauteur - 1280160 - 228600];
+const VISUELS_DE_SCHEMA: Region = [EMU.largeur - MARGE - 731520, 320040, 731520, 731520];
+
 /** Les régions d'une diapositive : à capture si sa figure l'est ou si elle porte des pas, sinon à texte. */
 function disposer(b: Bloc): { visuels: Region; contenu: Region; consignes: Region } {
+  if (schematique(b)) return { visuels: VISUELS_DE_SCHEMA, contenu: REGION_SCHEMA, consignes: REGIONS.texte.consignes };
   if (FIGURES_A_CAPTURE.has(b.figure) || b.pas.length) return REGIONS.capture;
   const t = REGIONS.texte;
   return b.visuels.length ? { visuels: t.visuels, contenu: t.contenuEtroit, consignes: t.consignes } : { visuels: t.visuels, contenu: t.contenu, consignes: t.consignes };
@@ -122,7 +132,53 @@ interface Medias {
   readonly parties: Map<string, { chemin: string; octets: Uint8Array; ext: string }>;
 }
 
-function diapositive(b: Bloc, n: number, o: OptionsDEmission, medias: Medias): { slide: Partie; rels: Partie; notes: Partie; notesRels: Partie; tags: Partie } {
+/** Une image de la diapositive : le média enregistré une fois dans le paquet, une relation par emploi. */
+function image(d: Diapositive, medias: Medias, o: OptionsDEmission, hash: string): { rId: string; svg: boolean } {
+  const m = o.media(hash);
+  if (!m) throw new Error(`média absent : ${hash}`);
+  if (!medias.parties.has(hash)) {
+    const ext = m.ext.toLowerCase();
+    medias.parties.set(hash, { chemin: `ppt/media/${hash.slice(7, 23)}.${ext}`, octets: m.octets, ext });
+  }
+  const partie = medias.parties.get(hash)!;
+  return { rId: d.rel("image", `../media/${partie.chemin.split("/").pop()}`), svg: partie.ext === "svg" };
+}
+
+const contexteDe = (d: Diapositive, medias: Medias, o: OptionsDEmission): ContexteDeDessin => ({ id: () => d.suivant(), image: (h) => image(d, medias, o, h) });
+
+/** Les parties d'une diapositive émise. */
+interface Parties { readonly slide: Partie; readonly rels: Partie; readonly notes?: Partie; readonly notesRels?: Partie; readonly tags: Partie }
+
+const etiquettesXml = (t: readonly (readonly [string, string])[]) => `${ENTETE}<p:tagLst ${XMLNS}>${t.map(([k, v]) => `<p:tag name="${k}" val="${x(v)}"/>`).join("")}</p:tagLst>`;
+
+const diapositiveXml = (d: Diapositive, rTags: string, masquee: boolean) => `${ENTETE}<p:sld ${XMLNS}${masquee ? ' show="0"' : ""}><p:cSld><p:spTree>${ARBRE_VIDE}${d.formes.join("")}</p:spTree>`
+  + `<p:custDataLst><p:tags r:id="${rTags}"/></p:custDataLst></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
+
+/**
+ * La diapositive annexe d'un schéma recomposé : masquée, à la suite, le dessin d'origine tel que relevé, étiqueté
+ * « Pour contrôle uniquement ». `lire` le rattache à son bloc ; elle n'est pas un bloc.
+ */
+function annexe(b: Bloc, n: number, o: OptionsDEmission, medias: Medias): Parties {
+  const d = new Diapositive();
+  d.rel("slideLayout", `../slideLayouts/slideLayout${DISPOSITIONS.indexOf("schema") + 1}.xml`);
+  const rTags = d.rel("tags", `../tags/tag${n}.xml`);
+  espaceTexte(d, "Titre", '<p:ph type="title"/>', TITRE, paragraphe(`${b.titre ?? b.id}${ANNEXE.suffixeDeTitre}`), '<a:bodyPr anchor="b"><a:normAutofit/></a:bodyPr>');
+  const dessin = b.dessin!;
+  d.formes.push(...groupeXml(nomDeSchema(dessin.partition), "schéma", dessin, placer(dessin.cadre, REGION_SCHEMA).place, contexteDe(d, medias, o)));
+  const l = 2743200;
+  d.formes.push(`<p:sp><p:nvSpPr><p:cNvPr id="${d.suivant()}" name="${NOMS.etiquette}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>`
+    + `<p:spPr>${xfrm([EMU.largeur - MARGE - l, 91440, l, 320040])}<a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom><a:solidFill>${couleurDeRole("ambre-fort")}</a:solidFill><a:ln><a:noFill/></a:ln></p:spPr>`
+    + '<p:txBody><a:bodyPr wrap="none" lIns="91440" tIns="0" rIns="91440" bIns="0" anchor="ctr"><a:noAutofit/></a:bodyPr><a:lstStyle/>'
+    + paragraphe(ANNEXE.etiquette, '<a:pPr algn="ctr"/>', `<a:rPr lang="fr-FR" sz="1200" b="1" dirty="0"><a:solidFill>${couleurDeRole("encre")}</a:solidFill></a:rPr>`)
+    + "</p:txBody></p:sp>");
+  return {
+    slide: { chemin: `ppt/slides/slide${n}.xml`, xml: diapositiveXml(d, rTags, true) },
+    rels: { chemin: `ppt/slides/_rels/slide${n}.xml.rels`, xml: relations(d.rels) },
+    tags: { chemin: `ppt/tags/tag${n}.xml`, xml: etiquettesXml([[ETIQUETTES.annexe, b.id]]) },
+  };
+}
+
+function diapositive(b: Bloc, n: number, o: OptionsDEmission, medias: Medias): Parties {
   const d = new Diapositive();
   d.rel("slideLayout", `../slideLayouts/slideLayout${DISPOSITIONS.indexOf(b.figure) + 1}.xml`);
   d.rel("notesSlide", `../notesSlides/notesSlide${n}.xml`);
@@ -153,33 +209,34 @@ function diapositive(b: Bloc, n: number, o: OptionsDEmission, medias: Medias): {
     const boite = (estIllustration[i] ? placeDIllustration.prendre(v.media) : undefined) ?? boitesEnRegion[k++]!;
     if (!cadreDe.has(v.media)) cadreDe.set(v.media, boite);
     if (!m) throw new Error(`média absent : ${v.media}`);
-    if (!medias.parties.has(v.media)) {
-      const ext = m.ext.toLowerCase();
-      medias.parties.set(v.media, { chemin: `ppt/media/${v.media.slice(7, 23)}.${ext}`, octets: m.octets, ext });
-    }
-    const rId = d.rel("image", `../media/${medias.parties.get(v.media)!.chemin.split("/").pop()}`);
+    const { rId, svg } = image(d, medias, o, v.media);
     const rognage = v.rognage ? `<a:srcRect l="${v.rognage[0]}" t="${v.rognage[1]}" r="${v.rognage[2]}" b="${v.rognage[3]}"/>` : "";
     // Le rôle dans le nom, la légende en texte de remplacement, l'aplat d'origine en remplissage (couleur du thème).
     const nom = (v.capture ? NOMS.capture : NOMS.visuel) + (v.role ? ` · ${LIBELLES_DE_ROLE[v.role]}` : "");
     const descr = v.legende !== undefined ? ` descr="${x(v.legende)}"` : "";
     // Une image vectorielle : PowerPoint la lit dans l'extension SVG de son blip (comme le deck d'origine).
-    const blip = medias.parties.get(v.media)!.ext === "svg"
-      ? `<a:blip><a:extLst><a:ext uri="{96DAC541-7B7A-43D3-8B79-37D633B846F1}"><asvg:svgBlip xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main" r:embed="${rId}"/></a:ext></a:extLst></a:blip>`
-      : `<a:blip r:embed="${rId}"/>`;
+    const blip = blipXml(rId, svg);
     const fond = v.fond ? `<a:solidFill>${couleurDeRole(v.fond)}</a:solidFill>` : "";
     d.formes.push(`<p:pic><p:nvPicPr><p:cNvPr id="${d.suivant()}" name="${x(nom)}"${descr}/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>`
       + `<p:blipFill>${blip}${rognage}<a:stretch><a:fillRect/></a:stretch></p:blipFill>`
       + `<p:spPr>${xfrm(boite)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fond}</p:spPr></p:pic>`);
   });
 
-  // Les textes : un paragraphe par texte ; les tableaux sous eux, ou à leur place.
+  // Un schéma : sa composition en formes éditables, ou son dessin en groupe ; ses textes et tableaux s'en dérivent.
   const contenu = r.contenu;
+  if (schematique(b)) {
+    const ctx = contexteDe(d, medias, o);
+    if (b.composition) d.formes.push(...compositionXml(b.composition, contenu, ctx));
+    else d.formes.push(...groupeXml(nomDeSchema(b.dessin!.partition), "schéma", b.dessin!, placer(b.dessin!.cadre, contenu).place, ctx));
+  }
+
+  // Les textes : un paragraphe par texte ; les tableaux sous eux, ou à leur place.
   for (const c of cadresDeStructure) d.formes.push(cadreXml(d.suivant(), c, xfrm));
-  if (b.textes.length && !b.structure) {
+  if (b.textes.length && !b.structure && !schematique(b)) {
     const region: Region = b.tableaux.length ? [contenu[0], contenu[1], contenu[2], Math.round(contenu[3] * 0.4)] : contenu;
     espaceTexte(d, "Contenu", `<p:ph type="body" idx="${ESPACES.contenu}"/>`, region, b.textes.map((t) => paragraphe(t)).join(""));
   }
-  if (b.tableaux.length) {
+  if (b.tableaux.length && !schematique(b)) {
     const y0 = b.textes.length && !b.structure ? contenu[1] + Math.round(contenu[3] * 0.4) + 91440 : contenu[1];
     const h = contenu[1] + contenu[3] - y0;
     const hk = Math.floor(h / b.tableaux.length);
@@ -209,11 +266,8 @@ function diapositive(b: Bloc, n: number, o: OptionsDEmission, medias: Medias): {
     espaceTexte(d, "Consignes", `<p:ph type="body" idx="${ESPACES.consignes}"/>`, r.consignes, paras);
   }
 
-  const slide = `${ENTETE}<p:sld ${XMLNS}${b.masquee ? ' show="0"' : ""}><p:cSld><p:spTree>${ARBRE_VIDE}${d.formes.join("")}</p:spTree>`
-    + `<p:custDataLst><p:tags r:id="${rTags}"/></p:custDataLst></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
-  const lectures = { ...(b.dessin ? { dessin: b.dessin } : {}), ...(b.composition ? { composition: b.composition } : {}) };
-  const tags = `${ENTETE}<p:tagLst ${XMLNS}><p:tag name="${ETIQUETTES.bloc}" val="${b.id}"/><p:tag name="${ETIQUETTES.source}" val="${b.source.diapo}"/>`
-    + (Object.keys(lectures).length ? `<p:tag name="${ETIQUETTES.lectures}" val="${x(JSON.stringify(lectures))}"/>` : "") + "</p:tagLst>";
+  const slide = diapositiveXml(d, rTags, b.masquee === true);
+  const tags = etiquettesXml([[ETIQUETTES.bloc, b.id], [ETIQUETTES.source, String(b.source.diapo)]]);
   const notes = `${ENTETE}<p:notes ${XMLNS}><p:cSld><p:spTree>${ARBRE_VIDE}`
     + '<p:sp><p:nvSpPr><p:cNvPr id="2" name="Image de la diapositive"/><p:cNvSpPr><a:spLocks noGrp="1" noRot="1" noChangeAspect="1"/></p:cNvSpPr><p:nvPr><p:ph type="sldImg"/></p:nvPr></p:nvSpPr><p:spPr/></p:sp>'
     + `<p:sp><p:nvSpPr><p:cNvPr id="3" name="Notes"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/>${(b.notes === "" ? [""] : b.notes.split("\n")).map((l) => paragraphe(l)).join("")}</p:txBody></p:sp>`
@@ -233,8 +287,13 @@ export function emettre(spec: SeanceSpec, o: OptionsDEmission): Uint8Array {
   const palette = paletteDesJetons(o.jetons);
   const medias: Medias = { parties: new Map() };
   const parties: Partie[] = [];
-  const diapos = blocs.map((b, i) => diapositive(b, i + 1, o, medias));
-  for (const d of diapos) parties.push(d.slide, d.rels, d.notes, d.notesRels, d.tags);
+  // Un bloc, une diapositive ; un schéma recomposé, sa diapositive annexe à la suite.
+  const diapos: Parties[] = [];
+  for (const b of blocs) {
+    diapos.push(diapositive(b, diapos.length + 1, o, medias));
+    if (schematique(b) && b.composition && b.dessin) diapos.push(annexe(b, diapos.length + 1, o, medias));
+  }
+  for (const d of diapos) parties.push(...[d.slide, d.rels, d.notes, d.notesRels, d.tags].filter((p): p is Partie => p !== undefined));
 
   const m = masque(DISPOSITIONS.length);
   parties.push({ chemin: "ppt/slideMasters/slideMaster1.xml", xml: m.xml }, { chemin: "ppt/slideMasters/_rels/slideMaster1.xml.rels", xml: m.rels });
@@ -249,7 +308,7 @@ export function emettre(spec: SeanceSpec, o: OptionsDEmission): Uint8Array {
 
   const presentation = `${ENTETE}<p:presentation ${XMLNS} saveSubsetFonts="1"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>`
     + '<p:notesMasterIdLst><p:notesMasterId r:id="rId2"/></p:notesMasterIdLst>'
-    + `<p:sldIdLst>${blocs.map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 10}"/>`).join("")}</p:sldIdLst>`
+    + `<p:sldIdLst>${diapos.map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 10}"/>`).join("")}</p:sldIdLst>`
     + `<p:sldSz cx="${EMU.largeur}" cy="${EMU.hauteur}"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`;
   parties.push({ chemin: "ppt/presentation.xml", xml: presentation });
   parties.push({ chemin: "ppt/_rels/presentation.xml.rels", xml: relations([
@@ -259,12 +318,12 @@ export function emettre(spec: SeanceSpec, o: OptionsDEmission): Uint8Array {
     { id: "rId4", type: "viewProps", cible: "viewProps.xml" },
     { id: "rId5", type: "theme", cible: "theme/theme1.xml" },
     { id: "rId6", type: "tableStyles", cible: "tableStyles.xml" },
-    ...blocs.map((_, i) => ({ id: `rId${i + 10}`, type: "slide", cible: `slides/slide${i + 1}.xml` })),
+    ...diapos.map((_, i) => ({ id: `rId${i + 10}`, type: "slide", cible: `slides/slide${i + 1}.xml` })),
   ]) });
 
   const proprietes = [[PROPRIETES.nom, spec.source.nom], [PROPRIETES.empreinte, spec.source.empreinte]] as const;
   parties.push({ chemin: "docProps/custom.xml", xml: `${ENTETE}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">${proprietes.map(([k, v], i) => `<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="${i + 2}" name="${x(k)}"><vt:lpwstr>${x(v)}</vt:lpwstr></property>`).join("")}</Properties>` });
-  parties.push({ chemin: "docProps/app.xml", xml: `${ENTETE}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>Graduis Packager</Application><Slides>${blocs.length}</Slides></Properties>` });
+  parties.push({ chemin: "docProps/app.xml", xml: `${ENTETE}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>Graduis Packager</Application><Slides>${diapos.length}</Slides></Properties>` });
   parties.push({ chemin: "docProps/core.xml", xml: `${ENTETE}<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>${x(spec.source.nom.replace(/\.pptx$/i, ""))} — PPT de validation</dc:title><dc:creator>Graduis Packager</dc:creator></cp:coreProperties>` });
   parties.push({ chemin: "_rels/.rels", xml: relations([
     { id: "rId1", type: "officeDocument", cible: "ppt/presentation.xml" },
@@ -287,9 +346,9 @@ export function emettre(spec: SeanceSpec, o: OptionsDEmission): Uint8Array {
     ["/docProps/app.xml", "application/vnd.openxmlformats-officedocument.extended-properties+xml"],
     ["/docProps/custom.xml", "application/vnd.openxmlformats-officedocument.custom-properties+xml"],
     ...DISPOSITIONS.map((_, i) => [`/ppt/slideLayouts/slideLayout${i + 1}.xml`, `${PML}.slideLayout+xml`] as [string, string]),
-    ...blocs.flatMap((_, i) => [
+    ...diapos.flatMap((d, i) => [
       [`/ppt/slides/slide${i + 1}.xml`, `${PML}.slide+xml`],
-      [`/ppt/notesSlides/notesSlide${i + 1}.xml`, `${PML}.notesSlide+xml`],
+      ...(d.notes ? [[`/ppt/notesSlides/notesSlide${i + 1}.xml`, `${PML}.notesSlide+xml`]] : []),
       [`/ppt/tags/tag${i + 1}.xml`, `${PML}.tags+xml`],
     ] as [string, string][]),
   ];

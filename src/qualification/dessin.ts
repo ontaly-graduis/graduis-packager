@@ -41,6 +41,26 @@ function policeDominante(c: CorpsLu): string | undefined {
   return [...poids].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
 }
 
+type FragmentDeDessin = Corps["paragraphes"][number]["fragments"][number];
+const memeStyle = (a: FragmentDeDessin, b: FragmentDeDessin) =>
+  a.taille === b.taille && a.gras === b.gras && a.italique === b.italique && a.souligne === b.souligne && a.couleur === b.couleur;
+
+/**
+ * Des fragments sous leur forme normale : sans fragment vide (sauf le seul d'un paragraphe vide), deux voisins au même
+ * style réunis (la police d'origine n'en est plus un trait) — la forme que le PPT de validation relit (PKG-C3).
+ */
+export function normaliserFragments(fs: readonly FragmentDeDessin[]): FragmentDeDessin[] {
+  const pleins = fs.filter((f) => f.texte !== "");
+  if (!pleins.length) return fs.slice(0, 1);
+  const out: FragmentDeDessin[] = [];
+  for (const f of pleins) {
+    const prec = out[out.length - 1];
+    if (prec && memeStyle(prec, f)) out[out.length - 1] = { ...prec, texte: prec.texte + f.texte };
+    else out.push(f);
+  }
+  return out;
+}
+
 function corpsEnDessin(c: CorpsLu, fond: Role | undefined, role: VersRole): Corps {
   const echelle = c.echelle / 100000;
   const police = policeDominante(c);
@@ -51,14 +71,14 @@ function corpsEnDessin(c: CorpsLu, fond: Role | undefined, role: VersRole): Corp
     ...(c.retour ? {} : { retour: false as const }),
     paragraphes: c.paragraphes.map((p) => ({
       alignement: ALIGNEMENTS[p.alignement] ?? "gauche",
-      fragments: p.fragments.map((f) => ({
+      fragments: normaliserFragments(p.fragments.map((f) => ({
         texte: f.texte,
         taille: Math.round(f.taille * echelle) / 100,
         ...(f.gras ? { gras: true as const } : {}),
         ...(f.italique ? { italique: true as const } : {}),
         ...(f.souligne ? { souligne: true as const } : {}),
         couleur: roleDeTexte(role(f.couleur), fond),
-      })),
+      }))),
     })),
   };
 }

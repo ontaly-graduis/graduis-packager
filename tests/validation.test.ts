@@ -1,6 +1,7 @@
 // Témoins du PPT de validation (PKG-C1) : la grammaire écrite par `emettre` se relit par `lire` sans rien perdre
 // (I-PKG-3), le paquet est déterministe, une diapositive dupliquée est renumérotée, une consigne retouchée dans
-// PowerPoint ne change qu'un bloc, et aucune couleur n'est en dur hors du thème (I-PKG-6).
+// PowerPoint ne change qu'un bloc, et aucune couleur n'est en dur hors du thème (I-PKG-6). La structure des textes
+// (PKG-C2), les schémas en formes natives et leur annexe de contrôle (PKG-C3).
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from "fflate";
 import { describe, expect, it } from "vitest";
 import { emettre } from "../src/emission/emettre";
@@ -11,6 +12,7 @@ import { FIGURES, SeanceSpec } from "../src/pivot/seance-spec";
 import { qualifierReleve } from "../src/qualification/qualifier";
 import { relever } from "../src/releve/releve";
 import { chargerTheme } from "../src/theme/theme";
+import { paletteDesJetons } from "../src/emission/gabarit";
 import { CONSIGNES, deckDEcrans, deckDeCas, deckDeSchema, deckDeTableau, deckDeTextes, deckSynthetique, png } from "./fixture";
 
 const jetons = chargerTheme("gabarits/theme-onet").jetons;
@@ -191,3 +193,94 @@ describe("la structure des textes en grammaire, et l'ingestion complémentaire (
   });
 });
 
+
+/** La boîte (EMU) de la première forme d'un nom donné. */
+function boiteDe(xml: string, nom: string): [number, number, number, number] {
+  const m = xml.match(new RegExp(`name="${nom}"/>.*?<a:off x="(-?\\d+)" y="(-?\\d+)"/><a:ext cx="(\\d+)" cy="(\\d+)"`, "s"));
+  if (!m) throw new Error(`forme absente : ${nom}`);
+  return [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])];
+}
+
+describe("les schémas en formes natives (PKG-C3)", () => {
+  it("écrit le dessin en groupe : repère enfant au point près, dévoilement dans les noms, plus d'étiquette de lectures", async () => {
+    const { spec, octets } = await valider(await deckDeSchema(), "d.pptx");
+    const p = unzipSync(octets);
+    const x = strFromU8(p["ppt/slides/slide2.xml"]!);
+    const b = spec.sequences.flatMap((q) => q.blocs)[1]!;
+    expect(x).toContain(`name="G·schéma · étapes · ${b.dessin!.partition!.pas} pas"`);
+    expect(x).toContain(`<a:chOff x="${Math.round(b.dessin!.cadre[0] * 12700)}" y="${Math.round(b.dessin!.cadre[1] * 12700)}"/>`);
+    expect(x).toMatch(/name="G·forme · pas 1 · ordre 0 · pastille"/);
+    expect(strFromU8(p["ppt/tags/tag2.xml"]!)).not.toContain("GRADUIS.LECTURES");
+    // Les textes du schéma se dérivent de son dessin : pas d'espace de contenu à côté.
+    expect(x).not.toContain('<p:ph type="body" idx="1"/>');
+  });
+
+  it("recompose en formes éditables, le dessin d'origine en annexe masquée « Pour contrôle uniquement », qui n'est pas un bloc", async () => {
+    const { spec, octets } = await valider(await deckDeCas(), "c.pptx");
+    const p = unzipSync(octets);
+    const x = strFromU8(p["ppt/slides/slide2.xml"]!);
+    for (const nom of ["G·cas 1", "G·cas 3", "G·étape 3", "G·légende 2 · case"]) expect(x).toContain(`name="${nom}"`);
+    expect(x).not.toContain("G·schéma");
+    const annexe = strFromU8(p["ppt/slides/slide3.xml"]!);
+    expect(annexe).toContain('show="0"');
+    expect(annexe).toContain("Pour contrôle uniquement");
+    expect(annexe).toContain('name="G·schéma · colonnes · 3 pas"');
+    expect(strFromU8(p["ppt/tags/tag3.xml"]!)).toContain('name="GRADUIS.ANNEXE" val="b002"');
+    expect(strFromU8(p["docProps/app.xml"]!)).toContain("<Slides>3</Slides>");
+    const { spec: relu, ecarts } = lire(octets);
+    expect(ecarts).toEqual([]);
+    expect(relu.sequences.flatMap((q) => q.blocs).map((b) => b.id)).toEqual(spec.sequences.flatMap((q) => q.blocs).map((b) => b.id));
+  });
+
+  it("relit une composition retouchée : une étape réécrite, une autre déplacée d'une case (avec son signal), une autre recolorée", async () => {
+    const { spec, octets } = await valider(await deckDeTableau(), "t.pptx");
+    const p = unzipSync(octets);
+    let x = strFromU8(p["ppt/slides/slide2.xml"]!);
+    x = x.replace(">Demande soumise<", ">Demande déposée<");
+    // Déplacer le groupe « Analyse de la fiche » (et son triangle) dans la case Messagerie × Validation.
+    const [px] = boiteDe(x, "G·phase 3");
+    const [, cy] = boiteDe(x, "G·couloir 4");
+    x = x.replace(/(<p:grpSp><p:nvGrpSpPr><p:cNvPr id="\d+" name="G·étape 1"\/>(?:(?!<\/p:grpSp>).)*?<a:off )x="\d+" y="\d+"((?:(?!<\/p:grpSp>).)*Analyse de la fiche)/s, `$1x="${px + 60000}" y="${cy + 60000}"$2`);
+    // Recolorer la carte « Complétion de la fiche » d'une couleur choisie dans PowerPoint (hors grammaire).
+    const ambre = paletteDesJetons(jetons).ambre;
+    const morceaux = x.split("<p:sp>");
+    const k = morceaux.findIndex((m) => m.includes("Complétion de la fiche"));
+    morceaux[k] = morceaux[k]!.replace(/<a:solidFill>.*?<\/a:solidFill>/s, `<a:solidFill><a:srgbClr val="${ambre}"/></a:solidFill>`);
+    p["ppt/slides/slide2.xml"] = strToU8(morceaux.join("<p:sp>"));
+    const { spec: relu, ecarts } = lire(zipSync(p as Zippable));
+    expect(ecarts).toEqual([]);
+    const [avant, apres] = [spec, relu].map((s) => s.sequences.flatMap((q) => q.blocs)[1]!);
+    if (avant!.composition?.gabarit !== "tableau" || apres!.composition?.gabarit !== "tableau") throw new Error("tableau attendu");
+    const attendues = avant!.composition.etapes.map((e, i) =>
+      i === 0 ? { ...e, texte: "Demande déposée" } : i === 2 ? { ...e, ligne: 3, colonne: 2 } : i === 3 ? { ...e, fond: "ambre-fort" } : e);
+    expect(apres!.composition.etapes).toEqual(attendues);
+    expect(apres!.textes).toContain("Demande déposée");
+    expect(apres!.dessin).toEqual(avant!.dessin);
+    expect(stringify2(relu.sequences.flatMap((q) => q.blocs)[0])).toBe(stringify2(spec.sequences.flatMap((q) => q.blocs)[0]));
+  });
+
+  it("reprend dans le dessin ce qu'ONET y ajoute, dans son repère, et le dit", async () => {
+    const { spec, octets } = await valider(await deckDeSchema(), "d.pptx");
+    const p = unzipSync(octets);
+    ajouter(p, 2, zoneDeTexte("Note du formateur"));
+    const { spec: relu, ecarts } = lire(zipSync(p as Zippable));
+    const [avant, apres] = [spec, relu].map((s) => s.sequences.flatMap((q) => q.blocs)[1]!);
+    expect(apres!.dessin!.elements).toHaveLength(avant!.dessin!.elements.length + 1);
+    const ajout = apres!.dessin!.elements.at(-1)!;
+    expect(ajout.type === "forme" && ajout.texte?.paragraphes[0]!.fragments[0]!.texte).toBe("Note du formateur");
+    expect(ajout.boite[2]).toBeCloseTo(5000000 / 12700, 1);
+    expect(apres!.textes).toContain("Note du formateur");
+    expect(ecarts.map((e) => e.message.split(" (")[0])).toEqual(["1 forme(s) ajoutée(s) sur le schéma : reprise(s) dans son dessin"]);
+  });
+
+  it("dit qu'il manque le dessin d'origine quand l'annexe a été supprimée, et garde la composition", async () => {
+    const { spec, octets } = await valider(await deckDeCas(), "c.pptx");
+    const p = unzipSync(octets);
+    p["ppt/presentation.xml"] = strToU8(strFromU8(p["ppt/presentation.xml"]!).replace('<p:sldId id="258" r:id="rId12"/>', ""));
+    const { spec: relu, ecarts } = lire(zipSync(p as Zippable));
+    const [avant, apres] = [spec, relu].map((s) => s.sequences.flatMap((q) => q.blocs)[1]!);
+    expect(apres!.dessin).toBeUndefined();
+    expect(apres!.composition).toEqual(avant!.composition);
+    expect(ecarts).toEqual([{ diapo: 2, message: "schéma recomposé sans sa diapositive annexe : le dessin d'origine manque" }]);
+  });
+});
