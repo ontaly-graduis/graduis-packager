@@ -128,7 +128,7 @@ pivot₀ ── émettre ──► PPT d'auteur (gabarit à grammaire, thème ON
 | **PPT d'auteur** | § 4.3 | source éditable |
 | **prise de salle** | `theme { hash, nom }` · `transitions` (didactique en v0) · `devoilement` (`pastille` ou `ecran`) | figée et hashée, comme la prise du wizard |
 | **rapport** | anomalies de la source, diagnostics H1–H9, écarts relevé ↔ pivot, propositions ouvertes | HTML statique dérivé |
-| **livraison** | les sorties + un manifeste : hashes du PPT d'auteur, du pivot, de la prise et de chaque sortie | la seule trace de ce qui a été livré |
+| **livraison** | les sorties + un manifeste : hashes du PPT d'auteur, du pivot, de la prise et de chaque sortie | la seule trace de ce qui a été livré (`packager livrer`, `graduis/livraison@0`, PKG-E ; deux livraisons se comparent par `packager diff`) |
 
 ### 4.1 Le pivot `graduis/seance-spec@0` (tranché le 17/10)
 

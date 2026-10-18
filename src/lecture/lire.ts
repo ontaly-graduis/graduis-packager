@@ -343,6 +343,17 @@ export function lire(octets: Uint8Array): { spec: SeanceSpec; ecarts: Ecart[] } 
   return { spec, ecarts };
 }
 
+/** Où se trouve chaque bloc dans le PPT de validation (son numéro de diapositive) : la fiche de revue y renvoie. */
+export function diapositivesDesBlocs(octets: Uint8Array): Map<string, number> {
+  const paquet = new Paquet(octets);
+  const out = new Map<string, number>();
+  for (const d of paquet.diapositives()) {
+    const id = etiquettes(paquet, d.chemin).get(ETIQUETTES.bloc);
+    if (id && !out.has(id)) out.set(id, d.n);
+  }
+  return out;
+}
+
 /** Un PPT de validation se reconnaît à ses propriétés : il dit de quel deck hérité il procède. */
 export function estUnPptDeValidation(octets: Uint8Array): boolean {
   try {

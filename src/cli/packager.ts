@@ -1,6 +1,7 @@
-// CLI du packager — relever, qualifier, émettre le PPT de validation, le lire, construire la salle, le papier.
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, extname, join } from "node:path";
+// CLI du packager — relever, qualifier, émettre le PPT de validation, le lire, construire la salle, le papier ; préparer
+// la revue chronométrée, livrer, comparer deux livraisons.
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, extname, join } from "node:path";
 import { sha256, stringify2 } from "../lib/json";
 import { relever } from "../releve/releve";
 import { medianeMots, medianeResolution, mesurer } from "../releve/mesures";
@@ -12,12 +13,17 @@ import { chargerTheme } from "../theme/theme";
 import { construireSalle } from "../salle/construire";
 import type { Devoilement } from "../salle/donnees";
 import { emettre } from "../emission/emettre";
-import { estUnPptDeValidation, lire } from "../lecture/lire";
+import { diapositivesDesBlocs, estUnPptDeValidation, lire } from "../lecture/lire";
+import { revueHtml } from "../diagnostic/revue";
 import { convertisseur } from "../medias/convertir";
 import { construirePapier, PPP_MIN, type SousResolue } from "../papier/construire";
 import { textesAttendus, type DonneesDePapier } from "../papier/donnees";
 import { chromiumDisponible, imprimer } from "../papier/imprimer";
 import { recetter } from "../papier/recette";
+import { livrer, type Manifeste } from "../livraison/livrer";
+import { differ, diffHtml } from "../livraison/diff";
+import { planche } from "../livraison/planche";
+import type { Releve } from "../releve/releve";
 
 /** Relève un deck et écrit `releve.json` et les médias hashés dans le dossier de sortie. */
 function ecrireReleve(deck: string, sortie: string | undefined) {
@@ -156,6 +162,87 @@ async function imprimerCommande(fichier: string, sortie: string | undefined): Pr
   console.log([`# Impression — ${fichier}`, ...await imprimerEtRecetter(html, textesAttendus(donnees), pdf)].join("\n"));
 }
 
+/** Livre depuis un PPT de validation : les trois sorties, le rapport et le manifeste, dans `livraison[-séquences]/`. */
+async function livrerCommande(fichier: string, sortie: string | undefined, dossierTheme: string, sequences: string[] | undefined): Promise<void> {
+  const octets = new Uint8Array(readFileSync(fichier));
+  const voisin = join(dirname(fichier), "releve.json");
+  const releveSource = existsSync(voisin) ? JSON.parse(readFileSync(voisin, "utf8")) as Releve : undefined;
+  const imprimante = await chromiumDisponible();
+  const l = await livrer(octets, basename(fichier), {
+    theme: chargerTheme(dossierTheme), ...(releveSource ? { releveSource } : {}), convertir: convertisseur(join(dirname(fichier), "medias-converties")),
+    ...(sequences ? { sequences } : {}), ...(imprimante ? { imprimer } : {}),
+  });
+  if (l.bloquants.length) {
+    console.error([`# Livraison refusée — ${l.bloquants.length} constat(s) bloquant(s) dans les séquences livrées`, ...l.bloquants.map((k) => `diapo ${k.diapo ?? "—"} · ${k.regle} · ${k.message}`)].join("\n"));
+    process.exit(1);
+  }
+  const dossier = sortie ?? join(dirname(fichier), `livraison${sequences ? `-${sequences.join("-")}` : ""}`);
+  mkdirSync(dossier, { recursive: true });
+  for (const [nom, contenu] of l.fichiers) writeFileSync(join(dossier, nom), contenu);
+  const m = l.manifeste;
+  console.log([
+    `# Livraison — ${m.ppt.nom} (${m.source.nom})`,
+    `${dossier}/manifeste.json · PPT d'auteur ${m.ppt.empreinte.slice(7, 19)} · pivot ${m.pivot.slice(7, 19)}${sequences ? ` · séquences ${sequences.join(", ")}` : ""}`,
+    ...Object.entries(m.sorties).map(([f, x]) => `  ${f} ${x.empreinte.slice(7, 19)}${x.recette ? ` · ${x.pages} pages · recette ${x.recette}` : ""}`),
+    l.rapport ? `rapport : ${l.rapport.synthese.constats.bloquant} bloquant(s) sur la journée, aucun dans les séquences livrées` : "rapport : relevé du deck hérité absent (releve.json à côté du PPT), pas de rapport",
+    m.ecarts.length ? `écarts de lecture : ${m.ecarts.length}` : "aucun écart à la grammaire",
+    imprimante ? (l.manquants.length ? `recette du papier : manquent ${l.manquants.slice(0, 5).map((x) => `« ${x.slice(0, 50)} »`).join(", ")}` : "papier imprimé et recetté")
+      : "aucun Chromium ici : papier laissé en HTML — packager imprimer, là où Chrome est installé",
+  ].join("\n"));
+}
+
+/** La planche avant/après d'une livraison, face au deck hérité. */
+async function plancheCommande(deck: string, livraison: string, dossierTheme: string): Promise<void> {
+  const m = JSON.parse(readFileSync(join(livraison, "manifeste.json"), "utf8")) as Manifeste;
+  const spec = JSON.parse(readFileSync(join(livraison, "seance-spec.json"), "utf8")) as SeanceSpec;
+  const salle = Object.keys(m.sorties).find((f) => f.startsWith("salle"));
+  if (!salle) throw new Error(`${livraison} : pas de salle livrée`);
+  const html = await planche(deck, spec, join(livraison, salle), chargerTheme(dossierTheme));
+  writeFileSync(join(livraison, "avant-apres.html"), html);
+  console.log(`# Avant / après — ${join(livraison, "avant-apres.html")} · ${(Buffer.byteLength(html) / 1e6).toFixed(1)} Mo`);
+}
+
+/** La fiche de revue chronométrée des séquences retenues, à côté du PPT de validation. */
+function revueCommande(fichier: string, sortie: string | undefined, dossierTheme: string, sequences: string[] | undefined): void {
+  const octets = new Uint8Array(readFileSync(fichier));
+  if (!estUnPptDeValidation(octets)) throw new Error(`${fichier} n'est pas un PPT de validation`);
+  const voisin = join(dirname(fichier), "releve.json");
+  if (!existsSync(voisin)) throw new Error(`relevé du deck hérité absent (${voisin}) : packager relever <deck> d'abord`);
+  const releve = JSON.parse(readFileSync(voisin, "utf8")) as Releve;
+  const { spec } = lire(octets);
+  const rapport = diagnostiquer(spec, releve, qualifierReleve(releve).qualifications);
+  const retenues = sequences ?? spec.sequences.map((q) => q.id);
+  const html = revueHtml(rapport, spec, diapositivesDesBlocs(octets), retenues, chargerTheme(dossierTheme));
+  const sortieHtml = join(sortie ?? dirname(fichier), `revue${sequences ? `-${sequences.join("-")}` : ""}.html`);
+  writeFileSync(sortieHtml, html);
+  const points = (html.match(/<li data-id=/g) ?? []).length;
+  console.log([`# Revue — ${basename(fichier)} · séquences ${retenues.join(", ")}`, `${sortieHtml} · ${points} points à trancher, chronométrés`].join("\n"));
+}
+
+/** Les médias embarqués d'une salle (hash → data-URI), pour montrer une image avant et après. */
+function mediasDeSalle(dossier: string, m: Manifeste): Record<string, string> {
+  const salle = Object.keys(m.sorties).find((f) => f.startsWith("salle"));
+  const html = salle && existsSync(join(dossier, salle)) ? readFileSync(join(dossier, salle), "utf8") : "";
+  const json = html.match(/<script type="application\/json" id="medias">([\s\S]*?)<\/script>/)?.[1];
+  return json ? JSON.parse(json) as Record<string, string> : {};
+}
+
+/** Compare deux livraisons : écrit `diff.html` et `diff.json` dans la seconde. */
+function diffCommande(a: string, b: string, sortie: string | undefined, dossierTheme: string): void {
+  const charger = (d: string) => ({ manifeste: JSON.parse(readFileSync(join(d, "manifeste.json"), "utf8")) as Manifeste, spec: JSON.parse(readFileSync(join(d, "seance-spec.json"), "utf8")) as SeanceSpec });
+  const [x, y] = [charger(a), charger(b)];
+  const d = differ(x, y);
+  const dossier = sortie ?? b;
+  writeFileSync(join(dossier, "diff.json"), stringify2(d));
+  writeFileSync(join(dossier, "diff.html"), diffHtml(d, chargerTheme(dossierTheme), { avant: mediasDeSalle(a, x.manifeste), apres: mediasDeSalle(b, y.manifeste) }));
+  console.log([
+    `# Diff — ${a} → ${b}`,
+    `PPT d'auteur ${d.ppt.avant === d.ppt.apres ? "identique" : "modifié"} · pivot ${d.pivot.avant === d.pivot.apres ? "identique" : "modifié"} → ${dossier}/diff.html`,
+    ...d.blocs.map((k) => `  ${k.id} (diapositive d'origine ${k.diapo}) ${k.etat} : ${k.changements.map((c) => c.chemin).join(", ")}`),
+    ...d.sorties.map((s) => `  ${s.fichier} : ${s.etat}${s.note ? ` (${s.note})` : ""}`),
+  ].join("\n"));
+}
+
 function qualifierCommande(deck: string, sortie: string | undefined, dossierTheme: string): void {
   const { releve, dossier } = ecrireReleve(deck, sortie);
   const { spec, qualifications } = qualifierReleve(releve);
@@ -226,7 +313,15 @@ else if (commande === "salle" && args[0]) {
   await papierCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", option("--sequences")?.split(","));
 } else if (commande === "imprimer" && args[0]) {
   await imprimerCommande(args[0], option("--sortie"));
+} else if (commande === "planche" && args[0] && args[1] && !args[1].startsWith("--")) {
+  await plancheCommande(args[0], args[1], option("--theme") ?? "gabarits/theme-onet");
+} else if (commande === "revue" && args[0]) {
+  revueCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", option("--sequences")?.split(","));
+} else if (commande === "livrer" && args[0]) {
+  await livrerCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", option("--sequences")?.split(","));
+} else if (commande === "diff" && args[0] && args[1] && !args[1].startsWith("--")) {
+  diffCommande(args[0], args[1], option("--sortie"), option("--theme") ?? "gabarits/theme-onet");
 } else {
-  console.error("usage : packager relever|qualifier|emettre|lire|salle|papier <deck.pptx | validation.pptx> | imprimer <papier.html> [--sortie <dossier>] [--theme <dossier>] [--sequences s030,…] [--devoilement pastille|ecran]");
+  console.error("usage : packager relever|qualifier|emettre|lire|salle|papier|revue|livrer <deck.pptx | validation.pptx> | imprimer <papier.html> | diff <livraison> <livraison> | planche <deck> <livraison> [--sortie <dossier>] [--theme <dossier>] [--sequences s030,…] [--devoilement pastille|ecran]");
   process.exit(2);
 }
