@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { stringify2 } from "../lib/json";
 import type { SeanceSpec } from "../pivot/seance-spec";
 import type { Theme } from "../theme/theme";
-import { mettreEnSalle, type PriseDeSalle } from "./donnees";
+import { mediasDuBloc, mettreEnSalle, type PriseDeSalle } from "./donnees";
 import { STYLE_SALLE } from "./style";
 
 const MIME: Readonly<Record<string, string>> = {
@@ -43,7 +43,7 @@ export async function construireSalle(spec: SeanceSpec, o: OptionsDeSalle): Prom
   const donnees = mettreEnSalle(spec, o.prise, (h) => o.media(h)?.px ?? null, o.sequences, { chasse: o.theme.chasse, maniere: o.theme.maniere });
   const medias: Record<string, string> = { logo: o.theme.logo };
   const nonAffichables: string[] = [];
-  for (const h of [...new Set(donnees.sequences.flatMap((s) => s.blocs.flatMap((b) => b.visuels.map((v) => v.media))))].sort()) {
+  for (const h of [...new Set(donnees.sequences.flatMap((s) => s.blocs.flatMap(mediasDuBloc)))].sort()) {
     const m = o.media(h);
     const mime = m && MIME[m.ext];
     const converti = m && !mime ? o.convertir?.(h, m.ext, m.octets) : null;
