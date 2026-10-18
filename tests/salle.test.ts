@@ -63,3 +63,22 @@ describe("salle du deck synthétique", async () => {
     expect(html).not.toMatch(/(?:src|href)\s*=\s*["']?https?:|url\(\s*["']?https?:|@import/i);
   });
 });
+
+describe("salle d'un schéma recomposé", () => {
+  it("embarque les images des dessins et des vignettes, qui ne sont plus des visuels depuis PKG-C3", async () => {
+    const { deckDeTableau } = await import("./fixture");
+    const { releve, medias } = relever(await deckDeTableau(), "tableau.pptx");
+    const { spec } = qualifierReleve(releve);
+    const b = spec.sequences.flatMap((s) => s.blocs).find((x) => x.composition?.gabarit === "tableau")!;
+    const c = b.composition!;
+    const illustration = c.gabarit === "tableau" ? c.illustration?.elements.find((e) => e.type === "image") : undefined;
+    expect(illustration?.type).toBe("image");
+    const media = illustration!.type === "image" ? illustration!.media : "";
+    expect(b.visuels.map((v) => v.media)).not.toContain(media);
+    const { html } = await construireSalle(spec, {
+      prise: { devoilement: "pastille" }, theme: chargerTheme("gabarits/theme-onet"),
+      media: (h) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; },
+    });
+    expect(html).toContain(`"${media}": "data:image/`);
+  });
+});

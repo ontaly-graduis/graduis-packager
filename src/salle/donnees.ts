@@ -110,6 +110,17 @@ function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, h: Habillage)
   };
 }
 
+/**
+ * Les médias qu'un bloc montre : ses visuels, et les images de son dessin et des vignettes de sa composition (depuis PKG-C3,
+ * une image que le dessin porte n'est plus un visuel de plus).
+ */
+export function mediasDuBloc(b: Pick<BlocDeSalle, "visuels" | "dessin" | "composition">): string[] {
+  const images = (elements: readonly { type: string; media?: string }[] | undefined) => (elements ?? []).flatMap((e) => (e.type === "image" && e.media ? [e.media] : []));
+  const c = b.composition;
+  const vignettes = c?.gabarit === "tableau" ? [...c.lignes.flatMap((l) => images(l.signe?.elements)), ...images(c.illustration?.elements)] : [];
+  return [...b.visuels.map((v) => v.media), ...images(b.dessin?.elements), ...vignettes];
+}
+
 /** Met un pivot en salle : séquences retenues (toutes par défaut), blocs masqués écartés, textes des schémas à la chasse du thème. */
 export function mettreEnSalle(spec: SeanceSpec, prise: PriseDeSalle, px: Dimensions, retenues?: readonly string[], habillage: Habillage = {}): DonneesDeSalle {
   let rang = 0;

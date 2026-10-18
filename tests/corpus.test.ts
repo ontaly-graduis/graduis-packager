@@ -12,6 +12,7 @@ import { emettre } from "../src/emission/emettre";
 import { lire } from "../src/lecture/lire";
 import { SeanceSpec } from "../src/pivot/seance-spec";
 import { chargerTheme } from "../src/theme/theme";
+import { construirePapier } from "../src/papier/construire";
 
 const DECK = process.env.PKG_CORPUS ?? "docs/sources/boost acheteur areprendre v1.pptx";
 const NOM = "boost acheteur areprendre v1.pptx";
@@ -185,5 +186,19 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
 
   it("est déterministe sur le corpus", () => {
     expect(stringify2(relever(octets, NOM).releve)).toBe(stringify2(releve));
+  });
+
+  it("met la journée sur papier : 13 séquences, ni écran d'animation, le glossaire en annexe, les captures faibles signalées (PKG-D)", async () => {
+    const { medias } = relever(octets, NOM);
+    const media = (h: string) => { const x = medias.get(h); return x ? { ext: x.ext, octets: x.octets, px: releve.medias[h]?.px ?? null } : undefined; };
+    const p = await construirePapier(spec, { theme: chargerTheme("gabarits/theme-onet"), media });
+    expect(p.donnees.sequences).toHaveLength(13);
+    expect(p.donnees.sequences.flatMap((q) => q.blocs.map((b) => b.figure))).not.toContain("ecran-animation");
+    expect(p.donnees.annexes.map((b) => b.figure)).toEqual(["synthese", "glossaire"]);
+    expect(p.attendus.length).toBeGreaterThan(900);
+    expect(p.sousResolues.map((x) => x.bloc)).toContain("b133");
+    const s030 = await construirePapier(spec, { theme: chargerTheme("gabarits/theme-onet"), media, sequences: ["s030"] });
+    expect(s030.donnees.sequences.map((q) => q.blocs.length)).toEqual([26]);
+    expect(s030.donnees.extrait).toMatch(/^Séquence 6 · /);
   });
 });

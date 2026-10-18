@@ -154,19 +154,16 @@ L'**initiale** lit le deck hérité et produit le PPT de validation ; la **compl
 
 ---
 
-## PKG-D · Le papier
+## PKG-D · Le papier — Sortie atteinte le 18/10
 
-**Livrer** : `participant.pdf`, imprimé par Chromium depuis la même source que la salle — tout déplié, glossaire en annexe, recette de la couche texte (pdf.js).
+**Livré** : `src/papier/` — la mise sur papier (même mise en salle, à l'état final, redistribuée), la page imprimable composée par le rendu de la salle (garde, sommaire paginé, intercalaires, pas-à-pas pleine largeur et leurs consignes, compositions et schémas, encadrés, « Mes notes » par séquence, annexes synthèse et glossaire), l'impression Chromium en deux passes, la recette pdf.js ; les commandes `packager papier` et `packager imprimer`. Tranché par David le 18/10 : pas-à-pas pleine largeur, une page de notes par séquence, sommaire et glossaire sans index.
 
-**À trancher au démarrage**
-- Le contenu : pas-à-pas, mises en pratique, étapes clés, synthèse, glossaire ; sans les écrans d'animation ni les démonstrations ?
-- Le format : A4 portrait ; une ou deux captures par page.
-- Le texte descendu de l'écran (P4) : en encadré « Pour aller plus loin », ou dans le fil ?
-
-**Sortie**
-- Le PDF de la séquence 30–58.
-- Sa couche texte égale le texte du pivot (recette).
-- Les captures sous-résolues signalées, pas masquées.
+**Sortie** (86 témoins Vitest — 70 sur le dépôt, 16 sur le corpus — et 17 Playwright, verts)
+- `participant-s030.pdf`, lu dans le PPT de validation : 24 pages, 2,4 Mo, pagination stable en deux passes ; **sa couche texte porte les 281 lignes attendues** (281/281). La journée entière : 112 pages, 9,1 Mo, 938/938.
+- Les captures qui s'imprimeraient sous 150 ppp sont signalées, imprimées : 2 dans la séquence 30 (bloc 49 : 146 et 119 ppp), 16 sur la journée (la plus faible à 60 ppp, bloc 133).
+- Les six decks synthétiques s'impriment et se recettent dans Chromium ; la page est déterministe, sans couleur hors des jetons, sans ressource distante.
+- Correctif de C3 au passage : la salle embarque de nouveau les images des dessins et des vignettes.
+- Non couvert, nommé : l'index des termes (glossaire structuré, H7) ; un encadré « Pour aller plus loin » (P4, en attente des propositions ✦) ; l'impression sur le poste de David (`npm install` pour macOS, Google Chrome) — en session, elle se fait dans le conteneur ; la relecture du PDF par ONET.
 
 ---
 

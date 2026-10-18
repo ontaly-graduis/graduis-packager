@@ -1,4 +1,4 @@
-// CLI du packager — relever, qualifier, émettre le PPT de validation, le lire, construire la salle.
+// CLI du packager — relever, qualifier, émettre le PPT de validation, le lire, construire la salle, le papier.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { sha256, stringify2 } from "../lib/json";
@@ -14,6 +14,10 @@ import type { Devoilement } from "../salle/donnees";
 import { emettre } from "../emission/emettre";
 import { estUnPptDeValidation, lire } from "../lecture/lire";
 import { convertisseur } from "../medias/convertir";
+import { construirePapier, PPP_MIN, type SousResolue } from "../papier/construire";
+import { textesAttendus, type DonneesDePapier } from "../papier/donnees";
+import { chromiumDisponible, imprimer } from "../papier/imprimer";
+import { recetter } from "../papier/recette";
 
 /** Relève un deck et écrit `releve.json` et les médias hashés dans le dossier de sortie. */
 function ecrireReleve(deck: string, sortie: string | undefined) {
@@ -104,6 +108,54 @@ async function salleCommande(deck: string, sortie: string | undefined, dossierTh
   ].join("\n"));
 }
 
+/** Imprime une page de papier et recette sa couche texte ; écrit le PDF à côté. */
+async function imprimerEtRecetter(html: string, attendus: readonly string[], pdf: string): Promise<string[]> {
+  const i = await imprimer(html);
+  writeFileSync(pdf, i.pdf);
+  const r = recetter(attendus, i.lu.pages);
+  return [
+    `${pdf} · ${i.lu.pages.length} pages · ${(i.pdf.length / 1e6).toFixed(1)} Mo · pagination stable en ${i.passes} passes`,
+    `recette de la couche texte : ${r.trouves}/${r.cherches} lignes retrouvées${r.manquants.length ? ` — manquantes : ${r.manquants.slice(0, 8).map((m) => `« ${m.slice(0, 60)} »`).join(", ")}` : ""}`,
+  ];
+}
+
+const sousResoluesEnTexte = (s: readonly SousResolue[]) =>
+  s.length ? `captures sous ${PPP_MIN} ppp à l'impression (signalées, imprimées) : ${s.map((x) => `${x.bloc} ${x.ppp} ppp`).join(", ")}` : `toutes les captures à ${PPP_MIN} ppp ou plus`;
+
+async function papierCommande(deck: string, sortie: string | undefined, dossierTheme: string, sequences: string[] | undefined): Promise<void> {
+  const { spec, releve, medias, dossier, grammaticale } = pivotDe(deck, sortie);
+  const p = await construirePapier(spec, {
+    theme: chargerTheme(dossierTheme),
+    media: (h) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; },
+    ...(sequences ? { sequences } : {}),
+    convertir: convertisseur(join(dossier, "medias-converties")),
+  });
+  const suffixe = sequences ? `-${sequences.join("-")}` : "";
+  const html = join(dossier, `papier${suffixe}.html`);
+  writeFileSync(html, p.html);
+  const lignes = [
+    `# Papier — ${spec.source.nom}${grammaticale ? " (lu dans le PPT de validation)" : " (lecture heuristique : un aperçu, à valider)"}`,
+    `${html} · ${(Buffer.byteLength(p.html) / 1e6).toFixed(1)} Mo · empreinte ${sha256(p.html)}`,
+    `séquences ${p.donnees.sequences.length} · blocs ${p.donnees.sequences.reduce((n, s) => n + s.blocs.length, 0)} · annexes ${p.donnees.annexes.length} · lignes à recetter ${p.attendus.length}`,
+    sousResoluesEnTexte(p.sousResolues),
+    p.nonAffichables.length ? `médias non affichables (à convertir) : ${p.nonAffichables.length}` : "tous les médias sont affichables",
+  ];
+  if (await chromiumDisponible()) lignes.push(...await imprimerEtRecetter(p.html, p.attendus, join(dossier, `participant${suffixe}.pdf`)));
+  else lignes.push(`aucun Chromium ici : la page est prête — packager imprimer ${html}, là où Chrome est installé`);
+  console.log(lignes.join("\n"));
+}
+
+/** Imprime une page de papier déjà construite (là où un Chromium existe) ; l'oracle se relit dans ses données. */
+async function imprimerCommande(fichier: string, sortie: string | undefined): Promise<void> {
+  const html = readFileSync(fichier, "utf8");
+  const json = html.match(/<script type="application\/json" id="donnees">([\s\S]*?)<\/script>/)?.[1];
+  if (!json) throw new Error(`${fichier} n'est pas une page de papier`);
+  const donnees = JSON.parse(json) as DonneesDePapier;
+  const dossier = sortie ?? join(fichier, "..");
+  const pdf = join(dossier, basename(fichier, ".html").replace(/^papier/, "participant") + ".pdf");
+  console.log([`# Impression — ${fichier}`, ...await imprimerEtRecetter(html, textesAttendus(donnees), pdf)].join("\n"));
+}
+
 function qualifierCommande(deck: string, sortie: string | undefined, dossierTheme: string): void {
   const { releve, dossier } = ecrireReleve(deck, sortie);
   const { spec, qualifications } = qualifierReleve(releve);
@@ -170,7 +222,11 @@ else if (commande === "lire" && args[0]) lireCommande(args[0], option("--sortie"
 else if (commande === "salle" && args[0]) {
   const devoilement = option("--devoilement") === "ecran" ? "ecran" : "pastille";
   await salleCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", option("--sequences")?.split(","), devoilement);
+} else if (commande === "papier" && args[0]) {
+  await papierCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", option("--sequences")?.split(","));
+} else if (commande === "imprimer" && args[0]) {
+  await imprimerCommande(args[0], option("--sortie"));
 } else {
-  console.error("usage : packager relever|qualifier|emettre|lire|salle <deck.pptx | validation.pptx> [--sortie <dossier>] [--theme <dossier>] [--sequences s030,…] [--devoilement pastille|ecran]");
+  console.error("usage : packager relever|qualifier|emettre|lire|salle|papier <deck.pptx | validation.pptx> | imprimer <papier.html> [--sortie <dossier>] [--theme <dossier>] [--sequences s030,…] [--devoilement pastille|ecran]");
   process.exit(2);
 }
