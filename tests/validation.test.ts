@@ -11,16 +11,16 @@ import { stringify2 } from "../src/lib/json";
 import { FIGURES, SeanceSpec } from "../src/pivot/seance-spec";
 import { qualifierReleve } from "../src/qualification/qualifier";
 import { relever } from "../src/releve/releve";
-import { chargerTheme } from "../src/theme/theme";
 import { paletteDesJetons } from "../src/emission/gabarit";
 import { CONSIGNES, deckDEcrans, deckDeCas, deckDeSchema, deckDeTableau, deckDeTextes, deckSynthetique, png } from "./fixture";
+import { ONET, PROFIL } from "./procede";
 
-const jetons = chargerTheme("gabarits/theme-onet").jetons;
+const theme = ONET.theme;
 
 async function valider(deck: Uint8Array, nom: string) {
   const { releve, medias } = relever(deck, nom);
-  const spec = SeanceSpec.parse(qualifierReleve(releve).spec);
-  const octets = emettre(spec, { jetons, media: (h) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; } });
+  const spec = SeanceSpec.parse(qualifierReleve(releve, PROFIL).spec);
+  const octets = emettre(spec, { theme, media: (h) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; } });
   return { spec, octets };
 }
 
@@ -42,10 +42,10 @@ function dupliquer(octets: Uint8Array, n: number): Uint8Array {
 }
 
 describe("le PPT de validation (PKG-C1)", () => {
-  it("se relit à l'identique : lire(émettre(pivot₀)) ≡ pivot₀, sur les six decks synthétiques", async () => {
+  it("se relit à l'identique : lire(émettre(pivot₀), PROFIL) ≡ pivot₀, sur les six decks synthétiques", async () => {
     for (const [nom, deck] of [["synthetique", deckSynthetique], ["schema", deckDeSchema], ["cas", deckDeCas], ["tableau", deckDeTableau], ["ecrans", deckDEcrans], ["textes", deckDeTextes]] as const) {
       const { spec, octets } = await valider(await deck(), `${nom}.pptx`);
-      const { spec: relu, ecarts } = lire(octets);
+      const { spec: relu, ecarts } = lire(octets, PROFIL);
       expect(ecarts, nom).toEqual([]);
       expect(stringify2(relu), nom).toBe(stringify2(spec));
     }
@@ -94,7 +94,7 @@ describe("le PPT de validation (PKG-C1)", () => {
 
   it("renumérote une diapositive dupliquée : pas de collision d'identifiant, l'écart est dit", async () => {
     const { spec, octets } = await valider(await deckSynthetique(), "s.pptx");
-    const { spec: relu, ecarts } = lire(dupliquer(octets, 2));
+    const { spec: relu, ecarts } = lire(dupliquer(octets, 2), PROFIL);
     const ids = relu.sequences.flatMap((s) => s.blocs.map((b) => b.id));
     expect(new Set(ids).size).toBe(ids.length);
     const n = spec.sequences.flatMap((s) => s.blocs).length;
@@ -108,7 +108,7 @@ describe("le PPT de validation (PKG-C1)", () => {
     const { spec, octets } = await valider(await deckSynthetique(), "s.pptx");
     const p = unzipSync(octets);
     p["ppt/slides/slide2.xml"] = strToU8(strFromU8(p["ppt/slides/slide2.xml"]!).replace(CONSIGNES[1], "Sélectionner la DA à traiter"));
-    const { spec: relu } = lire(zipSync(p as Zippable));
+    const { spec: relu } = lire(zipSync(p as Zippable), PROFIL);
     const avant = spec.sequences.flatMap((s) => s.blocs);
     const apres = relu.sequences.flatMap((s) => s.blocs);
     const changes = avant.filter((b, i) => stringify2(b) !== stringify2(apres[i]));
@@ -141,7 +141,7 @@ describe("la structure des textes en grammaire, et l'ingestion complémentaire (
     const { spec, octets } = await valider(await deckDeTextes(), "t.pptx");
     const p = unzipSync(octets);
     p["ppt/slides/slide2.xml"] = strToU8(strFromU8(p["ppt/slides/slide2.xml"]!).replace("Accueil et tour de table", "Accueil des participants"));
-    const { spec: relu, ecarts } = lire(zipSync(p as Zippable));
+    const { spec: relu, ecarts } = lire(zipSync(p as Zippable), PROFIL);
     expect(ecarts).toEqual([]);
     const [avant, apres] = [spec, relu].map((x) => x.sequences.flatMap((q) => q.blocs)[1]!);
     const liste = apres!.structure!.rangees[1]!.colonnes[0]!.noeuds[1]!;
@@ -154,7 +154,7 @@ describe("la structure des textes en grammaire, et l'ingestion complémentaire (
     const { octets } = await valider(await deckDeTextes(), "t.pptx");
     const p = unzipSync(octets);
     ajouter(p, 2, zoneDeTexte("Prévoir un badge visiteur"));
-    const { spec, ecarts } = lire(zipSync(p as Zippable));
+    const { spec, ecarts } = lire(zipSync(p as Zippable), PROFIL);
     const b = spec.sequences.flatMap((q) => q.blocs)[1]!;
     expect(b.structure!.rangees).toHaveLength(3);
     expect(b.structure!.rangees[2]!.colonnes[0]!.noeuds).toEqual([{ type: "paragraphe", texte: "Prévoir un badge visiteur" }]);
@@ -169,7 +169,7 @@ describe("la structure des textes en grammaire, et l'ingestion complémentaire (
     p["ppt/media/ajout.png"] = new Uint8Array(png(40, 40));
     p["ppt/slides/_rels/slide2.xml.rels"] = strToU8(strFromU8(p["ppt/slides/_rels/slide2.xml.rels"]!).replace("</Relationships>", '<Relationship Id="rIdAjout" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/ajout.png"/></Relationships>'));
     ajouter(p, 2, '<p:pic><p:nvPicPr><p:cNvPr id="991" name="Image 990" descr="Une image contenant un cercle"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rIdAjout"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="100000" y="100000"/><a:ext cx="300000" cy="300000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>');
-    const { spec, ecarts } = lire(zipSync(p as Zippable));
+    const { spec, ecarts } = lire(zipSync(p as Zippable), PROFIL);
     const [a, b] = [avant, spec].map((x) => x.sequences.flatMap((q) => q.blocs)[1]!);
     expect(b!.textes).toEqual([...a!.textes, "Attention aux doublons"]);
     expect(b!.visuels).toHaveLength(a!.visuels.length + 1);
@@ -186,7 +186,7 @@ describe("la structure des textes en grammaire, et l'ingestion complémentaire (
     p["ppt/slideLayouts/_rels/slideLayout99.xml.rels"] = p["ppt/slideLayouts/_rels/slideLayout5.xml.rels"]!;
     p["ppt/slides/_rels/slide2.xml.rels"] = strToU8(t("ppt/slides/_rels/slide2.xml.rels").replace(/slideLayout\d+\.xml/, "slideLayout99.xml"));
     p["[Content_Types].xml"] = strToU8(t("[Content_Types].xml").replace("</Types>", '<Override PartName="/ppt/slideLayouts/slideLayout99.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/></Types>'));
-    const { spec, ecarts } = lire(zipSync(p as Zippable));
+    const { spec, ecarts } = lire(zipSync(p as Zippable), PROFIL);
     const b = spec.sequences.flatMap((q) => q.blocs)[1]!;
     expect(b.id).toBe("b002");
     expect(b.figure).toBe("contenu");
@@ -229,7 +229,7 @@ describe("les schémas en formes natives (PKG-C3)", () => {
     expect(annexe).toContain('name="G·schéma · colonnes · 3 pas"');
     expect(strFromU8(p["ppt/tags/tag3.xml"]!)).toContain('name="GRADUIS.ANNEXE" val="b002"');
     expect(strFromU8(p["docProps/app.xml"]!)).toContain("<Slides>3</Slides>");
-    const { spec: relu, ecarts } = lire(octets);
+    const { spec: relu, ecarts } = lire(octets, PROFIL);
     expect(ecarts).toEqual([]);
     expect(relu.sequences.flatMap((q) => q.blocs).map((b) => b.id)).toEqual(spec.sequences.flatMap((q) => q.blocs).map((b) => b.id));
   });
@@ -244,12 +244,12 @@ describe("les schémas en formes natives (PKG-C3)", () => {
     const [, cy] = boiteDe(x, "G·couloir 4");
     x = x.replace(/(<p:grpSp><p:nvGrpSpPr><p:cNvPr id="\d+" name="G·étape 1"\/>(?:(?!<\/p:grpSp>).)*?<a:off )x="\d+" y="\d+"((?:(?!<\/p:grpSp>).)*Analyse de la fiche)/s, `$1x="${px + 60000}" y="${cy + 60000}"$2`);
     // Recolorer la carte « Complétion de la fiche » d'une couleur choisie dans PowerPoint (hors grammaire).
-    const ambre = paletteDesJetons(jetons).ambre;
+    const ambre = paletteDesJetons(theme.jetons).ambre;
     const morceaux = x.split("<p:sp>");
     const k = morceaux.findIndex((m) => m.includes("Complétion de la fiche"));
     morceaux[k] = morceaux[k]!.replace(/<a:solidFill>.*?<\/a:solidFill>/s, `<a:solidFill><a:srgbClr val="${ambre}"/></a:solidFill>`);
     p["ppt/slides/slide2.xml"] = strToU8(morceaux.join("<p:sp>"));
-    const { spec: relu, ecarts } = lire(zipSync(p as Zippable));
+    const { spec: relu, ecarts } = lire(zipSync(p as Zippable), PROFIL);
     expect(ecarts).toEqual([]);
     const [avant, apres] = [spec, relu].map((s) => s.sequences.flatMap((q) => q.blocs)[1]!);
     if (avant!.composition?.gabarit !== "tableau" || apres!.composition?.gabarit !== "tableau") throw new Error("tableau attendu");
@@ -265,7 +265,7 @@ describe("les schémas en formes natives (PKG-C3)", () => {
     const { spec, octets } = await valider(await deckDeSchema(), "d.pptx");
     const p = unzipSync(octets);
     ajouter(p, 2, zoneDeTexte("Note du formateur"));
-    const { spec: relu, ecarts } = lire(zipSync(p as Zippable));
+    const { spec: relu, ecarts } = lire(zipSync(p as Zippable), PROFIL);
     const [avant, apres] = [spec, relu].map((s) => s.sequences.flatMap((q) => q.blocs)[1]!);
     expect(apres!.dessin!.elements).toHaveLength(avant!.dessin!.elements.length + 1);
     const ajout = apres!.dessin!.elements.at(-1)!;
@@ -279,7 +279,7 @@ describe("les schémas en formes natives (PKG-C3)", () => {
     const { spec, octets } = await valider(await deckDeCas(), "c.pptx");
     const p = unzipSync(octets);
     p["ppt/presentation.xml"] = strToU8(strFromU8(p["ppt/presentation.xml"]!).replace('<p:sldId id="258" r:id="rId12"/>', ""));
-    const { spec: relu, ecarts } = lire(zipSync(p as Zippable));
+    const { spec: relu, ecarts } = lire(zipSync(p as Zippable), PROFIL);
     const [avant, apres] = [spec, relu].map((s) => s.sequences.flatMap((q) => q.blocs)[1]!);
     expect(apres!.dessin).toBeUndefined();
     expect(apres!.composition).toEqual(avant!.composition);

@@ -110,7 +110,7 @@ export function diffHtml(d: Diff, theme: Theme, images: { readonly avant: Readon
 .avant-apres figure{margin:0}.avant-apres img{width:100%;border:var(--border-hairline)}
 .avant-apres figcaption{font-size:var(--fs-meta);color:var(--text-secondary);text-align:center}</style></head>
 <body><div class="page">
-<header><img src="${theme.logo}" alt="Onet"><div><h1>Ce qui a changé</h1>
+<header><img src="${theme.logo}" alt="${esc(theme.nom)}"><div><h1>Ce qui a changé</h1>
 <p>PPT d'auteur ${esc(court(d.ppt.avant))} → ${esc(court(d.ppt.apres))} · pivot ${esc(court(d.pivot.avant))} → ${esc(court(d.pivot.apres))}</p></div></header>
 <h2>Sorties</h2>
 <table><thead><tr><th>Fichier</th><th>État</th><th></th></tr></thead><tbody>${sorties}</tbody></table>

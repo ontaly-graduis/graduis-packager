@@ -1,6 +1,6 @@
-// Le rapport d'anomalies et d'équilibrage en page HTML autonome, au thème ONET (0 hex hors jetons).
+// Le rapport d'anomalies et d'équilibrage en page HTML autonome, au thème du procédé (0 hex hors jetons).
 import type { Theme } from "../theme/theme";
-import { NIVEAUX, REGLES, type Constat, type Niveau, type Rapport } from "./regles";
+import { NIVEAUX, regles, type Charte, type Constat, type Niveau, type Rapport } from "./regles";
 import { LIBELLES } from "../pivot/libelles";
 
 export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -10,7 +10,7 @@ const LIBELLE_NIVEAU: Readonly<Record<Niveau, string>> = {
 };
 
 
-/** La feuille des pages de travail au thème ONET : le rapport, le diff d'une livraison, la fiche de revue. */
+/** La feuille des pages de travail au thème du procédé : le rapport, le diff d'une livraison, la fiche de revue. */
 export const STYLE_DOCUMENT = `
 *{box-sizing:border-box}
 body{margin:0;background:var(--color-surface);color:var(--text-body);font-family:var(--font-base);font-size:15px;line-height:1.55}
@@ -59,17 +59,18 @@ function constat(k: Constat, numeros: ReadonlyMap<string, number | null>): strin
   return `<li><span class="niveau ${k.niveau}">${LIBELLE_NIVEAU[k.niveau]}</span><span class="ou">${esc(ou)}</span><span>${esc(k.message)}</span></li>`;
 }
 
-export function rapportHtml(r: Rapport, theme: Theme): string {
+export function rapportHtml(r: Rapport, theme: Theme, charte: Charte): string {
   const s = r.synthese;
   const marque = (b: boolean) => (b ? `<span class="oui">✓</span>` : `<span class="non">—</span>`);
   const numeros = new Map(r.sequences.map((l) => [l.id, l.numero]));
   const sequences = r.sequences.map((l) => `<tr class="${l.operatoire ? "op" : ""}"><td class="n">${l.numero ?? ""}</td><td>${esc(l.titre)}</td><td class="n">${l.diapositives}</td>`
     + `<td class="t">${marque(l.temps.E)}</td><td class="t">${marque(l.temps.R)}</td><td class="t">${marque(l.temps["R*"])}</td>`
     + `<td class="n">${l.demonstrations}</td><td class="n">${l.pas}</td><td class="n">${l.mots}</td></tr>`).join("");
-  const regles = Object.keys(REGLES).map((cle) => {
+  const parRegle = regles(charte);
+  const sections = Object.keys(parRegle).map((cle) => {
     const liste = r.constats.filter((k) => k.regle === cle).sort((a, b) => NIVEAUX.indexOf(a.niveau) - NIVEAUX.indexOf(b.niveau) || (a.diapo ?? 0) - (b.diapo ?? 0));
     if (!liste.length) return "";
-    const regle = REGLES[cle]!;
+    const regle = parRegle[cle]!;
     return `<section class="regle"><h3><span>${esc(cle)} · ${esc(regle.libelle)}</span><small>${liste.length} constat${liste.length > 1 ? "s" : ""}</small></h3>`
       + `<p class="action">${esc(regle.action)}</p><ul>${liste.map((k) => constat(k, numeros)).join("")}</ul></section>`;
   }).join("");
@@ -81,7 +82,7 @@ export function rapportHtml(r: Rapport, theme: Theme): string {
 <style id="theme">${theme.jetons}\n${theme.polices}</style>
 <style>${STYLE_DOCUMENT}</style></head>
 <body><div class="page">
-<header><img src="${theme.logo}" alt="Onet"><div><h1>Rapport d'anomalies et d'équilibrage</h1>
+<header><img src="${theme.logo}" alt="${esc(theme.nom)}"><div><h1>Rapport d'anomalies et d'équilibrage</h1>
 <p>${esc(r.source.nom)} · source ${esc(r.source.empreinte.slice(7, 19))} · pivot ${esc(r.pivot.slice(7, 19))}</p></div></header>
 <div class="tuiles">
 ${tuile(s.diapositives, "diapositives")}
@@ -94,7 +95,7 @@ ${tuile(s.constats["a-valider"], "à valider", "a-valider")}
 <h2>Séquences</h2>
 <table><thead><tr><th class="n">N°</th><th>Séquence</th><th class="n">Diapos</th><th>E</th><th>R</th><th>R*</th><th class="n">Démos</th><th class="n">Pas</th><th class="n">Mots</th></tr></thead><tbody>${sequences}</tbody></table>
 <h2>Constats</h2>
-${regles}
+${sections}
 <details><summary>Qualification des ${r.qualification.length} diapositives</summary>
 <table><thead><tr><th class="n">Diapo</th><th>Figure</th><th>Temps</th><th>Titre</th><th>Signal</th></tr></thead><tbody>${qualification}</tbody></table></details>
 <footer>Graduis Packager · Ontaly — rapport dérivé du pivot, régénéré à chaque relevé.</footer>

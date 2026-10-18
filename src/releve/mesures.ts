@@ -1,5 +1,8 @@
-// Les mesures d'un relevé (§ 0.2 et § 0.3 de la spec) : parité avec `scripts/releve_pptx.py`, et appariement.
+// Les mesures d'un relevé (§ 0.2 et § 0.3 de la spec) : parité avec `scripts/releve_pptx.py`, et appariement ; les
+// séquences et leurs temps se lisent par le profil de source, quand on le donne.
 import type { Releve } from "./releve";
+import type { ProfilSource } from "../profil/profil";
+import { figureDuProfil } from "../qualification/figures";
 import type { Forme } from "../ooxml/formes";
 import { SEUILS, aCadreTexte, dedans, distanceCentres, ecartBord, estCapture, estPastille, estTexte, estZone, texteDe } from "./geometrie";
 
@@ -12,8 +15,9 @@ export interface Sequence {
   readonly demonstrations: number;
   readonly pasAPas: number;
   readonly captures: number;
-  readonly aVousDeJouer: number;
-  readonly reglesDuJeu: number;
+  /** Les mises en pratique annoncées par une formule du profil (sur un écran), puis par leur disposition. */
+  readonly pratiquesParFormule: number;
+  readonly pratiquesParDisposition: number;
   readonly etapesCles: number;
   readonly mots: number;
 }
@@ -63,7 +67,7 @@ function motsDe(formes: readonly Forme[]): number {
   return formes.filter(aCadreTexte).reduce((s, f) => s + (texteDe(f).match(/\S+/gu)?.length ?? 0), 0);
 }
 
-export function mesurer(r: Releve): Mesures {
+export function mesurer(r: Releve, profil?: ProfilSource): Mesures {
   const { largeur } = r.deck;
   let [mots, notes, pasAPas, capturesSeules, autres] = [0, 0, 0, 0, 0];
   let [sur, surZone, hors, horsTexte, illisibles] = [0, 0, 0, 0, 0];
@@ -118,31 +122,38 @@ export function mesurer(r: Releve): Mesures {
   }
 
   const sequences: Sequence[] = [];
-  let cur: { n0: number; titre: string; d: (typeof r.diapositives)[number][] } = { n0: 1, titre: "(ouverture)", d: [] };
   const titreDe = (d: (typeof r.diapositives)[number]) =>
     (d.formes as readonly Forme[]).filter(aCadreTexte).map(texteDe).filter(Boolean).join(" | ").replace(/\n/g, " ");
-  for (const d of r.diapositives) {
-    if (d.disposition.includes("Slide transition")) {
+  // La figure que le profil donne à une diapositive (sur ses textes), et si une formule l'a décidée.
+  const parProfil = (d: (typeof r.diapositives)[number]) => {
+    const f = profil ? figureDuProfil(profil, d.disposition, titreDe(d).toLowerCase(), null) : null;
+    return f && { figure: f.figure, formule: f.par === "formule" };
+  };
+  let cur: { n0: number; titre: string; d: (typeof r.diapositives)[number][] } = { n0: 1, titre: "(ouverture)", d: [] };
+  for (const d of profil ? r.diapositives : []) {
+    if (parProfil(d)?.figure === "transition") {
       sequences.push(fermer(cur));
       cur = { n0: d.n, titre: titreDe(d), d: [] };
     }
     cur.d.push(d);
   }
-  sequences.push(fermer(cur));
+  if (profil) sequences.push(fermer(cur));
 
   function fermer(q: typeof cur): Sequence {
-    const ecran = (d: (typeof q.d)[number], mot: string) =>
-      d.disposition.includes("Ecran Votre promotion") && titreDe(d).toLowerCase().includes(mot);
+    const compte = (figure: string, formule?: boolean) => q.d.filter((d) => {
+      const p = parProfil(d);
+      return p?.figure === figure && (formule === undefined || p.formule === formule);
+    }).length;
     return {
       n0: q.n0,
       titre: q.titre,
       diapositives: q.d.length,
-      demonstrations: q.d.filter((d) => ecran(d, "démonstration")).length,
+      demonstrations: compte("demonstration"),
       pasAPas: q.d.filter((d) => natures.get(d.n) === "pas-a-pas").length,
       captures: q.d.filter((d) => natures.get(d.n) === "capture").length,
-      aVousDeJouer: q.d.filter((d) => ecran(d, "a vous de jouer")).length,
-      reglesDuJeu: q.d.filter((d) => d.disposition.includes("Regles du jeu")).length,
-      etapesCles: q.d.filter((d) => d.disposition.includes("Que retenez")).length,
+      pratiquesParFormule: compte("mise-en-pratique", true),
+      pratiquesParDisposition: compte("mise-en-pratique", false),
+      etapesCles: compte("etapes-cles"),
       mots: q.d.reduce((s, d) => s + motsDe(d.formes as readonly Forme[]), 0),
     };
   }

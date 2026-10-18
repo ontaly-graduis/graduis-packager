@@ -7,6 +7,7 @@ import { dedans } from "../releve/geometrie";
 import type { Couleur } from "../ooxml/couleurs";
 import { cleDeCouleur, projeter, roleDe, roleDeTexte, type Projection } from "./roles";
 import { numeroDePastille, partitionner } from "./partition";
+import type { ReglesDeProjection } from "../profil/profil";
 
 const EMU_PAR_POINT = 12700;
 const pt = (emu: number) => Math.round((emu / EMU_PAR_POINT) * 100) / 100;
@@ -106,10 +107,10 @@ export function couleursDe(formes: readonly FormeReleve[]): Couleur[] {
 }
 
 /** Le dessin d'une diapositive schéma, sans les formes écartées (titre, espaces de service), dans l'ordre d'empilement. */
-export function dessinDe(d: DiapositiveReleve, ecartees: ReadonlySet<FormeReleve>): { dessin: Dessin; projection: Projection } {
+export function dessinDe(d: DiapositiveReleve, ecartees: ReadonlySet<FormeReleve>, P: ReglesDeProjection): { dessin: Dessin; projection: Projection } {
   const retenues = d.formes.filter((f) => !ecartees.has(f));
-  const projection = projeter(couleursDe(retenues));
-  const role: VersRole = (c) => projection.roles.get(cleDeCouleur(c)) ?? roleDe(c);
+  const projection = projeter(couleursDe(retenues), P);
+  const role: VersRole = (c) => projection.roles.get(cleDeCouleur(c)) ?? roleDe(c, P);
   const fondEnRole = (f: Fond | undefined): Role | undefined => (f && f !== "aucun" ? role(f) : undefined);
   const elements: ElementDeDessin[] = [];
   const fonds: { boite: Boite; role: Role }[] = [];

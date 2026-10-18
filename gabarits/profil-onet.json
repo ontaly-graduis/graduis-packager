@@ -1,0 +1,83 @@
+{
+  "schema": "graduis/profil-source@0",
+  "nom": "onet",
+  "dispositions": [
+    {
+      "disposition": "Slide transition",
+      "figure": "transition"
+    },
+    {
+      "disposition": "/Pause|Déjeuner|remerciement|Meteo/i",
+      "figure": "ecran-animation"
+    },
+    {
+      "disposition": "Ecran Votre promotion",
+      "figure": "ecran-animation",
+      "formules": [
+        {
+          "texte": "démonstration",
+          "figure": "demonstration",
+          "libelle": "Démonstration"
+        },
+        {
+          "texte": "/[aà] vous de jouer/",
+          "figure": "mise-en-pratique",
+          "libelle": "À vous de jouer"
+        }
+      ]
+    },
+    {
+      "disposition": "Regles du jeu",
+      "figure": "mise-en-pratique"
+    },
+    {
+      "disposition": "Que retenez",
+      "figure": "etapes-cles"
+    },
+    {
+      "disposition": "Synthese",
+      "figure": "synthese",
+      "titres": [
+        {
+          "titre": "/glossaire/i",
+          "figure": "glossaire",
+          "libelle": "Glossaire"
+        }
+      ]
+    }
+  ],
+  "processus": "/ptp-\\d/",
+  "pratique": {
+    "titre": "/vous de jouer/i",
+    "aide": "/aider du/i"
+  },
+  "inacheve": [
+    "/\\ba rédiger\\b/i",
+    "/\\ba supprimer\\b/i",
+    "/\\binsérer\\b/i",
+    "/xxx/i"
+  ],
+  "projection": {
+    "seuils": {
+      "saturationNeutre": 0.15,
+      "chromaNeutre": 0.012,
+      "papier": 0.97,
+      "encre": 0.3,
+      "fort": 0.66,
+      "fortVif": 0.78,
+      "vif": 0.15,
+      "pale": 0.85,
+      "chromaPale": 0.1,
+      "fusion": 0.12,
+      "teinteFusion": 30
+    },
+    "teintes": [
+      [0, 15, "rouge"],
+      [15, 65, "ambre"],
+      [65, 165, "vert"],
+      [165, 200, "ciel"],
+      [200, 300, "marine"],
+      [300, 360, "rouge"]
+    ]
+  }
+}

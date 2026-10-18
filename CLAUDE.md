@@ -34,18 +34,22 @@ graduis-packager/
     releve/        ingestion héritée : relevé, appariement des pas, mesures
     pivot/         schéma `graduis/seance-spec@0` (Zod)
     qualification/ relevé → pivot₀ (figures par règles, zones proposées, schémas redessinés, couleurs en rôles, structure des textes, partition, gabarits du wizard)
-    diagnostic/    règles H1–H9 → rapport (JSON + HTML au thème ONET)
-    theme/         chargement du thème repris, compensation de chasse
+    profil/        le profil de source (`graduis/profil-source@0`) : dispositions, formules, habillage d'origine, marqueurs, projection des couleurs
+    procede/       le procédé (`graduis/procede@0`) : chargement, empreintes, versions ; `rejouer` contre la référence
+    ecart/         l'écart à la source : borné sur la chaîne, compté sur la revue (I-PKG-19)
+    diagnostic/    règles H1–H9 → rapport (JSON + HTML au thème du procédé)
+    theme/         chargement du thème d'un procédé (identité, jetons, polices, logo), compensation de chasse
     dessin/        dessin du pivot → SVG à classes de rôle (géométries DrawingML), module pur : salle et papier
     salle/         pivot → salle.html : données de salle, RegionMap, assemblage ; lecteur/ (navigateur, sans framework)
-    cli/           `npm run packager -- relever|qualifier|emettre|lire|salle|papier|revue|livrer <deck>` ; `imprimer`, `diff`, `planche`
-    emission/      pivot → PPT de validation : grammaire (un seul endroit), gabarit du thème ONET, écrivain OOXML
+    cli/           `npm run packager -- relever|qualifier|emettre|lire|salle|papier|revue|livrer <deck> --procede <procédé>` ; `imprimer`, `diff`, `planche` ; `rejouer <procédé> <deck>`
+    emission/      pivot → PPT de validation : grammaire (un seul endroit), gabarit du thème du procédé, écrivain OOXML
     lecture/       PPT de validation → pivot : la lecture grammaticale (lire)
     papier/        pivot → participant.pdf : mise sur papier, page imprimable (même rendu que la salle), impression Chromium en deux passes, recette pdf.js
     livraison/     la livraison (trois sorties, rapport, manifeste), le diff de deux livraisons, la planche avant/après
   tests-navigateur/ Playwright : la salle jouée en file://, le papier imprimé et recetté (`npm run test:navigateur`)
-  gabarits/    theme-onet/ (thème DS Onet repris, PROVENANCE.md) ; le gabarit d'auteur PPT se génère de ce thème
-  golden/      séquence de référence : pivot + sorties (anonymisé ou hors dépôt)
+  gabarits/    theme-onet/ (thème DS Onet repris, PROVENANCE.md, identite.json) ; profil-onet.json (profil de source) ; le gabarit d'auteur PPT se génère du thème
+  procedes/    les procédés (`onet-boost.json`) : ce qui fait une production, épinglé
+  golden/      les références des procédés : empreintes des sorties (reference-v0.json) ; les decks restent hors dépôt
   tests/
 ```
 
@@ -55,7 +59,7 @@ Docs et commentaires en français. Commentaires sobres : une ligne de rôle par 
 
 ## Clôture & reprise
 
-Comme le wizard : trois supports durables, rôles disjoints — **git** (ce qui a changé), **`docs/decisions.md`** (ce qui a été décidé), **`docs/backlog-v0.md`** (ce qui reste, et les « À trancher au démarrage » de chaque session).
+Comme le wizard : trois supports durables, rôles disjoints — **git** (ce qui a changé), **`docs/decisions.md`** (ce qui a été décidé), **`docs/backlog-v1.md`** (ce qui reste, et les « À trancher au démarrage » de chaque session ; `backlog-v0.md` garde la v0).
 
 - **Clôture** : décisions → lignes datées ; arbitrages soulevés non tranchés → « À trancher au démarrage » de la session concernée ; la « Sortie » de la session vraie (tests verts) ; commit propre ; handoff = récap en chat, jamais un fichier maintenu.
 - **Ouverture** : lire la dernière Sortie atteinte, les lignes de `decisions.md` depuis la reprise, la section du backlog et ses « À trancher » ; trancher ; puis coder.

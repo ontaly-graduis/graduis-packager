@@ -9,7 +9,8 @@ import type { MediaSource } from "../salle/construire";
 import { mediasDuBloc, type BlocDeSalle } from "../salle/donnees";
 import type { Theme } from "../theme/theme";
 import { mettreSurPapier, textesAttendus, type DonneesDePapier } from "./donnees";
-import { STYLE_PAPIER } from "./style";
+import { styleDePapier } from "./style";
+import type { PratiqueDOrigine } from "../profil/profil";
 
 const MIME: Readonly<Record<string, string>> = {
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", svg: "image/svg+xml", webp: "image/webp",
@@ -26,6 +27,8 @@ export interface OptionsDePapier {
   readonly media: (hash: string) => MediaSource | undefined;
   readonly sequences?: readonly string[];
   readonly convertir?: ((hash: string, ext: string, octets: Uint8Array) => Uint8Array | null) | null;
+  /** L'habillage d'origine d'une mise en pratique (profil de source), que la mise en salle retire. */
+  readonly pratique?: PratiqueDOrigine;
 }
 
 export interface SousResolue {
@@ -43,10 +46,12 @@ export interface Papier {
   readonly sousResolues: readonly SousResolue[];
 }
 
-async function lecteur(): Promise<string> {
+/** Le lecteur du papier, regroupé en un script, le nom du thème injecté (comme celui de la salle). */
+async function lecteur(nom: string): Promise<string> {
   const r = await build({
     entryPoints: [fileURLToPath(new URL("./lecteur/main.ts", import.meta.url))],
     bundle: true, format: "iife", minify: true, write: false, target: "es2020", legalComments: "none", charset: "utf8",
+    define: { NOM_DU_THEME: JSON.stringify(nom) },
   });
   return r.outputFiles[0]!.text;
 }
@@ -65,7 +70,7 @@ function ppp(b: BlocDeSalle): SousResolue[] {
 }
 
 export async function construirePapier(spec: SeanceSpec, o: OptionsDePapier): Promise<Papier> {
-  const donnees = mettreSurPapier(spec, (h) => o.media(h)?.px ?? null, o.sequences, { chasse: o.theme.chasse, maniere: o.theme.maniere });
+  const donnees = mettreSurPapier(spec, (h) => o.media(h)?.px ?? null, o.sequences, { chasse: o.theme.chasse, maniere: o.theme.maniere, ...(o.pratique ? { pratique: o.pratique } : {}) });
   const blocs = [...(donnees.couverture ? [donnees.couverture] : []), ...donnees.sequences.flatMap((s) => [...(s.intercalaire ? [s.intercalaire] : []), ...s.blocs]), ...donnees.annexes];
   const medias: Record<string, string> = { logo: o.theme.logo };
   const nonAffichables: string[] = [];
@@ -82,11 +87,11 @@ export async function construirePapier(spec: SeanceSpec, o: OptionsDePapier): Pr
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${titre.replace(/[<&]/g, "")}</title>
 <style id="theme">${o.theme.jetons}\n${o.theme.polices}</style>
-<style id="papier">${STYLE_PAPIER}</style></head>
+<style id="papier">${styleDePapier(o.theme.nom)}</style></head>
 <body><main id="feuille"></main>
 <script type="application/json" id="donnees">${jsonInline(donnees)}</script>
 <script type="application/json" id="medias">${jsonInline(medias)}</script>
-<script>${await lecteur()}</script>
+<script>${await lecteur(o.theme.nom)}</script>
 </body></html>
 `;
   return { html, donnees, attendus: textesAttendus(donnees), nonAffichables, sousResolues: blocs.flatMap(ppp) };

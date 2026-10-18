@@ -85,7 +85,7 @@ export function composerCas(d: Dessin): Composition | null {
   return { gabarit: "cas", cas: cas.sort((a, b) => a.numero - b.numero), ...(leg.length ? { legende: leg } : {}) };
 }
 
-/** Seuils du `tableau` (points, proportions), réglés sur les fiches personae du deck acheteur (17/10). */
+/** Seuils du `tableau` (points, proportions), réglés sur les fiches personae du premier corpus (17/10). */
 export const SEUILS_TABLEAU = {
   /** Un couloir traverse au moins tant de la largeur des phases, et n'a pas plus de tant de leur hauteur. */
   couloirLargeur: 0.8,

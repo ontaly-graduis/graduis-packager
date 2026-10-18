@@ -482,6 +482,8 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
     const titre = el(ctx.doc, "div", "titre-entete");
     if (section) titre.append(section);
     titre.append(el(ctx.doc, "h1", "", b.titre ?? ""));
+    // Exception nommée de GEN-1 (décision du 18/10) : le texte du logo reste un littéral, qui garde le lecteur minifié — donc
+    // la salle — identique à v0 ; il passe au nom du thème à la première montée de version (celle des EMF).
     entete.append(titre, el(ctx.doc, "img", "logo", undefined, { src: ctx.medias.logo ?? "", alt: "Onet" }));
     d.append(entete);
   }

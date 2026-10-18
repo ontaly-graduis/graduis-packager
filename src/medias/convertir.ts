@@ -17,9 +17,17 @@ export function recadrer(svg: string): string {
   return svg.replace(/<svg([^>]*?) width="[^"]*" height="[^"]*" viewBox="[^"]*"/, `<svg$1 width="${Number(w) / 100}mm" height="${Number(h) / 100}mm" viewBox="${x} ${y} ${w} ${h}"`);
 }
 
+const libreOffice = () => ["soffice", "libreoffice"].find((c) => spawnSync(c, ["--version"], { stdio: "ignore" }).status === 0);
+
+/** La version de LibreOffice (`null` s'il n'est pas là) : le procédé l'épingle, la salle en dépend par ses EMF. */
+export function versionDeLibreOffice(): string | null {
+  const soffice = libreOffice();
+  return soffice ? spawnSync(soffice, ["--version"], { encoding: "utf8" }).stdout.trim() : null;
+}
+
 /** Un convertisseur EMF/WMF → SVG, avec son cache ; `null` si LibreOffice n'est pas là. */
 export function convertisseur(cache: string): ((hash: string, ext: string, octets: Uint8Array) => Uint8Array | null) | null {
-  const soffice = ["soffice", "libreoffice"].find((c) => spawnSync(c, ["--version"], { stdio: "ignore" }).status === 0);
+  const soffice = libreOffice();
   if (!soffice) return null;
   mkdirSync(cache, { recursive: true });
   return (hash, ext, octets) => {

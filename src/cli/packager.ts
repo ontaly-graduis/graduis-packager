@@ -1,5 +1,6 @@
 // CLI du packager — relever, qualifier, émettre le PPT de validation, le lire, construire la salle, le papier ; préparer
-// la revue chronométrée, livrer, comparer deux livraisons.
+// la revue chronométrée, livrer, comparer deux livraisons ; rejouer un procédé contre sa référence. Tout ce qui fait une
+// production (profil, thème, charte, prise) vient du procédé (`--procede`) : le code ne nomme aucun client.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join } from "node:path";
 import { sha256, stringify2 } from "../lib/json";
@@ -9,21 +10,22 @@ import { qualifierReleve } from "../qualification/qualifier";
 import { SeanceSpec } from "../pivot/seance-spec";
 import { diagnostiquer } from "../diagnostic/regles";
 import { rapportHtml } from "../diagnostic/rapport-html";
-import { chargerTheme } from "../theme/theme";
 import { construireSalle } from "../salle/construire";
 import type { Devoilement } from "../salle/donnees";
 import { emettre } from "../emission/emettre";
 import { diapositivesDesBlocs, estUnPptDeValidation, lire } from "../lecture/lire";
 import { revueHtml } from "../diagnostic/revue";
-import { convertisseur } from "../medias/convertir";
+import { convertisseur, versionDeLibreOffice } from "../medias/convertir";
 import { construirePapier, PPP_MIN, type SousResolue } from "../papier/construire";
 import { textesAttendus, type DonneesDePapier } from "../papier/donnees";
-import { chromiumDisponible, imprimer } from "../papier/imprimer";
+import { chromiumDisponible, imprimer, versionDuNavigateur } from "../papier/imprimer";
 import { recetter } from "../papier/recette";
 import { livrer, type Manifeste } from "../livraison/livrer";
 import { differ, diffHtml } from "../livraison/diff";
 import { planche } from "../livraison/planche";
 import type { Releve } from "../releve/releve";
+import { chargerProcede, type ProcedeCharge } from "../procede/procede";
+import { rejouer } from "../procede/rejouer";
 
 /** Relève un deck et écrit `releve.json` et les médias hashés dans le dossier de sortie. */
 function ecrireReleve(deck: string, sortie: string | undefined) {
@@ -41,24 +43,24 @@ function ecrireReleve(deck: string, sortie: string | undefined) {
  * Le pivot d'où dérivent les sorties : lu dans le PPT de validation (la lecture grammaticale, seule livrable, I-PKG-4), ou
  * qualifié d'un deck hérité (la lecture heuristique : un aperçu, à valider).
  */
-function pivotDe(fichier: string, sortie: string | undefined) {
+function pivotDe(fichier: string, sortie: string | undefined, p: ProcedeCharge) {
   const octets = new Uint8Array(readFileSync(fichier));
   if (estUnPptDeValidation(octets)) {
-    const { spec, ecarts } = lire(octets);
+    const { spec, ecarts } = lire(octets, p.profil);
     const { releve, medias } = relever(octets, basename(fichier));
     const dossier = sortie ?? join("out", basename(fichier, extname(fichier)));
     mkdirSync(dossier, { recursive: true });
     return { spec, releve, medias, dossier, grammaticale: true, ecarts };
   }
   const { releve, medias, dossier } = ecrireReleve(fichier, sortie);
-  const { spec } = qualifierReleve(releve);
+  const { spec } = qualifierReleve(releve, p.profil);
   return { spec: SeanceSpec.parse(spec), releve, medias, dossier, grammaticale: false, ecarts: [] };
 }
 
-function emettreCommande(deck: string, sortie: string | undefined, dossierTheme: string): void {
-  const { spec, releve, medias, dossier } = pivotDe(deck, sortie);
+function emettreCommande(deck: string, sortie: string | undefined, p: ProcedeCharge): void {
+  const { spec, releve, medias, dossier } = pivotDe(deck, sortie, p);
   const octets = emettre(spec, {
-    jetons: chargerTheme(dossierTheme).jetons,
+    theme: p.theme,
     media: (h) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; },
   });
   writeFileSync(join(dossier, "validation.pptx"), octets);
@@ -73,13 +75,13 @@ function emettreCommande(deck: string, sortie: string | undefined, dossierTheme:
   ].join("\n"));
 }
 
-function lireCommande(fichier: string, sortie: string | undefined): void {
+function lireCommande(fichier: string, sortie: string | undefined, p: ProcedeCharge): void {
   const octets = new Uint8Array(readFileSync(fichier));
   if (!estUnPptDeValidation(octets)) {
     console.error(`${fichier} n'est pas un PPT de validation (il ne dit pas de quel deck il procède).`);
     process.exit(2);
   }
-  const { spec, ecarts } = lire(octets);
+  const { spec, ecarts } = lire(octets, p.profil);
   const dossier = sortie ?? join("out", basename(fichier, extname(fichier)));
   mkdirSync(dossier, { recursive: true });
   const texte = stringify2(spec);
@@ -92,11 +94,12 @@ function lireCommande(fichier: string, sortie: string | undefined): void {
   ].join("\n"));
 }
 
-async function salleCommande(deck: string, sortie: string | undefined, dossierTheme: string, sequences: string[] | undefined, devoilement: Devoilement): Promise<void> {
-  const { spec, releve, medias, dossier, grammaticale } = pivotDe(deck, sortie);
+async function salleCommande(deck: string, sortie: string | undefined, p: ProcedeCharge, sequences: string[] | undefined, devoilement: Devoilement): Promise<void> {
+  const { spec, releve, medias, dossier, grammaticale } = pivotDe(deck, sortie, p);
   const { html, nonAffichables } = await construireSalle(spec, {
     prise: { devoilement },
-    theme: chargerTheme(dossierTheme),
+    theme: p.theme,
+    ...(p.profil.pratique ? { pratique: p.profil.pratique } : {}),
     media: (h) => {
       const m = medias.get(h);
       return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined;
@@ -128,10 +131,11 @@ async function imprimerEtRecetter(html: string, attendus: readonly string[], pdf
 const sousResoluesEnTexte = (s: readonly SousResolue[]) =>
   s.length ? `captures sous ${PPP_MIN} ppp à l'impression (signalées, imprimées) : ${s.map((x) => `${x.bloc} ${x.ppp} ppp`).join(", ")}` : `toutes les captures à ${PPP_MIN} ppp ou plus`;
 
-async function papierCommande(deck: string, sortie: string | undefined, dossierTheme: string, sequences: string[] | undefined): Promise<void> {
-  const { spec, releve, medias, dossier, grammaticale } = pivotDe(deck, sortie);
+async function papierCommande(deck: string, sortie: string | undefined, procede: ProcedeCharge, sequences: string[] | undefined): Promise<void> {
+  const { spec, releve, medias, dossier, grammaticale } = pivotDe(deck, sortie, procede);
   const p = await construirePapier(spec, {
-    theme: chargerTheme(dossierTheme),
+    theme: procede.theme,
+    ...(procede.profil.pratique ? { pratique: procede.profil.pratique } : {}),
     media: (h) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; },
     ...(sequences ? { sequences } : {}),
     convertir: convertisseur(join(dossier, "medias-converties")),
@@ -163,13 +167,14 @@ async function imprimerCommande(fichier: string, sortie: string | undefined): Pr
 }
 
 /** Livre depuis un PPT de validation : les trois sorties, le rapport et le manifeste, dans `livraison[-séquences]/`. */
-async function livrerCommande(fichier: string, sortie: string | undefined, dossierTheme: string, sequences: string[] | undefined): Promise<void> {
+async function livrerCommande(fichier: string, sortie: string | undefined, p: ProcedeCharge, sequences: string[] | undefined): Promise<void> {
   const octets = new Uint8Array(readFileSync(fichier));
   const voisin = join(dirname(fichier), "releve.json");
-  const releveSource = existsSync(voisin) ? JSON.parse(readFileSync(voisin, "utf8")) as Releve : undefined;
+  if (!existsSync(voisin)) throw new Error(`relevé du deck hérité absent (${voisin}) : sans lui, ni rapport ni écart à la source (I-PKG-19) — packager relever <deck> d'abord`);
+  const releveSource = JSON.parse(readFileSync(voisin, "utf8")) as Releve;
   const imprimante = await chromiumDisponible();
   const l = await livrer(octets, basename(fichier), {
-    theme: chargerTheme(dossierTheme), ...(releveSource ? { releveSource } : {}), convertir: convertisseur(join(dirname(fichier), "medias-converties")),
+    procede: p, releveSource, convertir: convertisseur(join(dirname(fichier), "medias-converties")),
     ...(sequences ? { sequences } : {}), ...(imprimante ? { imprimer } : {}),
   });
   if (l.bloquants.length) {
@@ -184,7 +189,8 @@ async function livrerCommande(fichier: string, sortie: string | undefined, dossi
     `# Livraison — ${m.ppt.nom} (${m.source.nom})`,
     `${dossier}/manifeste.json · PPT d'auteur ${m.ppt.empreinte.slice(7, 19)} · pivot ${m.pivot.slice(7, 19)}${sequences ? ` · séquences ${sequences.join(", ")}` : ""}`,
     ...Object.entries(m.sorties).map(([f, x]) => `  ${f} ${x.empreinte.slice(7, 19)}${x.recette ? ` · ${x.pages} pages · recette ${x.recette}` : ""}`),
-    l.rapport ? `rapport : ${l.rapport.synthese.constats.bloquant} bloquant(s) sur la journée, aucun dans les séquences livrées` : "rapport : relevé du deck hérité absent (releve.json à côté du PPT), pas de rapport",
+    `rapport : ${l.rapport.synthese.constats.bloquant} bloquant(s) sur la journée, aucun dans les séquences livrées`,
+    ecartEnTexte(l.manifeste),
     m.ecarts.length ? `écarts de lecture : ${m.ecarts.length}` : "aucun écart à la grammaire",
     imprimante ? (l.manquants.length ? `recette du papier : manquent ${l.manquants.slice(0, 5).map((x) => `« ${x.slice(0, 50)} »`).join(", ")}` : "papier imprimé et recetté")
       : "aucun Chromium ici : papier laissé en HTML — packager imprimer, là où Chrome est installé",
@@ -192,27 +198,27 @@ async function livrerCommande(fichier: string, sortie: string | undefined, dossi
 }
 
 /** La planche avant/après d'une livraison, face au deck hérité. */
-async function plancheCommande(deck: string, livraison: string, dossierTheme: string): Promise<void> {
+async function plancheCommande(deck: string, livraison: string, p: ProcedeCharge): Promise<void> {
   const m = JSON.parse(readFileSync(join(livraison, "manifeste.json"), "utf8")) as Manifeste;
   const spec = JSON.parse(readFileSync(join(livraison, "seance-spec.json"), "utf8")) as SeanceSpec;
   const salle = Object.keys(m.sorties).find((f) => f.startsWith("salle"));
   if (!salle) throw new Error(`${livraison} : pas de salle livrée`);
-  const html = await planche(deck, spec, join(livraison, salle), chargerTheme(dossierTheme));
+  const html = await planche(deck, spec, join(livraison, salle), p.theme);
   writeFileSync(join(livraison, "avant-apres.html"), html);
   console.log(`# Avant / après — ${join(livraison, "avant-apres.html")} · ${(Buffer.byteLength(html) / 1e6).toFixed(1)} Mo`);
 }
 
 /** La fiche de revue chronométrée des séquences retenues, à côté du PPT de validation. */
-function revueCommande(fichier: string, sortie: string | undefined, dossierTheme: string, sequences: string[] | undefined): void {
+function revueCommande(fichier: string, sortie: string | undefined, p: ProcedeCharge, sequences: string[] | undefined): void {
   const octets = new Uint8Array(readFileSync(fichier));
   if (!estUnPptDeValidation(octets)) throw new Error(`${fichier} n'est pas un PPT de validation`);
   const voisin = join(dirname(fichier), "releve.json");
   if (!existsSync(voisin)) throw new Error(`relevé du deck hérité absent (${voisin}) : packager relever <deck> d'abord`);
   const releve = JSON.parse(readFileSync(voisin, "utf8")) as Releve;
-  const { spec } = lire(octets);
-  const rapport = diagnostiquer(spec, releve, qualifierReleve(releve).qualifications);
+  const { spec } = lire(octets, p.profil);
+  const rapport = diagnostiquer(spec, releve, qualifierReleve(releve, p.profil).qualifications, { charte: p.procede.charte, profil: p.profil });
   const retenues = sequences ?? spec.sequences.map((q) => q.id);
-  const html = revueHtml(rapport, spec, diapositivesDesBlocs(octets), retenues, chargerTheme(dossierTheme));
+  const html = revueHtml(rapport, spec, diapositivesDesBlocs(octets), retenues, p.theme, p.procede.charte);
   const sortieHtml = join(sortie ?? dirname(fichier), `revue${sequences ? `-${sequences.join("-")}` : ""}.html`);
   writeFileSync(sortieHtml, html);
   const points = (html.match(/<li data-id=/g) ?? []).length;
@@ -228,13 +234,13 @@ function mediasDeSalle(dossier: string, m: Manifeste): Record<string, string> {
 }
 
 /** Compare deux livraisons : écrit `diff.html` et `diff.json` dans la seconde. */
-function diffCommande(a: string, b: string, sortie: string | undefined, dossierTheme: string): void {
+function diffCommande(a: string, b: string, sortie: string | undefined, p: ProcedeCharge): void {
   const charger = (d: string) => ({ manifeste: JSON.parse(readFileSync(join(d, "manifeste.json"), "utf8")) as Manifeste, spec: JSON.parse(readFileSync(join(d, "seance-spec.json"), "utf8")) as SeanceSpec });
   const [x, y] = [charger(a), charger(b)];
   const d = differ(x, y);
   const dossier = sortie ?? b;
   writeFileSync(join(dossier, "diff.json"), stringify2(d));
-  writeFileSync(join(dossier, "diff.html"), diffHtml(d, chargerTheme(dossierTheme), { avant: mediasDeSalle(a, x.manifeste), apres: mediasDeSalle(b, y.manifeste) }));
+  writeFileSync(join(dossier, "diff.html"), diffHtml(d, p.theme, { avant: mediasDeSalle(a, x.manifeste), apres: mediasDeSalle(b, y.manifeste) }));
   console.log([
     `# Diff — ${a} → ${b}`,
     `PPT d'auteur ${d.ppt.avant === d.ppt.apres ? "identique" : "modifié"} · pivot ${d.pivot.avant === d.pivot.apres ? "identique" : "modifié"} → ${dossier}/diff.html`,
@@ -243,14 +249,14 @@ function diffCommande(a: string, b: string, sortie: string | undefined, dossierT
   ].join("\n"));
 }
 
-function qualifierCommande(deck: string, sortie: string | undefined, dossierTheme: string): void {
+function qualifierCommande(deck: string, sortie: string | undefined, p: ProcedeCharge): void {
   const { releve, dossier } = ecrireReleve(deck, sortie);
-  const { spec, qualifications } = qualifierReleve(releve);
+  const { spec, qualifications } = qualifierReleve(releve, p.profil);
   SeanceSpec.parse(spec);
   writeFileSync(join(dossier, "seance-spec.json"), stringify2(spec));
-  const rapport = diagnostiquer(spec, releve, qualifications);
+  const rapport = diagnostiquer(spec, releve, qualifications, { charte: p.procede.charte, profil: p.profil });
   writeFileSync(join(dossier, "rapport.json"), stringify2(rapport));
-  writeFileSync(join(dossier, "rapport.html"), rapportHtml(rapport, chargerTheme(dossierTheme)));
+  writeFileSync(join(dossier, "rapport.html"), rapportHtml(rapport, p.theme, p.procede.charte));
   const s = rapport.synthese;
   console.log([
     `# Qualification — ${releve.deck.nom}`,
@@ -263,10 +269,10 @@ function qualifierCommande(deck: string, sortie: string | undefined, dossierThem
   ].join("\n"));
 }
 
-function releverCommande(deck: string, sortie: string | undefined): void {
+function releverCommande(deck: string, sortie: string | undefined, p: ProcedeCharge | undefined): void {
   const { nom, releve, medias, dossier, texte } = ecrireReleve(deck, sortie);
 
-  const m = mesurer(releve);
+  const m = mesurer(releve, p?.profil);
   const pc = (a: number, b: number) => (b ? `${Math.round((100 * a) / b)} %` : "—");
   const lignes = [
     `# Relevé — ${nom}`,
@@ -289,12 +295,42 @@ function releverCommande(deck: string, sortie: string | undefined): void {
       ` · légendes seules ${m.appariement.legendesSeules} · zone ${pc(m.appariement.avecZone, m.appariement.pas)}` +
       ` · consigne ${pc(m.appariement.avecConsigne, m.appariement.pas)} · complets (zone et consigne) ${pc(m.appariement.complets, m.appariement.pas)}`,
     "",
-    "séquences (n0 · diapos · démo · pas-à-pas · captures · à vous de jouer · règles du jeu · retenez · mots)",
+    p ? `séquences, par le profil ${p.profil.nom} (n0 · diapos · démo · pas-à-pas · captures · pratique par formule · par disposition · étapes clés · mots)`
+      : "séquences : il faut un profil de source pour les lire (--procede)",
     ...m.sequences.map((q) =>
-      [q.n0, q.diapositives, q.demonstrations, q.pasAPas, q.captures, q.aVousDeJouer, q.reglesDuJeu, q.etapesCles]
+      [q.n0, q.diapositives, q.demonstrations, q.pasAPas, q.captures, q.pratiquesParFormule, q.pratiquesParDisposition, q.etapesCles]
         .map((v, i) => String(v).padStart(i === 0 ? 4 : 3)).join(" ") + ` ${String(q.mots).padStart(5)}  ${q.titre.slice(0, 56)}`),
   ];
   console.log(lignes.join("\n"));
+}
+
+/** L'écart à la source d'une livraison, en une ligne. */
+function ecartEnTexte(m: Manifeste): string {
+  const e = m.ecart;
+  return `écart à la source (sensibilité ${e.sensibilite}) : chaîne ${e.chaine.inventes} mot(s) inventé(s), ${e.chaine.inversions} inversion(s)`
+    + ` ; revue ${e.revue.inventes} mot(s) nouveau(x), ${e.revue.inversions} inversion(s), ${e.revue.retirees} diapositive(s) retirée(s),`
+    + ` ${e.revue.ajoutes + e.revue.dupliques} bloc(s) ajouté(s) ; ${Math.round(e.conserve * 1000) / 10} % du texte d'origine conservé`;
+}
+
+/** Rejoue un procédé sur un deck (et le PPT revu) : la chaîne entière, puis la comparaison à sa référence. */
+async function rejouerCommande(p: ProcedeCharge, deck: string, revue: string | undefined, sortie: string | undefined, sequences: string[] | undefined): Promise<void> {
+  const imprimante = await chromiumDisponible();
+  const dossier = sortie ?? join("out", "rejeu", p.procede.nom, basename(deck, extname(deck)));
+  const r = await rejouer(p, {
+    deck, ...(revue ? { revue } : {}), ...(sequences ? { sequences } : {}), sortie: dossier,
+    ...(imprimante ? { imprimer } : {}), convertir: convertisseur(join(dossier, "medias-converties")),
+    moteurs: { chromium: await versionDuNavigateur(), libreoffice: versionDeLibreOffice() },
+  });
+  const lignes = [
+    `# Rejeu — ${p.procede.nom} · ${basename(deck)}${revue ? ` · revue ${basename(revue)}` : ""} · ${r.extrait} → ${dossier}`,
+    ...(r.versions.length ? ["versions en écart (la conformité se juge aux empreintes) :", ...r.versions.map((v) => `  ${v.quoi} : ${v.trouvee ?? "absent"} au lieu de ${v.attendue ?? "absent"}`)] : ["versions : celles du procédé"]),
+    ...r.comparaisons.map((c) => (c.attendue !== null && c.attendue === c.obtenue ? `  identique  ${c.quoi}` : `  DIFFÉRENT  ${c.quoi} : ${c.obtenue ?? "absent"} au lieu de ${c.attendue ?? "(pas de référence)"}`)),
+    ...(r.refus.length ? [`livraison refusée (${r.refus.length}) :`, ...r.refus.map((x) => `  ${x}`)] : []),
+    `écart à la source : chaîne ${r.ecart.chaine.inventes.length} mot(s) inventé(s), ${r.ecart.chaine.inversions} inversion(s) ; revue ${r.ecart.revue.inventes.length} mot(s) nouveau(x), ${r.ecart.revue.retirees.length} diapositive(s) retirée(s)`,
+    r.conforme ? `conforme à la référence (${r.comparaisons.length} empreintes identiques)` : `NON CONFORME : ${r.comparaisons.filter((c) => c.attendue === null || c.attendue !== c.obtenue).length} écart(s) à la référence — monter de version est un acte (rejeu, diff, décision)`,
+  ];
+  console.log(lignes.join("\n"));
+  if (!r.conforme) process.exit(1);
 }
 
 const [commande, ...args] = process.argv.slice(2);
@@ -304,26 +340,39 @@ const option = (nom: string) => {
 };
 // Les identifiants de séquence s'écrivent en minuscules (s030) ; « S030 » vaut « s030 ».
 const sequences = option("--sequences")?.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-if (commande === "relever" && args[0]) releverCommande(args[0], option("--sortie"));
-else if (commande === "qualifier" && args[0]) qualifierCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet");
-else if (commande === "emettre" && args[0]) emettreCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet");
-else if (commande === "lire" && args[0]) lireCommande(args[0], option("--sortie"));
+const nomDuProcede = option("--procede");
+/** Le procédé des commandes qui en ont besoin : il n'y a pas de défaut, le code ne choisit aucun client. */
+const procede = (): ProcedeCharge => {
+  if (!nomDuProcede) {
+    console.error(`${commande} : il faut un procédé (--procede <nom ou fichier>, ex. ceux de procedes/)`);
+    process.exit(2);
+  }
+  return chargerProcede(nomDuProcede);
+};
+if (commande === "relever" && args[0]) releverCommande(args[0], option("--sortie"), nomDuProcede ? procede() : undefined);
+else if (commande === "qualifier" && args[0]) qualifierCommande(args[0], option("--sortie"), procede());
+else if (commande === "emettre" && args[0]) emettreCommande(args[0], option("--sortie"), procede());
+else if (commande === "lire" && args[0]) lireCommande(args[0], option("--sortie"), procede());
 else if (commande === "salle" && args[0]) {
-  const devoilement = option("--devoilement") === "ecran" ? "ecran" : "pastille";
-  await salleCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", sequences, devoilement);
+  // Le dévoilement est celui de la prise du procédé, sauf à le forcer pour un aperçu.
+  const p = procede();
+  const devoilement = option("--devoilement") === "ecran" ? "ecran" : option("--devoilement") === "pastille" ? "pastille" : p.procede.prise.devoilement;
+  await salleCommande(args[0], option("--sortie"), p, sequences, devoilement);
 } else if (commande === "papier" && args[0]) {
-  await papierCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", sequences);
+  await papierCommande(args[0], option("--sortie"), procede(), sequences);
 } else if (commande === "imprimer" && args[0]) {
   await imprimerCommande(args[0], option("--sortie"));
 } else if (commande === "planche" && args[0] && args[1] && !args[1].startsWith("--")) {
-  await plancheCommande(args[0], args[1], option("--theme") ?? "gabarits/theme-onet");
+  await plancheCommande(args[0], args[1], procede());
 } else if (commande === "revue" && args[0]) {
-  revueCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", sequences);
+  revueCommande(args[0], option("--sortie"), procede(), sequences);
 } else if (commande === "livrer" && args[0]) {
-  await livrerCommande(args[0], option("--sortie"), option("--theme") ?? "gabarits/theme-onet", sequences);
+  await livrerCommande(args[0], option("--sortie"), procede(), sequences);
 } else if (commande === "diff" && args[0] && args[1] && !args[1].startsWith("--")) {
-  diffCommande(args[0], args[1], option("--sortie"), option("--theme") ?? "gabarits/theme-onet");
+  diffCommande(args[0], args[1], option("--sortie"), procede());
+} else if (commande === "rejouer" && args[0] && args[1] && !args[1].startsWith("--")) {
+  await rejouerCommande(chargerProcede(args[0]), args[1], option("--revue"), option("--sortie"), sequences);
 } else {
-  console.error("usage : packager relever|qualifier|emettre|lire|salle|papier|revue|livrer <deck.pptx | validation.pptx> | imprimer <papier.html> | diff <livraison> <livraison> | planche <deck> <livraison> [--sortie <dossier>] [--theme <dossier>] [--sequences s030,…] [--devoilement pastille|ecran]");
+  console.error("usage : packager relever|qualifier|emettre|lire|salle|papier|revue|livrer <deck.pptx | validation.pptx> --procede <procédé> | imprimer <papier.html> | diff <livraison> <livraison> --procede <procédé> | planche <deck> <livraison> --procede <procédé> | rejouer <procédé> <deck.pptx> [--revue <validation revue.pptx>] [--sortie <dossier>] [--sequences s030,…] [--devoilement pastille|ecran]");
   process.exit(2);
 }

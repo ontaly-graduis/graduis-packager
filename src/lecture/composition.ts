@@ -1,6 +1,6 @@
 // La lecture d'une composition en formes natives (PKG-C3) : bandeaux, phases et couloirs par leur nom, les étapes par
 // leur place (la colonne sous laquelle, le couloir dans lequel elles sont posées), leur manière par leur fond et leur
-// trait, le signal par le triangle posé sur l'étape. Ce qu'ONET déplace change de case ; ce qu'il réécrit est relu.
+// trait, le signal par le triangle posé sur l'étape. Ce que le client déplace change de case ; ce qu'il réécrit est relu.
 import type { Element } from "@xmldom/xmldom";
 import { NS, chemin, elementsEnfants, enfant } from "../ooxml/paquet";
 import type { Composition, Role, Vignette } from "../pivot/seance-spec";

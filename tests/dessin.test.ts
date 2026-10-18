@@ -10,6 +10,7 @@ import { roleDe, roleDeTexte } from "../src/qualification/roles";
 import { relever } from "../src/releve/releve";
 import { compenserChasse, rapportDeChasse } from "../src/theme/chasse";
 import { deckDeSchema } from "./fixture";
+import { PROFIL } from "./procede";
 
 const A = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"';
 const couleur = (xml: string, palette: Record<string, string> = {}) =>
@@ -27,13 +28,13 @@ describe("couleurs DrawingML", () => {
 
 describe("rôles de couleur", () => {
   it("projette les couleurs du deck sur les familles et les tons du thème", () => {
-    const r = (rgb: string) => roleDe({ rgb });
+    const r = (rgb: string) => roleDe({ rgb }, PROFIL.projection);
     expect([r("003058"), r("002060"), r("2E75B6"), r("BDD7EE")]).toEqual(["marine-fort", "marine-fort", "marine-fort", "marine-pale"]);
     expect([r("00B3C3"), r("228A94"), r("D3F2F5")]).toEqual(["ciel-moyen", "ciel-fort", "ciel-pale"]);
     expect([r("A5C715"), r("DCF4CE"), r("F28E00"), r("FFC000"), r("FF0000"), r("FFEBEB")]).toEqual(["vert-fort", "vert-pale", "ambre-fort", "ambre-moyen", "rouge-fort", "rouge-pale"]);
     expect([r("FFFFFF"), r("000000"), r("A3A7AF"), r("EDEDED"), r("666666")]).toEqual(["papier", "encre", "gris-moyen", "gris-pale", "gris-fort"]);
     // Une opacité se compose sur le blanc avant la projection.
-    expect(roleDe({ rgb: "003058", alpha: 15000 })).toMatch(/-pale$/);
+    expect(roleDe({ rgb: "003058", alpha: 15000 }, PROFIL.projection)).toMatch(/-pale$/);
   });
 
   it("garde le contraste d'un texte sur son fond", () => {
@@ -60,7 +61,7 @@ describe("géométries", () => {
 
 describe("le schéma du deck synthétique", async () => {
   const { releve } = relever(await deckDeSchema(), "schema.pptx");
-  const { spec } = qualifierReleve(releve);
+  const { spec } = qualifierReleve(releve, PROFIL);
   const bloc = spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
   const dessin = bloc.dessin!;
 

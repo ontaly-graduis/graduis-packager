@@ -5,7 +5,7 @@ import type { Dessin, ElementDeDessin } from "../pivot/seance-spec";
 
 type Boite = readonly [number, number, number, number];
 
-/** Seuils (points, proportions), réglés sur les schémas du deck acheteur (17/10). */
+/** Seuils (points, proportions), réglés sur les schémas du premier corpus (17/10). */
 export const SEUILS_PARTITION = {
   pastilleMax: 30,
   /** Une colonne couvre au moins tant de la hauteur du schéma et tant de sa surface, et contient au moins trois éléments. */

@@ -1,7 +1,7 @@
 // La lecture d'un dessin en formes natives (PKG-C3) : le groupe « G·schéma » relu dans son repère enfant, au centième de
 // point exact ; formes, chemins, images, tableaux (posés hors du groupe, leur rang dans leur nom) ; les couleurs en rôles
 // (une couleur de la grammaire exactement, une autre au rôle le plus proche) ; le dévoilement dans les noms.
-// Ce qu'ONET y dessine dans PowerPoint (une forme, une flèche, un texte) se lit de même : rien ne se perd.
+// Ce que le client y dessine dans PowerPoint (une forme, une flèche, un texte) se lit de même : rien ne se perd.
 import { DOMParser, type Element } from "@xmldom/xmldom";
 import { NS, chemin, elementsEnfants, enfant, enfants, entier } from "../ooxml/paquet";
 import { FLECHES, ROLES, TIRETS, type Corps, type Dessin, type ElementDeDessin, type Role, type TraitDeDessin } from "../pivot/seance-spec";

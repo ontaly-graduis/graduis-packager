@@ -3,3 +3,4 @@ out/
 docs/sources/
 docs/.analyse-tmp/
 .DS_Store
+test-results/

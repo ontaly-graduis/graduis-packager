@@ -1,6 +1,6 @@
 // La feuille du papier : A4 portrait, la feuille de la salle reprise (compositions, schémas, structures) et ramenée aux
 // corps de l'imprimé — jetons du thème seulement (I-PKG-6). Les règles de page sont posées par le lecteur (une par séquence).
-import { STYLE_SALLE } from "../salle/style";
+import { styleDeSalle } from "../salle/style";
 
 /** Le facteur des compositions (cas, tableau) sur papier : leurs textes autour de 9 pt ; elles s'allongent sur la page. */
 const ECHELLE_COMPOSITION = 0.7;
@@ -102,5 +102,5 @@ h1,h2,h3{color:var(--text-strong);font-weight:var(--fw-bold);break-after:avoid}
 .annexes .bloc{break-inside:auto}
 `;
 
-/** La feuille de la salle (les compositions), puis celle du papier, qui l'emporte. */
-export const STYLE_PAPIER = STYLE_SALLE + STYLE_PROPRE;
+/** La feuille de la salle (les compositions), au nom de son thème, puis celle du papier, qui l'emporte. */
+export const styleDePapier = (nom: string) => styleDeSalle(nom) + STYLE_PROPRE;

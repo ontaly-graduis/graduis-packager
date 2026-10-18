@@ -1,10 +1,13 @@
-// La figure d'une diapositive héritée, par règles (disposition × contenu), avec le signal qui l'a décidée.
+// La figure d'une diapositive héritée, par règles (disposition × contenu), avec le signal qui l'a décidée : celles du profil
+// de source d'abord (ses dispositions, formules et titres), puis les règles génériques.
 import type { DiapositiveReleve, FormeReleve } from "../releve/releve";
 import type { Forme } from "../ooxml/formes";
 import { estCapture, texteDe } from "../releve/geometrie";
 import type { Harmonisation } from "./gabarits";
 import type { Projection } from "./roles";
 import type { Figure } from "../pivot/seance-spec";
+import { LIBELLES } from "../pivot/libelles";
+import { motif, type ProfilSource } from "../profil/profil";
 
 export interface Qualification {
   readonly figure: Figure;
@@ -31,23 +34,24 @@ function texteDiapo(d: DiapositiveReleve): string {
   return d.formes.filter((f) => !estDeService(f)).map((f) => texteDe(f as Forme)).join(" ").toLowerCase();
 }
 
-export function qualifier(d: DiapositiveReleve, largeur: number, titre: string | null): Qualification {
-  const disp = d.disposition;
+/** La règle du profil qui répond à une diapositive : la figure qu'elle décide, par quoi, et le signal qui le dit au rapport. */
+export function figureDuProfil(profil: ProfilSource, disposition: string, texte: string, titre: string | null): { figure: Figure; signal: string; par: "disposition" | "formule" | "titre" } | null {
+  const r = profil.dispositions.find((x) => motif(x.disposition).teste(disposition));
+  if (!r) return null;
+  const nom = LIBELLES[r.figure].toLowerCase();
+  const f = r.formules?.find((x) => motif(x.texte).teste(texte));
+  if (f) return { figure: f.figure, signal: `${nom}, texte « ${f.libelle} »`, par: "formule" };
+  const t = r.titres?.find((x) => motif(x.titre).teste(titre ?? ""));
+  if (t) return { figure: t.figure, signal: `${nom} titrée « ${t.libelle} »`, par: "titre" };
+  return { figure: r.figure, signal: `disposition « ${disposition} »`, par: "disposition" };
+}
+
+export function qualifier(d: DiapositiveReleve, largeur: number, titre: string | null, profil: ProfilSource): Qualification {
   const t = texteDiapo(d);
   const q = (figure: Figure, signal: string): Qualification => ({ figure, signal });
   if (d.n === 1) return q("couverture", "première diapositive");
-  if (disp.includes("Slide transition")) return q("transition", `disposition « ${disp} »`);
-  if (/Pause|Déjeuner|remerciement|Meteo/i.test(disp)) return q("ecran-animation", `disposition « ${disp} »`);
-  if (disp.includes("Ecran Votre promotion")) {
-    if (t.includes("démonstration")) return q("demonstration", `écran d'animation, texte « Démonstration »`);
-    if (/[aà] vous de jouer/.test(t)) return q("mise-en-pratique", `écran d'animation, texte « À vous de jouer »`);
-    return q("ecran-animation", `disposition « ${disp} »`);
-  }
-  if (disp.includes("Regles du jeu")) return q("mise-en-pratique", `disposition « ${disp} »`);
-  if (disp.includes("Que retenez")) return q("etapes-cles", `disposition « ${disp} »`);
-  if (disp.includes("Synthese")) {
-    return /glossaire/i.test(titre ?? "") ? q("glossaire", "synthèse titrée « Glossaire »") : q("synthese", `disposition « ${disp} »`);
-  }
+  const parProfil = figureDuProfil(profil, d.disposition, t, titre);
+  if (parProfil) return q(parProfil.figure, parProfil.signal);
   if (d.pas_a_pas) return q("pas-a-pas", `capture et ${d.pas_a_pas.pas.length} pas numérotés`);
   const liens = d.liens.some((l) => /\.pptx?(\?|$)/i.test(l));
   if (liens || /lien vers|insérer lien/.test(t)) return q("renvoi", liens ? "lien vers un autre deck" : "texte « lien vers »");
@@ -55,7 +59,8 @@ export function qualifier(d: DiapositiveReleve, largeur: number, titre: string |
   const dessin = d.formes.filter((f) => ["forme", "texte", "libre", "trait"].includes(f.nature) && !estDeService(f)).length;
   if (dessin >= SEUIL_SCHEMA) return q("schema", `${dessin} formes dessinées`);
   if (d.formes.some((f) => f.nature === "tableau")) {
-    return /processus|étape|ptp-\d/.test(t) ? q("processus", "tableau d'étapes de processus") : q("contenu", "tableau");
+    const processus = /processus|étape/.test(t) || (profil.processus !== undefined && motif(profil.processus).teste(t));
+    return processus ? q("processus", "tableau d'étapes de processus") : q("contenu", "tableau");
   }
   if (d.formes.some((f) => estCapture(f as Forme, largeur))) return q("capture", "capture sans pastille");
   if (/^objectifs?\b/i.test(titre ?? "")) return q("objectifs", "titre « Objectifs »");

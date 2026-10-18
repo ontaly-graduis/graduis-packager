@@ -5,7 +5,8 @@ import { stringify2 } from "../lib/json";
 import type { SeanceSpec } from "../pivot/seance-spec";
 import type { Theme } from "../theme/theme";
 import { mediasDuBloc, mettreEnSalle, type PriseDeSalle } from "./donnees";
-import { STYLE_SALLE } from "./style";
+import { styleDeSalle } from "./style";
+import type { PratiqueDOrigine } from "../profil/profil";
 
 const MIME: Readonly<Record<string, string>> = {
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", svg: "image/svg+xml", webp: "image/webp",
@@ -25,6 +26,8 @@ export interface OptionsDeSalle {
   readonly sequences?: readonly string[];
   /** Convertit un média que le navigateur n'affiche pas (EMF, WMF) en SVG ; sans lui, il reste « à convertir ». */
   readonly convertir?: ((hash: string, ext: string, octets: Uint8Array) => Uint8Array | null) | null;
+  /** L'habillage d'origine d'une mise en pratique (profil de source), que la salle retire. */
+  readonly pratique?: PratiqueDOrigine;
 }
 
 /** Le lecteur, regroupé en un script : même source et même version d'esbuild ⇒ mêmes octets. */
@@ -40,7 +43,7 @@ async function lecteur(): Promise<string> {
 const jsonInline = (v: unknown) => stringify2(v).replace(/</g, "\\u003c");
 
 export async function construireSalle(spec: SeanceSpec, o: OptionsDeSalle): Promise<{ html: string; nonAffichables: string[] }> {
-  const donnees = mettreEnSalle(spec, o.prise, (h) => o.media(h)?.px ?? null, o.sequences, { chasse: o.theme.chasse, maniere: o.theme.maniere });
+  const donnees = mettreEnSalle(spec, o.prise, (h) => o.media(h)?.px ?? null, o.sequences, { chasse: o.theme.chasse, maniere: o.theme.maniere, ...(o.pratique ? { pratique: o.pratique } : {}) });
   const medias: Record<string, string> = { logo: o.theme.logo };
   const nonAffichables: string[] = [];
   for (const h of [...new Set(donnees.sequences.flatMap((s) => s.blocs.flatMap(mediasDuBloc)))].sort()) {
@@ -56,7 +59,7 @@ export async function construireSalle(spec: SeanceSpec, o: OptionsDeSalle): Prom
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${titre.replace(/[<&]/g, "")}</title>
 <style id="theme">${o.theme.jetons}\n${o.theme.polices}</style>
-<style id="salle">${STYLE_SALLE}</style></head>
+<style id="salle">${styleDeSalle(o.theme.nom)}</style></head>
 <body><div id="scene"></div><div id="surcouche"></div>
 <script type="application/json" id="donnees">${jsonInline(donnees)}</script>
 <script type="application/json" id="medias">${jsonInline(medias)}</script>

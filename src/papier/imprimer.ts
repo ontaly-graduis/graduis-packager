@@ -38,6 +38,18 @@ export async function chromiumDisponible(): Promise<boolean> {
   }
 }
 
+/** La version du Chromium qui imprimerait ici (`null` s'il n'y en a pas) : le procédé l'épingle. */
+export async function versionDuNavigateur(): Promise<string | null> {
+  try {
+    const n = await lancer();
+    const v = n.version();
+    await n.close();
+    return v;
+  } catch {
+    return null;
+  }
+}
+
 const memes = (a: Readonly<Record<string, number>>, b: Readonly<Record<string, number>>) =>
   Object.keys(a).length === Object.keys(b).length && Object.entries(a).every(([k, v]) => b[k] === v);
 

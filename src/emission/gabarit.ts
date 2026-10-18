@@ -1,5 +1,5 @@
-// Le gabarit du PPT de validation, généré du thème ONET (PKG-C) : un thème Office dont les douze emplacements de couleur
-// et les polices viennent des jetons du DS Onet (les seules valeurs hex du PPT), un masque, une disposition par figure.
+// Le gabarit du PPT de validation, généré du thème du procédé (PKG-C) : un thème Office dont les douze emplacements de couleur
+// et les polices viennent de ses jetons et de son identité (les seules valeurs hex du PPT), un masque, une disposition par figure.
 // Le masque des decks hérités n'est ni repris ni retouché.
 import { FIGURES, type Figure } from "../pivot/seance-spec";
 import { EMU, ESPACES, FIGURES_A_CAPTURE, disposition } from "./grammaire";
@@ -30,7 +30,7 @@ export const REGIONS = {
   },
 } as const;
 
-/** Les couleurs du thème Office, lues dans les jetons du DS Onet. */
+/** Les couleurs du thème Office, lues dans les jetons du thème. */
 export interface Palette {
   readonly encre: string; readonly papier: string; readonly marine: string; readonly surface: string;
   readonly ciel: string; readonly vert: string; readonly ambre: string; readonly rouge: string; readonly gris: string; readonly brique: string;
@@ -50,17 +50,23 @@ export function paletteDesJetons(jetons: string): Palette {
 
 const srgb = (v: string) => `<a:srgbClr val="${v}"/>`;
 
-/** Le thème Office : dk1 encre, lt1 papier, dk2 marine, lt2 surface ; accents marine, ciel, vert, ambre, rouge, gris. */
-export function theme(p: Palette, nom = "Onet · Graduis"): string {
+/**
+ * Le thème Office : dk1 encre, lt1 papier, dk2 marine, lt2 surface ; accents marine, ciel, vert, ambre, rouge, gris. Il porte
+ * le nom du thème (« <nom> · Graduis », et « (notes) » pour celui des pages de notes) et sa police.
+ */
+export function theme(p: Palette, identite: { readonly nom: string; readonly police: string }, notes = false): string {
+  const nom = `${identite.nom} · Graduis${notes ? " (notes)" : ""}`;
+  const schema = x(identite.nom);
+  const police = x(identite.police);
   const remplissages = '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'.repeat(3);
   const traits = [6350, 12700, 19050].map((w) => `<a:ln w="${w}" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/><a:miter lim="800000"/></a:ln>`).join("");
   const effets = "<a:effectStyle><a:effectLst/></a:effectStyle>".repeat(3);
   return `${ENTETE}<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="${x(nom)}"><a:themeElements>`
-    + `<a:clrScheme name="Onet"><a:dk1>${srgb(p.encre)}</a:dk1><a:lt1>${srgb(p.papier)}</a:lt1><a:dk2>${srgb(p.marine)}</a:dk2><a:lt2>${srgb(p.surface)}</a:lt2>`
+    + `<a:clrScheme name="${schema}"><a:dk1>${srgb(p.encre)}</a:dk1><a:lt1>${srgb(p.papier)}</a:lt1><a:dk2>${srgb(p.marine)}</a:dk2><a:lt2>${srgb(p.surface)}</a:lt2>`
     + `<a:accent1>${srgb(p.marine)}</a:accent1><a:accent2>${srgb(p.ciel)}</a:accent2><a:accent3>${srgb(p.vert)}</a:accent3><a:accent4>${srgb(p.ambre)}</a:accent4>`
     + `<a:accent5>${srgb(p.rouge)}</a:accent5><a:accent6>${srgb(p.gris)}</a:accent6><a:hlink>${srgb(p.marine)}</a:hlink><a:folHlink>${srgb(p.brique)}</a:folHlink></a:clrScheme>`
-    + '<a:fontScheme name="Onet"><a:majorFont><a:latin typeface="Montserrat"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Montserrat"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>'
-    + `<a:fmtScheme name="Onet"><a:fillStyleLst>${remplissages}</a:fillStyleLst><a:lnStyleLst>${traits}</a:lnStyleLst><a:effectStyleLst>${effets}</a:effectStyleLst><a:bgFillStyleLst>${remplissages}</a:bgFillStyleLst></a:fmtScheme>`
+    + `<a:fontScheme name="${schema}"><a:majorFont><a:latin typeface="${police}"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="${police}"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>`
+    + `<a:fmtScheme name="${schema}"><a:fillStyleLst>${remplissages}</a:fillStyleLst><a:lnStyleLst>${traits}</a:lnStyleLst><a:effectStyleLst>${effets}</a:effectStyleLst><a:bgFillStyleLst>${remplissages}</a:bgFillStyleLst></a:fmtScheme>`
     + "</a:themeElements><a:objectDefaults/><a:extraClrSchemeLst/></a:theme>";
 }
 
