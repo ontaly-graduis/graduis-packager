@@ -231,8 +231,8 @@ li.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animat
 .volet .surtitre{font-size:26px;font-weight:var(--fw-bold);letter-spacing:3px;text-transform:uppercase;opacity:.85;animation:voletLabel var(--mvt-entree) ease forwards}
 .volet .titre{font-size:64px;font-weight:var(--fw-bold);line-height:1.1;max-width:24ch;animation:voletLabel var(--mvt-entree) ease forwards}
 #surcouche{position:fixed;inset:0;pointer-events:none}
-.aide-bouton{position:fixed;right:20px;bottom:20px;z-index:3;width:44px;height:44px;border-radius:50%;border:none;background:var(--color-primary);color:var(--text-on-primary);font:var(--fw-bold) 22px var(--font-base);cursor:pointer;box-shadow:var(--shadow-raised);opacity:0;transition:opacity var(--mvt-moyen) var(--courbe-standard)}
-.aide-bouton.visible,.aide-bouton.ouvert,.aide-bouton:focus-visible{opacity:1}
+.aide-bouton,.plan-bouton{position:fixed;right:20px;bottom:20px;z-index:3;width:44px;height:44px;border-radius:50%;border:none;background:var(--color-primary);color:var(--text-on-primary);font:var(--fw-bold) 22px var(--font-base);cursor:pointer;box-shadow:var(--shadow-raised);opacity:0;transition:opacity var(--mvt-moyen) var(--courbe-standard)}
+.aide-bouton.visible,.aide-bouton.ouvert,.aide-bouton:focus-visible,.plan-bouton.visible,.plan-bouton:focus-visible{opacity:1}
 .aide-commandes{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,92vw);max-height:88vh;overflow:auto;pointer-events:auto;padding:28px 36px 24px;background:var(--color-background);color:var(--text-body);border-top:var(--rule-top) solid var(--color-primary);box-shadow:var(--shadow-overlay);font-size:16px;line-height:1.45;animation:popIn var(--mvt-entree) var(--courbe-ressort) both}
 .aide-commandes h2{margin:0 0 16px;font-size:var(--fs-h2);color:var(--text-strong)}
 .aide-commandes table{border-collapse:collapse;width:100%}
@@ -240,6 +240,25 @@ li.apparait{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animat
 .aide-commandes td:first-child{width:46%;padding-right:16px}
 .aide-commandes kbd{display:inline-block;min-width:34px;margin:2px 0;padding:3px 9px;border:1px solid var(--color-border);border-bottom-width:3px;border-radius:var(--radius-interactive);background:var(--color-surface);color:var(--text-strong);font:var(--fw-semibold) 14px var(--font-base);text-align:center}
 .aide-commandes p{margin:14px 0 0;font-size:var(--fs-meta);color:var(--text-secondary)}
+.plan-bouton{right:76px;font-size:20px}
+/* Le plan de la séance : un panneau sur un voile, les séquences et leurs diapositives ; la courante marquée, la choisie surlignée. */
+.plan-seance-fond{position:fixed;inset:0;z-index:6;display:grid;place-items:center;background:color-mix(in srgb,var(--color-nav-bg) 45%,transparent)}
+.plan-seance{display:flex;flex-direction:column;width:min(820px,92vw);max-height:88vh;padding:24px 28px 18px;background:var(--color-background);color:var(--text-body);border-top:var(--rule-top) solid var(--color-primary);box-shadow:var(--shadow-overlay);font-size:16px;line-height:1.35;animation:popIn var(--mvt-entree) var(--courbe-ressort) both}
+.plan-seance h2{margin:0 0 12px;font-size:var(--fs-h2);color:var(--text-strong)}
+.plan-seance input{width:100%;padding:9px 12px;border:1px solid var(--color-border);border-radius:var(--radius-interactive);font:16px var(--font-base);color:var(--text-strong)}
+.plan-seance input:focus{outline:2px solid var(--color-primary);outline-offset:1px}
+.plan-seance-liste{flex:1;min-height:0;overflow:auto;margin-top:12px}
+.plan-seance [hidden]{display:none}
+.plan-seance h3{position:sticky;top:0;margin:0;padding:10px 0 6px;background:var(--color-background);font-size:var(--fs-h3);color:var(--color-primary)}
+.plan-seance ol{list-style:none;margin:0 0 6px;padding:0}
+.plan-seance li button{display:grid;grid-template-columns:3.2em minmax(0,1fr) auto;gap:12px;align-items:baseline;width:100%;padding:6px 8px;border:0;border-bottom:var(--border-hairline);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.plan-seance li button:hover,.plan-seance li.actif button{background:var(--color-surface)}
+.plan-seance li.actif button{box-shadow:inset 3px 0 0 var(--color-primary)}
+.plan-seance .num{font-variant-numeric:tabular-nums;color:var(--text-secondary);text-align:right}
+.plan-seance .titre{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-strong)}
+.plan-seance .figure{font-size:var(--fs-meta);color:var(--text-secondary)}
+.plan-seance li.courant .num,.plan-seance li.courant .titre{color:var(--color-primary);font-weight:var(--fw-bold)}
+.plan-seance>p{margin:10px 0 0;font-size:var(--fs-meta);color:var(--text-secondary)}
 .presentateur .rappel{font-size:15px;opacity:.8}
 .minuteur{position:absolute;top:24px;right:24px;padding:10px 22px;border-radius:var(--radius-pill);background:var(--color-background);color:var(--text-strong);font:var(--fw-bold) 28px var(--font-base);box-shadow:var(--shadow-raised);font-variant-numeric:tabular-nums}
 .minuteur.bientot{background:var(--color-warning-bg);color:var(--color-warning)}
