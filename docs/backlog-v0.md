@@ -132,13 +132,15 @@ grammaire ; C3, les schémas, leur partition et leurs recompositions en grammair
 
 L'**initiale** lit le deck hérité et produit le PPT de validation ; la **complémentaire** relit le PPT revu et modifié par ONET, à chaque itération. La complémentaire doit tolérer ce qu'ONET ajoute librement (un cadre de texte, une image, une diapositive sans disposition `G ·`) : le lire par l'heuristique de l'initiale et le signaler, plutôt que le perdre (→ C2, C3).
 
-### PKG-C2 · La structure des textes en grammaire
+### PKG-C2 · La structure des textes en grammaire, et l'ingestion complémentaire — Sortie atteinte le 18/10
 
-**Livrer** : la structure d'un texte (`bloc.structure` : rangées, colonnes, fiches, intertitres, listes et leurs détails, définitions, graisse) montrée dans le PPT de validation dans les formes natives de PowerPoint, et relue par `lire` ; l'étiquette provisoire `GRADUIS.LECTURES` n'en porte plus.
+**Livré** : la structure d'un texte écrite en PowerPoint natif (`src/emission/structure.ts`) et relue (`src/lecture/structure.ts`) — un cadre « G·colonne r.c » par colonne, l'illustration à sa gauche, un paragraphe par nœud dans la grammaire des puces (• liste, numéros, ▸ définition, – détail au niveau 2) et des corps (intertitre 18 pt) ; l'inventaire `textes` dérivé de la structure ; l'ingestion complémentaire qui lit, plutôt que de perdre, ce qu'ONET ajoute hors grammaire.
 
-**À trancher au démarrage**
-- La grammaire : un cadre par fiche, un paragraphe par nœud, le niveau de paragraphe pour les détails, la puce ou la numérotation pour les listes, « **terme** : texte » pour une définition, la graisse pour un intertitre ?
-- `textes` (l'inventaire verbatim) et `structure` (l'organisation) : l'un se dérive-t-il de l'autre à la lecture (I-PKG-1) ?
+**Sortie** (72 témoins Vitest — 57 sur le dépôt, 15 sur le corpus — et 11 Playwright, verts)
+- `lire(émettre(pivot₀)) ≡ pivot₀` sur les 166 diapositives (23 blocs organisés, 7 colonnes illustrées), même hash de pivot ; le PPT valide contre les schémas (875 parties) et se rend dans LibreOffice.
+- Une retouche dans une fiche ne change que son bloc (sa structure, son inventaire).
+- Une zone de texte ajoutée à un texte organisé devient une rangée ; ailleurs, un texte de plus ; une image ajoutée, un visuel ; une diapositive d'un autre deck est lue par l'ingestion initiale ; chaque fois un écart est dit.
+- Non couvert, nommé : le dessin des schémas, leur partition et leurs recompositions voyagent encore en étiquette (→ C3).
 
 ### PKG-C3 · Les schémas, leur partition et leurs recompositions en grammaire
 
@@ -146,9 +148,9 @@ L'**initiale** lit le deck hérité et produit le PPT de validation ; la **compl
 
 **À trancher au démarrage**
 - Ce que montre une diapositive recomposée : la composition (ce qui sera livré) en formes natives, le dessin d'origine en repli (masqué, ou sur une diapositive annexe) ?
-- La grammaire du dévoilement : les animations natives de PowerPoint (l'ordre des clics est la partition, il se joue au diaporama et se corrige dans le volet Animation) ou le nom des formes (« pas 2 ») ?
+- ~~La grammaire du dévoilement~~ : tranché le 18/10 — sans animations ; le pas d'une forme dans son nom.
 - ~~Le repli de police~~ : tranché le 18/10 — le PPT de validation est un support de relecture, PowerPoint remplace Montserrat sans dommage.
-- Les animations de dévoilement : le PPT étant un support de validation, les animations natives valent-elles leur coût, ou le nom des formes suffit-il ?
+- ~~Les animations de dévoilement~~ : tranché le 18/10 — on s'en passe.
 
 ---
 

@@ -11,7 +11,7 @@ import { FIGURES, SeanceSpec } from "../src/pivot/seance-spec";
 import { qualifierReleve } from "../src/qualification/qualifier";
 import { relever } from "../src/releve/releve";
 import { chargerTheme } from "../src/theme/theme";
-import { CONSIGNES, deckDEcrans, deckDeCas, deckDeSchema, deckDeTableau, deckSynthetique } from "./fixture";
+import { CONSIGNES, deckDEcrans, deckDeCas, deckDeSchema, deckDeTableau, deckDeTextes, deckSynthetique, png } from "./fixture";
 
 const jetons = chargerTheme("gabarits/theme-onet").jetons;
 
@@ -40,8 +40,8 @@ function dupliquer(octets: Uint8Array, n: number): Uint8Array {
 }
 
 describe("le PPT de validation (PKG-C1)", () => {
-  it("se relit à l'identique : lire(émettre(pivot₀)) ≡ pivot₀, sur les cinq decks synthétiques", async () => {
-    for (const [nom, deck] of [["synthetique", deckSynthetique], ["schema", deckDeSchema], ["cas", deckDeCas], ["tableau", deckDeTableau], ["ecrans", deckDEcrans]] as const) {
+  it("se relit à l'identique : lire(émettre(pivot₀)) ≡ pivot₀, sur les six decks synthétiques", async () => {
+    for (const [nom, deck] of [["synthetique", deckSynthetique], ["schema", deckDeSchema], ["cas", deckDeCas], ["tableau", deckDeTableau], ["ecrans", deckDEcrans], ["textes", deckDeTextes]] as const) {
       const { spec, octets } = await valider(await deck(), `${nom}.pptx`);
       const { spec: relu, ecarts } = lire(octets);
       expect(ecarts, nom).toEqual([]);
@@ -113,3 +113,81 @@ describe("le PPT de validation (PKG-C1)", () => {
     expect({ ...apres[1], pas: [] }).toEqual({ ...avant[1], pas: [] });
   });
 });
+
+/** Une zone de texte ajoutée dans PowerPoint, hors grammaire. */
+const zoneDeTexte = (texte: string, y = 6000000) => `<p:sp><p:nvSpPr><p:cNvPr id="990" name="ZoneTexte 989"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="457200" y="${y}"/><a:ext cx="5000000" cy="400000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square"/><a:lstStyle/><a:p><a:r><a:rPr lang="fr-FR" sz="1400" dirty="0"/><a:t>${texte}</a:t></a:r></a:p></p:txBody></p:sp>`;
+const ajouter = (p: Record<string, Uint8Array>, n: number, xml: string) => {
+  p[`ppt/slides/slide${n}.xml`] = strToU8(strFromU8(p[`ppt/slides/slide${n}.xml`]!).replace("</p:spTree>", `${xml}</p:spTree>`));
+};
+
+describe("la structure des textes en grammaire, et l'ingestion complémentaire (PKG-C2)", () => {
+  it("écrit la structure en paragraphes : une colonne par cadre, les intertitres, puces, numéros, définitions et détails", async () => {
+    const p = unzipSync((await valider(await deckDeTextes(), "t.pptx")).octets);
+    const x = strFromU8(p["ppt/slides/slide2.xml"]!);
+    for (const nom of ["G·colonne 1.1", "G·colonne 2.1", "G·colonne 2.2"]) expect(x).toContain(`name="${nom}"`);
+    expect(x).toContain('<a:buChar char="▸"/>');
+    expect(x).toContain('<a:buChar char="•"/>');
+    expect(x).toMatch(/lvl="1" indent="-228600"><a:buFont typeface="Arial"\/><a:buChar char="–"\/>/);
+    expect(x).toContain('<a:buAutoNum type="arabicPeriod"/>');
+    expect(x).toMatch(/<a:rPr lang="fr-FR" sz="1800" b="1" dirty="0"><a:solidFill><a:schemeClr val="tx2"\/><\/a:solidFill><\/a:rPr><a:t>Jour 1<\/a:t>/);
+    expect(strFromU8(p["ppt/tags/tag2.xml"]!)).not.toContain("GRADUIS.LECTURES");
+  });
+
+  it("une retouche dans une fiche ne change que son bloc, sa structure et son inventaire dérivé", async () => {
+    const { spec, octets } = await valider(await deckDeTextes(), "t.pptx");
+    const p = unzipSync(octets);
+    p["ppt/slides/slide2.xml"] = strToU8(strFromU8(p["ppt/slides/slide2.xml"]!).replace("Accueil et tour de table", "Accueil des participants"));
+    const { spec: relu, ecarts } = lire(zipSync(p as Zippable));
+    expect(ecarts).toEqual([]);
+    const [avant, apres] = [spec, relu].map((x) => x.sequences.flatMap((q) => q.blocs)[1]!);
+    const liste = apres!.structure!.rangees[1]!.colonnes[0]!.noeuds[1]!;
+    expect(liste.type === "liste" && liste.items[0]!.texte).toBe("Accueil des participants");
+    expect(apres!.textes[1]).toBe(avant!.textes[1]!.replace("Accueil et tour de table", "Accueil des participants"));
+    expect(stringify2(relu.sequences.flatMap((q) => q.blocs)[0])).toBe(stringify2(spec.sequences.flatMap((q) => q.blocs)[0]));
+  });
+
+  it("lit une zone de texte ajoutée à un texte organisé : une rangée de plus, par l'heuristique de l'ingestion initiale, signalée", async () => {
+    const { octets } = await valider(await deckDeTextes(), "t.pptx");
+    const p = unzipSync(octets);
+    ajouter(p, 2, zoneDeTexte("Prévoir un badge visiteur"));
+    const { spec, ecarts } = lire(zipSync(p as Zippable));
+    const b = spec.sequences.flatMap((q) => q.blocs)[1]!;
+    expect(b.structure!.rangees).toHaveLength(3);
+    expect(b.structure!.rangees[2]!.colonnes[0]!.noeuds).toEqual([{ type: "paragraphe", texte: "Prévoir un badge visiteur" }]);
+    expect(b.textes.at(-1)).toBe("Prévoir un badge visiteur");
+    expect(ecarts.map((e) => [e.diapo, e.message.split(",")[0]])).toEqual([[2, "1 cadre(s) de texte hors grammaire"]]);
+  });
+
+  it("lit une zone de texte ajoutée ailleurs comme un texte de plus, et une image ajoutée comme un visuel, signalés", async () => {
+    const { spec: avant, octets } = await valider(await deckSynthetique(), "s.pptx");
+    const p = unzipSync(octets);
+    ajouter(p, 2, zoneDeTexte("Attention aux doublons"));
+    p["ppt/media/ajout.png"] = new Uint8Array(png(40, 40));
+    p["ppt/slides/_rels/slide2.xml.rels"] = strToU8(strFromU8(p["ppt/slides/_rels/slide2.xml.rels"]!).replace("</Relationships>", '<Relationship Id="rIdAjout" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/ajout.png"/></Relationships>'));
+    ajouter(p, 2, '<p:pic><p:nvPicPr><p:cNvPr id="991" name="Image 990" descr="Une image contenant un cercle"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rIdAjout"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="100000" y="100000"/><a:ext cx="300000" cy="300000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>');
+    const { spec, ecarts } = lire(zipSync(p as Zippable));
+    const [a, b] = [avant, spec].map((x) => x.sequences.flatMap((q) => q.blocs)[1]!);
+    expect(b!.textes).toEqual([...a!.textes, "Attention aux doublons"]);
+    expect(b!.visuels).toHaveLength(a!.visuels.length + 1);
+    expect(b!.visuels.at(-1)).toEqual({ media: expect.stringMatching(/^sha256:/), capture: false });
+    expect(b!.pas).toEqual(a!.pas);
+    expect(ecarts.map((e) => e.message.split(" (")[0])).toEqual(["image ajoutée hors grammaire", "1 cadre(s) de texte hors grammaire, ajouté(s) aux textes : « Attention aux doublons »"]);
+  });
+
+  it("lit une diapositive venue d'un autre deck (disposition hors grammaire) par l'ingestion initiale, et le dit", async () => {
+    const { octets } = await valider(await deckDeTextes(), "t.pptx");
+    const p = unzipSync(octets);
+    const t = (c: string) => strFromU8(p[c]!);
+    p["ppt/slideLayouts/slideLayout99.xml"] = strToU8(t("ppt/slideLayouts/slideLayout5.xml").replace(/<p:cSld name="[^"]+">/, '<p:cSld name="1_Vide">'));
+    p["ppt/slideLayouts/_rels/slideLayout99.xml.rels"] = p["ppt/slideLayouts/_rels/slideLayout5.xml.rels"]!;
+    p["ppt/slides/_rels/slide2.xml.rels"] = strToU8(t("ppt/slides/_rels/slide2.xml.rels").replace(/slideLayout\d+\.xml/, "slideLayout99.xml"));
+    p["[Content_Types].xml"] = strToU8(t("[Content_Types].xml").replace("</Types>", '<Override PartName="/ppt/slideLayouts/slideLayout99.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/></Types>'));
+    const { spec, ecarts } = lire(zipSync(p as Zippable));
+    const b = spec.sequences.flatMap((q) => q.blocs)[1]!;
+    expect(b.id).toBe("b002");
+    expect(b.figure).toBe("contenu");
+    expect(b.textes.join(" ")).toContain("Prise en main d'Oracle Fusion");
+    expect(ecarts).toEqual([{ diapo: 2, message: "disposition hors grammaire (« 1_Vide ») : lue par l'ingestion initiale, en contenu" }]);
+  });
+});
+

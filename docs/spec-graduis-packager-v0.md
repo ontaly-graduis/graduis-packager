@@ -187,6 +187,8 @@ pivot₀ ── émettre ──► PPT d'auteur (gabarit à grammaire, thème ON
 
 ### 4.3 Le PPT d'auteur (« PPT de validation ») : la grammaire
 
+*PKG-C2 (18/10) : la structure d'un texte en cadres « G·colonne r.c » et en paragraphes (• liste, numéros, ▸ définition, – détail, intertitre en gras 18 pt), `textes` dérivé de la structure ; l'ingestion complémentaire lit ce qu'ONET ajoute hors grammaire par l'heuristique de l'ingestion initiale et le signale. Pas d'animations (18/10).* 
+
 *Mise en œuvre en PKG-C1 (17/10) : `src/emission/grammaire.ts` la tient en un seul endroit ; `emettre` l'écrit, `lire` la lit ; `lire(émettre(pivot₀)) ≡ pivot₀` sur les 166 diapositives du deck acheteur. Les identifiants sont des étiquettes OOXML (`GRADUIS.BLOC`, `GRADUIS.SOURCE`), le deck hérité une propriété du document ; la structure des textes (C2), le dessin, la partition et les recompositions (C3) voyagent provisoirement en étiquette JSON.*
 
 - **Un gabarit d'auteur généré du thème ONET**, sans reprendre le masque des decks hérités : une disposition par figure, nommée par elle (`G · Pas-à-pas`, `G · Mise en pratique`…). La disposition est le contrat : `lire` ne devine rien.

@@ -25,7 +25,18 @@ export const NOMS = {
   capture: "G·capture",
   visuel: "G·visuel",
   tableau: "G·tableau",
+  /** Une colonne de la structure d'un texte (une fiche) : « G·colonne r.c », rangée et colonne comptées de 1. */
+  colonne: "G·colonne",
 } as const;
+
+/**
+ * La structure d'un texte en paragraphes (PKG-C2) : un intertitre en gras au corps du titre ; un paragraphe sans puce ;
+ * un élément de liste à la puce « • » (ou numéroté) ; une définition à la puce « ▸ », « **terme** : texte » ; un détail
+ * au niveau 2, puce « – ». Les autres textes de la colonne gardent leur graisse.
+ */
+export const PUCES = { item: "•", definition: "▸", detail: "–" } as const;
+/** Les corps de la structure, en centièmes de point : le texte courant, l'intertitre (lu comme tel à partir du seuil). */
+export const CORPS_DE_STRUCTURE = { texte: 1400, intertitre: 1800, seuilIntertitre: 1600 } as const;
 
 /** L'ancrage d'une zone se lit dans son nom : « G·zone » (repère), « G·zone · légende », « G·zone · proposée ✦ » (à valider). */
 export const SUFFIXES_DE_ZONE = { repere: "", legende: " · légende", proposee: " · proposée ✦" } as const;

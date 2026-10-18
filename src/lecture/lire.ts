@@ -10,6 +10,11 @@ import { SCHEMA_SEANCE, SeanceSpec, type Bloc, type Pas, type Sequence, type Vis
 import { ESPACES, ETIQUETTES, NOMS, PROPRIETES, ROLES_DE_COULEUR, ancrageDeZone, couleurDeRole, figureDeDisposition, roleDeVisuel } from "../emission/grammaire";
 import { lireCouleur, paletteDuMasque } from "../ooxml/couleurs";
 import { roleDe } from "../qualification/roles";
+import { structurer } from "../qualification/structure";
+import { qualifierReleve } from "../qualification/qualifier";
+import { relever, type FormeReleve } from "../releve/releve";
+import { textesDeStructure } from "../pivot/textes";
+import { lireStructure } from "./structure";
 import type { Role } from "../pivot/seance-spec";
 
 export interface Ecart {
@@ -22,6 +27,8 @@ const centre = (b: Boite): [number, number] => [b[0] + b[2] / 2, b[1] + b[3] / 2
 const dedans = (p: readonly [number, number], b: Boite) => p[0] >= b[0] && p[0] <= b[0] + b[2] && p[1] >= b[1] && p[1] <= b[1] + b[3];
 const centieme = (v: number) => Math.round(v * 100) / 100 + 0;
 const trois = (n: number) => String(n).padStart(3, "0");
+/** Les figures de texte, que l'heuristique organise (comme à la qualification). */
+const TEXTUELLES: ReadonlySet<string> = new Set(["contenu", "objectifs", "synthese", "etapes-cles"]);
 /** Une pastille va à la zone dont le coin est à moins d'un demi-pouce. */
 const PORTEE = 457200;
 
@@ -116,23 +123,60 @@ export function lire(octets: Uint8Array): { spec: SeanceSpec; ecarts: Ecart[] } 
   const ecarts: Ecart[] = [];
   const props = proprietes(paquet);
   const lus: { bloc: Omit<Bloc, "id"> & { id?: string }; n: number }[] = [];
+  const { largeur } = paquet.taille();
+  // L'ingestion initiale, appliquée au PPT lui-même : pour une diapositive venue d'ailleurs (sa disposition n'est pas de la
+  // grammaire), on la lit comme on a lu le deck hérité. Calculée une fois, au besoin.
+  let heuristique: Map<number, Bloc> | undefined;
+  const parHeuristique = (n: number) => {
+    heuristique ??= new Map(qualifierReleve(relever(octets, props.get(PROPRIETES.nom) ?? "validation.pptx").releve).spec.sequences.flatMap((s) => s.blocs).map((b) => [b.source.diapo, b]));
+    return heuristique.get(n)!;
+  };
   for (const d of paquet.diapositives()) {
     const ecart = (message: string) => ecarts.push({ diapo: d.n, message });
     const nom = paquet.disposition(d.chemin)?.nom ?? "";
     const figure = figureDeDisposition(nom);
-    if (!figure) ecart(`disposition hors grammaire (« ${nom} ») : lue comme un contenu`);
     const tags = etiquettes(paquet, d.chemin);
+    const source = Number.parseInt(tags.get(ETIQUETTES.source) ?? "", 10);
+    const id = tags.get(ETIQUETTES.bloc);
+    if (!figure) {
+      const h = parHeuristique(d.n);
+      ecart(`disposition hors grammaire (« ${nom} ») : lue par l'ingestion initiale, en ${h.figure}`);
+      const { id: _id, source: _source, ...contenu } = h;
+      lus.push({ n: d.n, bloc: { ...(id ? { id } : {}), ...contenu, source: { diapo: Number.isFinite(source) ? source : d.n } } });
+      continue;
+    }
     const formes = formesDeDiapositive(paquet, d.chemin);
     const hashDe = (f: Forme) => { const o = f.media ? paquet.octets(f.media) : undefined; return o ? sha256(o) : undefined; };
     const titre = formes.find((f) => f.espace?.type === "title" || f.espace?.type === "ctrTitle");
     const contenu = espace(formes, ESPACES.contenu);
     const roleDeFond = rolesDeCouleur(paquet, d.chemin);
+    const { structure: lue, illustrations: _ill } = lireStructure(formes, hashDe);
+    // Ce qu'ONET a ajouté hors grammaire (ingestion complémentaire) : des cadres de texte, des images. Rien ne se perd :
+    // les textes vont à la structure par l'heuristique de l'ingestion initiale, ou à l'inventaire ; tout est signalé.
+    const deLaGrammaire = (f: Forme) => f.nom.startsWith("G·") || (f.espace !== undefined);
+    const textesLibres = formes.filter((f) => !deLaGrammaire(f) && f.nature !== "image" && f.nature !== "tableau" && texteDe(f));
+    const imagesLibres = formes.filter((f) => f.nature === "image" && f.media && !f.nom.startsWith("G·"));
+    const raster = (f: Forme) => /\.(png|jpe?g|gif|bmp|tiff?|webp)$/i.test(f.media ?? "");
+    for (const im of imagesLibres) ecart(`image ajoutée hors grammaire (« ${im.nom} ») : lue comme ${im.boite[2] > 0.25 * largeur && raster(im) ? "une capture" : "un visuel"}`);
+    let structure = lue;
+    let textesAjoutes: string[] = [];
+    if (textesLibres.length) {
+      const extraits = textesLibres.map((f) => texteDe(f).split("\n")[0]!.slice(0, 40)).map((t) => `« ${t} »`).join(", ");
+      if (lue || TEXTUELLES.has(figure)) {
+        const s = structurer(textesLibres as unknown as FormeReleve[], imagesLibres.map((f) => ({ ...f, media: hashDe(f) })) as unknown as FormeReleve[]);
+        if (s) structure = { rangees: [...(lue?.rangees ?? []), ...s.rangees] };
+        ecart(`${textesLibres.length} cadre(s) de texte hors grammaire, organisé(s) par l'heuristique de l'ingestion initiale : ${extraits}`);
+      } else {
+        textesAjoutes = [...textesLibres].sort((a, b) => a.boite[1] - b.boite[1] || a.boite[0] - b.boite[0]).map(texteDe);
+        ecart(`${textesLibres.length} cadre(s) de texte hors grammaire, ajouté(s) aux textes : ${extraits}`);
+      }
+    }
     const visuels: Visuel[] = formes.filter((f) => f.nature === "image" && f.media).map((f) => {
       const role = roleDeVisuel(f.nom);
       const fond = f.style?.fond && f.style.fond !== "aucun" ? roleDeFond(f.style.fond.rgb) : undefined;
       return {
         media: hashDe(f)!,
-        capture: f.nom.startsWith(NOMS.capture),
+        capture: f.nom.startsWith(NOMS.capture) || (!f.nom.startsWith("G·") && f.boite[2] > 0.25 * largeur && raster(f)),
         ...(f.rognage ? { rognage: [...f.rognage] as [number, number, number, number] } : {}),
         ...(role ? { role } : {}),
         // La légende est le texte de remplacement d'un visuel de la grammaire (pas celui qu'Office génère pour une image ajoutée).
@@ -141,23 +185,27 @@ export function lire(octets: Uint8Array): { spec: SeanceSpec; ecarts: Ecart[] } 
       };
     });
     const tableaux = formes.filter((f) => f.nature === "tableau").map((f) => (f.lignes ?? []).map((l) => [...l]));
-    const source = Number.parseInt(tags.get(ETIQUETTES.source) ?? "", 10);
     if (!Number.isFinite(source)) ecart("diapositive sans source (ajoutée dans PowerPoint ?)");
     const lectures = tags.get(ETIQUETTES.lectures);
-    const id = tags.get(ETIQUETTES.bloc);
+    const stash = lectures ? JSON.parse(lectures) as Pick<Bloc, "dessin" | "structure" | "composition"> : {};
+    // Un PPT émis avant PKG-C2 portait la structure en étiquette : on la reprend si la diapositive n'a pas de colonnes.
+    structure ??= stash.structure ?? null;
+    const textesDuContenu = (contenu?.texte ?? []).filter((t) => t.trim() !== "");
     lus.push({
       n: d.n,
       bloc: {
         ...(id ? { id } : {}),
-        figure: figure ?? "contenu",
+        figure,
         source: { diapo: Number.isFinite(source) ? source : d.n },
         ...(d.masquee ? { masquee: true as const } : {}),
         titre: titre ? texteDe(titre) : null,
-        textes: (contenu?.texte ?? []).filter((t) => t.trim() !== ""),
+        textes: structure ? textesDeStructure(structure) : [...textesDuContenu, ...textesAjoutes],
         visuels,
         tableaux,
         pas: pasDe(formes, hashDe, ecart),
-        ...(lectures ? JSON.parse(lectures) as Pick<Bloc, "dessin" | "structure" | "composition"> : {}),
+        ...(stash.dessin ? { dessin: stash.dessin } : {}),
+        ...(structure ? { structure } : {}),
+        ...(stash.composition ? { composition: stash.composition } : {}),
         notes: paquet.notes(d.chemin),
       },
     });

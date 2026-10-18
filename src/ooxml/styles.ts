@@ -35,6 +35,8 @@ export interface Paragraphe {
   /** Le niveau de plan (`lvl`, 0 à 8). */
   readonly niveau: number;
   readonly puce: Puce;
+  /** Le caractère de la puce (`buChar@char`), s'il est déclaré. */
+  readonly car?: string;
   /** Le retrait de gauche (`marL`) en EMU, s'il est déclaré. */
   readonly retrait?: number;
 }
@@ -243,6 +245,7 @@ export function corpsDe(txBody: Element, base: DefautsDeTexte, m: StylesDuMasque
     return {
       alignement: pPr?.getAttribute("algn") || "l", fragments, niveau,
       puce: puceDe(pPr) ?? puceDe(duNiveau) ?? "heritee",
+      ...((): { car?: string } => { const c = (pPr && enfant(pPr, NS.a, "buChar")) ?? (duNiveau && enfant(duNiveau, NS.a, "buChar")); const v = c?.getAttribute("char"); return v ? { car: v } : {}; })(),
       ...(retrait !== null && retrait !== undefined ? { retrait } : {}),
     };
   });
