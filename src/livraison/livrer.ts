@@ -17,6 +17,7 @@ import { relever, type Releve } from "../releve/releve";
 import { construireSalle } from "../salle/construire";
 import { ecartDeLivraison, type Ecart } from "../ecart/ecart";
 import { empreinteDuTheme, type ProcedeCharge } from "../procede/procede";
+import { avecConversionsFigees, type Convertir } from "../medias/convertir";
 
 const SCHEMA_LIVRAISON = "graduis/livraison@1";
 
@@ -57,7 +58,8 @@ export interface OptionsDeLivraison {
   readonly sequences?: readonly string[];
   /** Le relevé du deck hérité : le rapport (sa trace de qualification) et l'écart à la source, sans quoi rien ne se livre. */
   readonly releveSource: Releve;
-  readonly convertir?: ((hash: string, ext: string, octets: Uint8Array) => Uint8Array | null) | null;
+  /** Le convertisseur de repli (LibreOffice) ; les conversions figées du procédé passent d'abord. */
+  readonly convertir?: Convertir | null;
   /** L'imprimante (Chromium) ; sans elle, le papier reste à imprimer. */
   readonly imprimer?: (html: string) => Promise<Impression>;
 }
@@ -124,7 +126,7 @@ export async function livrer(octets: Uint8Array, nom: string, o: OptionsDeLivrai
   if (bloquants.length) return { manifeste: manifeste(), fichiers, bloquants, ecart, rapport, manquants: [] };
 
   fichiers.set("seance-spec.json", stringify2(spec));
-  const commun = { theme, media, ...(o.sequences ? { sequences: o.sequences } : {}), convertir: o.convertir ?? null, ...(profil.pratique ? { pratique: profil.pratique } : {}) };
+  const commun = { theme, media, ...(o.sequences ? { sequences: o.sequences } : {}), convertir: avecConversionsFigees(o.procede.conversions, o.convertir ?? null), ...(profil.pratique ? { pratique: profil.pratique } : {}) };
   const salle = await construireSalle(spec, { ...commun, prise: p.prise });
   poser(`salle${suffixe}.html`, salle.html);
   const papier = await construirePapier(spec, commun);

@@ -9,6 +9,10 @@
     "chemin": "gabarits/theme-onet",
     "empreinte": "sha256:ceebc5d7b5da9cb3b9b77d810f7db4518bb7e6f5e231f0766a324d5778e601e3"
   },
+  "conversions": {
+    "chemin": "docs/sources/medias-converties/manifeste.json",
+    "empreinte": "sha256:8fbeba383f67ed511c622fd22dc0b26654a1c5314624ec0bad7936a734d96237"
+  },
   "charte": {
     "motsParEcran": 60,
     "pastillesParCapture": 9,

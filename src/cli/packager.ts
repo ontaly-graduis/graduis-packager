@@ -15,7 +15,7 @@ import type { Devoilement } from "../salle/donnees";
 import { emettre } from "../emission/emettre";
 import { diapositivesDesBlocs, estUnPptDeValidation, lire } from "../lecture/lire";
 import { revueHtml } from "../diagnostic/revue";
-import { convertisseur, versionDeLibreOffice } from "../medias/convertir";
+import { avecConversionsFigees, convertisseur, versionDeLibreOffice } from "../medias/convertir";
 import { construirePapier, PPP_MIN, type SousResolue } from "../papier/construire";
 import { textesAttendus, type DonneesDePapier } from "../papier/donnees";
 import { chromiumDisponible, imprimer, versionDuNavigateur } from "../papier/imprimer";
@@ -105,7 +105,7 @@ async function salleCommande(deck: string, sortie: string | undefined, p: Proced
       return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined;
     },
     ...(sequences ? { sequences } : {}),
-    convertir: convertisseur(join(dossier, "medias-converties")),
+    convertir: avecConversionsFigees(p.conversions, convertisseur(join(dossier, "medias-converties"))),
   });
   const nom = sequences ? `salle-${sequences.join("-")}.html` : "salle.html";
   writeFileSync(join(dossier, nom), html);
@@ -138,7 +138,7 @@ async function papierCommande(deck: string, sortie: string | undefined, procede:
     ...(procede.profil.pratique ? { pratique: procede.profil.pratique } : {}),
     media: (h) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; },
     ...(sequences ? { sequences } : {}),
-    convertir: convertisseur(join(dossier, "medias-converties")),
+    convertir: avecConversionsFigees(procede.conversions, convertisseur(join(dossier, "medias-converties"))),
   });
   const suffixe = sequences ? `-${sequences.join("-")}` : "";
   const html = join(dossier, `papier${suffixe}.html`);
@@ -313,20 +313,24 @@ function ecartEnTexte(m: Manifeste): string {
 }
 
 /** Rejoue un procédé sur un deck (et le PPT revu) : la chaîne entière, puis la comparaison à sa référence. */
-async function rejouerCommande(p: ProcedeCharge, deck: string, revue: string | undefined, sortie: string | undefined, sequences: string[] | undefined): Promise<void> {
+async function rejouerCommande(p: ProcedeCharge, deck: string, revue: string | undefined, sortie: string | undefined, sequences: string[] | undefined, nouvelleReference: string | undefined): Promise<void> {
   const imprimante = await chromiumDisponible();
   const dossier = sortie ?? join("out", "rejeu", p.procede.nom, basename(deck, extname(deck)));
   const r = await rejouer(p, {
     deck, ...(revue ? { revue } : {}), ...(sequences ? { sequences } : {}), sortie: dossier,
     ...(imprimante ? { imprimer } : {}), convertir: convertisseur(join(dossier, "medias-converties")),
     moteurs: { chromium: await versionDuNavigateur(), libreoffice: versionDeLibreOffice() },
+    ...(nouvelleReference ? { nouvelleReference } : {}),
   });
   const lignes = [
     `# Rejeu — ${p.procede.nom} · ${basename(deck)}${revue ? ` · revue ${basename(revue)}` : ""} · ${r.extrait} → ${dossier}`,
+    ...p.absences.map((a) => `ABSENT  ${a} : données du client hors dépôt, le rejeu ne peut être conforme`),
+    ...(p.conversions ? [`conversions figées : ${p.conversions.svg.size} (${p.conversions.provenance})`] : []),
     ...(r.versions.length ? ["versions en écart (la conformité se juge aux empreintes) :", ...r.versions.map((v) => `  ${v.quoi} : ${v.trouvee ?? "absent"} au lieu de ${v.attendue ?? "absent"}`)] : ["versions : celles du procédé"]),
     ...r.comparaisons.map((c) => (c.attendue !== null && c.attendue === c.obtenue ? `  identique  ${c.quoi}` : `  DIFFÉRENT  ${c.quoi} : ${c.obtenue ?? "absent"} au lieu de ${c.attendue ?? "(pas de référence)"}`)),
     ...(r.refus.length ? [`livraison refusée (${r.refus.length}) :`, ...r.refus.map((x) => `  ${x}`)] : []),
     `écart à la source : chaîne ${r.ecart.chaine.inventes.length} mot(s) inventé(s), ${r.ecart.chaine.inversions} inversion(s) ; revue ${r.ecart.revue.inventes.length} mot(s) nouveau(x), ${r.ecart.revue.retirees.length} diapositive(s) retirée(s)`,
+    ...(nouvelleReference ? [`empreintes obtenues écrites dans ${nouvelleReference} (${r.cas} · ${r.extrait})`] : []),
     r.conforme ? `conforme à la référence (${r.comparaisons.length} empreintes identiques)` : `NON CONFORME : ${r.comparaisons.filter((c) => c.attendue === null || c.attendue !== c.obtenue).length} écart(s) à la référence — monter de version est un acte (rejeu, diff, décision)`,
   ];
   console.log(lignes.join("\n"));
@@ -371,8 +375,8 @@ else if (commande === "salle" && args[0]) {
 } else if (commande === "diff" && args[0] && args[1] && !args[1].startsWith("--")) {
   diffCommande(args[0], args[1], option("--sortie"), procede());
 } else if (commande === "rejouer" && args[0] && args[1] && !args[1].startsWith("--")) {
-  await rejouerCommande(chargerProcede(args[0]), args[1], option("--revue"), option("--sortie"), sequences);
+  await rejouerCommande(chargerProcede(args[0]), args[1], option("--revue"), option("--sortie"), sequences, option("--nouvelle-reference"));
 } else {
-  console.error("usage : packager relever|qualifier|emettre|lire|salle|papier|revue|livrer <deck.pptx | validation.pptx> --procede <procédé> | imprimer <papier.html> | diff <livraison> <livraison> --procede <procédé> | planche <deck> <livraison> --procede <procédé> | rejouer <procédé> <deck.pptx> [--revue <validation revue.pptx>] [--sortie <dossier>] [--sequences s030,…] [--devoilement pastille|ecran]");
+  console.error("usage : packager relever|qualifier|emettre|lire|salle|papier|revue|livrer <deck.pptx | validation.pptx> --procede <procédé> | imprimer <papier.html> | diff <livraison> <livraison> --procede <procédé> | planche <deck> <livraison> --procede <procédé> | rejouer <procédé> <deck.pptx> [--revue <validation revue.pptx>] [--sortie <dossier>] [--sequences s030,…] [--nouvelle-reference <golden/…json>] [--devoilement pastille|ecran]");
   process.exit(2);
 }
