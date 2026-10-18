@@ -22,6 +22,12 @@ export interface Qualification {
 /** Espaces réservés qui ne portent pas de contenu : numéro, date, pied. */
 export const ESPACES_DE_SERVICE: ReadonlySet<string> = new Set(["sldNum", "dt", "ftr"]);
 
+/** Le signal de la première diapositive : une couverture par sa seule position (GEN-0 la compte à part). */
+export const SIGNAL_POSITION = "première diapositive";
+
+/** Le signal du repli : aucune règle n'a décidé (GEN-0 : une diapositive au repli n'est pas décidée). */
+export const SIGNAL_REPLI = "aucune règle particulière";
+
 /** Le seuil au-delà duquel un assemblage de formes est un schéma (mesuré : fiches personae 56 à 88 formes). */
 export const SEUIL_SCHEMA = 20;
 
@@ -49,7 +55,7 @@ export function figureDuProfil(profil: ProfilSource, disposition: string, texte:
 export function qualifier(d: DiapositiveReleve, largeur: number, titre: string | null, profil: ProfilSource): Qualification {
   const t = texteDiapo(d);
   const q = (figure: Figure, signal: string): Qualification => ({ figure, signal });
-  if (d.n === 1) return q("couverture", "première diapositive");
+  if (d.n === 1) return q("couverture", SIGNAL_POSITION);
   const parProfil = figureDuProfil(profil, d.disposition, t, titre);
   if (parProfil) return q(parProfil.figure, parProfil.signal);
   if (d.pas_a_pas) return q("pas-a-pas", `capture et ${d.pas_a_pas.pas.length} pas numérotés`);
@@ -64,5 +70,5 @@ export function qualifier(d: DiapositiveReleve, largeur: number, titre: string |
   }
   if (d.formes.some((f) => estCapture(f as Forme, largeur))) return q("capture", "capture sans pastille");
   if (/^objectifs?\b/i.test(titre ?? "")) return q("objectifs", "titre « Objectifs »");
-  return q("contenu", "aucune règle particulière");
+  return q("contenu", SIGNAL_REPLI);
 }

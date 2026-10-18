@@ -42,13 +42,14 @@ graduis-packager/
     dessin/        dessin du pivot → SVG à classes de rôle (géométries DrawingML), module pur : salle et papier
     salle/         pivot → salle.html : données de salle, RegionMap, assemblage ; lecteur/ (navigateur, sans framework)
     medias/        conversions EMF → SVG : figées (`graduis/conversions@0`, au contrat du harnais du wizard), sinon LibreOffice
-    cli/           `npm run packager -- relever|qualifier|emettre|lire|salle|papier|revue|livrer <deck> --procede <procédé>` ; `imprimer`, `diff`, `planche` ; `rejouer <procédé> <deck>`
+    cli/           `npm run packager -- relever|qualifier|emettre|lire|salle|papier|revue|livrer <deck> --procede <procédé>` ; `imprimer`, `diff`, `planche` ; `rejouer <procédé> <deck>` ; `corpus preparer|mesurer <corpus.json>`
     emission/      pivot → PPT de validation : grammaire (un seul endroit), gabarit du thème du procédé, écrivain OOXML
     lecture/       PPT de validation → pivot : la lecture grammaticale (lire)
     papier/        pivot → participant.pdf : mise sur papier, page imprimable (même rendu que la salle), impression Chromium en deux passes, recette pdf.js
     livraison/     la livraison (trois sorties, rapport, manifeste), le diff de deux livraisons, la planche avant/après
+    corpus/        le corpus d'épreuve, hors chaîne (`graduis/corpus@0`) : lectures étendues (`graduis/lectures@0`), vérité de terrain, tableau comparé
   tests-navigateur/ Playwright : la salle jouée en file://, le papier imprimé et recetté (`npm run test:navigateur`)
-  gabarits/    theme-onet/ (thème DS Onet repris, PROVENANCE.md, identite.json) ; profil-onet.json (profil de source) ; le gabarit d'auteur PPT se génère du thème
+  gabarits/    theme-onet/ (thème DS Onet repris, PROVENANCE.md, identite.json) ; profil-onet.json (profil de source) ; profil-neutre.json (le profil de mesure du corpus d'épreuve) ; le gabarit d'auteur PPT se génère du thème
   procedes/    les procédés (`onet-boost.json`) : ce qui fait une production, épinglé
   golden/      les références des procédés : empreintes des sorties (reference-v0.1.json, celle d'onet-boost ; reference-v0.json, la trace) ; les decks et les conversions figées restent hors dépôt
   tests/
