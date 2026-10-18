@@ -47,7 +47,7 @@ export interface LectureDiapo {
   readonly animation?: Animation;
 }
 
-/** Deux diapositives consécutives dont la seconde reprend tout le texte de la première et en dit plus. */
+/** Deux diapositives consécutives, d'une même disposition, dont la seconde reprend tout le texte de la première et en dit plus. */
 export interface Paire {
   readonly question: number;
   readonly reponse: number;
@@ -162,6 +162,8 @@ function textesDe(d: DiapositiveReleve): Set<string> {
 function pairesDe(r: Releve): Paire[] {
   const textes = r.diapositives.map(textesDe);
   return r.diapositives.slice(0, -1).flatMap((d, i): Paire[] => {
+    // Un intercalaire suivi du contenu qui reprend son titre n'est pas un dévoilement : la disposition change (mesuré, GEN-0).
+    if (d.disposition !== r.diapositives[i + 1]!.disposition) return [];
     const a = textes[i]!;
     const b = textes[i + 1]!;
     // Le texte d'une forme qu'on complète (la réponse écrite sous la question, dans la même forme) compte comme repris.
