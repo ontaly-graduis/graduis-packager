@@ -2,7 +2,7 @@
 
 Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a ses « À trancher au démarrage » et sa « Sortie », vraie quand ses témoins sont verts.
 
-**Ordre** : GEN-1 → GEN-0 → ACT-1 → ETB-1 → THM-1 → GEN-2 → GEN-3 → ACT-2 → REI-1 → ETB-2 → ETB-3 → OUV-1. Ce qui sert ONET d'abord : GEN-1 fige le procédé ONET sans rien changer à la production en cours ; GEN-0 mesure avant de spécifier plus loin ; ACT-1 se joue sur la séquence de démonstration ; ETB-1 accélère la revue des decks ONET restants ; THM-1 rend le thème éditable avant le premier client nouveau. La sensibilité s'ouvre par paliers (minimale en GEN-1, moyenne en ACT-1, élevée en REI-1) ; l'ouverture aux tiers ferme la marche.
+**Ordre** : GEN-1 → MV-1 → GEN-0 → ACT-1 → ETB-1 → THM-1 → GEN-2 → GEN-3 → ACT-2 → REI-1 → ETB-2 → ETB-3 → OUV-1. Ce qui sert ONET d'abord : GEN-1 fige le procédé ONET sans rien changer à la production en cours ; MV-1 rend à la salle ses visuels EMF par une première montée de version explicite ; GEN-0 mesure avant de spécifier plus loin ; ACT-1 se joue sur la séquence de démonstration ; ETB-1 accélère la revue des decks ONET restants ; THM-1 rend le thème éditable avant le premier client nouveau. La sensibilité s'ouvre par paliers (minimale en GEN-1, moyenne en ACT-1, élevée en REI-1) ; l'ouverture aux tiers ferme la marche.
 
 **Les indicateurs du chantier** : part des diapositives décidées aux étages 1 et 2 · heures humaines par deck, par sensibilité · coût IA par deck · taux d'acceptation par acte · écart à la source, par sensibilité · temps d'embarquement d'une famille de gabarit · mots inventés dans les activités dérivées (cible : zéro).
 
@@ -10,19 +10,32 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 
 ---
 
-## GEN-1 · ONET hors du code, procédé ONET
+## GEN-1 · ONET hors du code, procédé ONET — Sortie atteinte le 18/10
 
-**Livrer** : `graduis/profil-source@0`, le thème et la charte en données ; le procédé `onet-boost` (`graduis/procede@0`, sensibilité minimale) et `packager rejouer` ; la mesure de l'écart à la source et les bornes de la minimale ; le code ne nomme plus ONET.
+**Livré** : le profil de source (`gabarits/profil-onet.json`, `graduis/profil-source@0`, `src/profil/`) — dispositions, formules et titres, motif de processus, habillage d'origine de la mise en pratique, marqueurs H8, projection des couleurs ; l'identité du thème (`gabarits/theme-onet/identite.json`) ; le procédé `onet-boost` (`procedes/onet-boost.json`, `graduis/procede@0`, `src/procede/`) — profil et thème épinglés par empreinte, charte, sensibilité minimale, prise, versions, référence ; l'écart à la source (`src/ecart/`), borné sur la chaîne, compté sur la revue, au manifeste (`graduis/livraison@1`) et dans `ecart.json` ; `packager rejouer <procédé> <deck> [--revue <PPT revu>] [--sequences …]` ; `--procede` sur les commandes, sans défaut. Avant le code : le tag `v0`, `golden/reference-v0.json` (deux cas, deux passes identiques, recalculée au Chromium de Playwright), le PPT revu par David figé dans `docs/sources/`.
+
+**Tranché le 18/10** : les schémas minimaux (les conventions de forme restent dans le code) ; l'écart (le mot, par bloc, la borne sur la chaîne, la revue comptée) ; l'épinglage (tag et verrou ; moteurs notés ; Chromium de Playwright ; référence sans LibreOffice) ; l'exception nommée du lecteur de salle (option A).
+
+**Sortie** (102 témoins Vitest — dont le rejeu du corpus — et 20 Playwright, verts)
+- `packager rejouer onet-boost` sur le deck acheteur, quatre cas, conformes à la référence v0 : deck seul (qualification, PPT émis, journée refusée par les 5 marqueurs H8, séquence 30), deck et PPT revu (journée, séquence 30) — pivot, salle, PPT d'animation, couche texte du PDF, rapport, à l'octet.
+- Écart mesuré : la chaîne, zéro mot inventé et ordre identique ; la revue de David, 25 mots distincts et une diapositive retirée, acceptés.
+- Plus aucune mention d'ONET dans `src/` (témoin), à une exception nommée près : le texte du logo dans le lecteur de la salle (deux lignes), qui garde la salle à l'octet de v0 — le moindre changement du source renomme les variables du lecteur minifié ; elle part à MV-1.
+- Non couvert, nommé : les 16 visuels EMF absents de la salle sans LibreOffice (MV-1) ; `rejouer` lit la bibliothèque courante sans pouvoir exécuter celle du tag épinglé (le compagnon, ETB-1) ; la durée, bornée seulement quand le pivot en portera une (ACT-1).
+
+---
+
+## MV-1 · Première montée de version du procédé ONET
+
+**Livrer** : les conversions EMF → SVG figées en entrée du procédé (par empreinte, hors dépôt), si bien que la salle porte ses 16 visuels sans dépendre de LibreOffice au rejeu ; le texte du logo de la salle au nom du thème (fin de l'exception de GEN-1) ; la nouvelle référence et son tag.
 
 **À trancher au démarrage**
-- **Le schéma minimal de `profil-source@0` et de `procede@0`** : seulement ce que le code ONET utilise (I-PKG-1) — dispositions et formules signal, marqueurs d'inachèvement, projection des couleurs, conventions de forme ; thème, charte, sensibilité, prise, versions. Où vivent les fichiers (`gabarits/`, `procedes/`).
-- **La définition opérationnelle de l'écart à la source** : ce qu'est un mot inventé (unité, normalisation, comparaison par bloc ou par deck), l'habillage exclu, l'ordre, la durée ; ce qui borne (la chaîne) et ce qui se compte (la revue) ; où l'écart s'écrit sans changer le rapport de la référence.
-- **L'épinglage des versions** : le commit (ou le tag) et le fichier de verrouillage ; les moteurs dont dépend l'octet (Chromium, LibreOffice, Node) ; ce que fait `rejouer` quand la version courante n'est pas celle du procédé.
+- Où vivent les conversions figées (avec les sources du client, hors dépôt) et par quel LibreOffice on les produit (absent du poste de David).
+- Le nom du tag et de la référence (`v0.1` ?).
+- Le diff à accepter : seules les salles (visuels, lecteur) et les PDF si un visuel y entre.
 
 **Sortie**
-- `packager rejouer onet-boost` sur le deck acheteur ⇒ empreintes identiques à la référence v0 : pivot, salle, PPT d'animation, couche texte du PDF, rapport.
-- Écart mesuré : zéro mot inventé, ordre identique.
-- Plus aucune mention d'ONET dans le code, hors `gabarits/` et procédés (témoin).
+- Le rejeu sur la nouvelle version : un diff limité à ce qui est attendu, accepté par une décision datée ; les 16 visuels présents.
+- Le témoin « aucune mention d'ONET » sans exception.
 
 ---
 

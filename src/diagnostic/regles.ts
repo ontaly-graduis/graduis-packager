@@ -103,7 +103,7 @@ function median(v: readonly number[]): number {
 }
 
 /** Ce que le diagnostic tient du procédé : sa charte et son profil de source (marqueurs, habillage d'origine). */
-export interface Cadre {
+interface Cadre {
   readonly charte: Charte;
   readonly profil: ProfilSource;
 }

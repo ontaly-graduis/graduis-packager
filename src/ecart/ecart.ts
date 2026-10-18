@@ -3,7 +3,7 @@
 import type { Bloc, SeanceSpec } from "../pivot/seance-spec";
 import type { DiapositiveReleve, Releve } from "../releve/releve";
 
-export const SCHEMA_ECART = "graduis/ecart@0";
+const SCHEMA_ECART = "graduis/ecart@0";
 
 /** Le mot : une suite de lettres ou de chiffres, après NFKC et minuscules (la normalisation de la recette du papier). */
 const mots = (s: string): string[] => s.normalize("NFKC").toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
@@ -22,13 +22,13 @@ function texteDeLaDiapositive(d: DiapositiveReleve): string[] {
   return [...t, d.notes];
 }
 
-export interface MotInvente {
+interface MotInvente {
   readonly bloc: string;
   readonly diapo: number;
   readonly mot: string;
 }
 
-export interface Mesure {
+interface Mesure {
   /** Les mots du pivot (chaque mot distinct, bloc par bloc). */
   readonly mots: number;
   /** Les mots d'un bloc absents de sa propre diapositive d'origine. */
@@ -79,7 +79,7 @@ function mesure(releve: Releve, spec: SeanceSpec): Mesure {
   };
 }
 
-export type Sensibilite = "minimale";
+type Sensibilite = "minimale";
 
 export interface Ecart {
   readonly schema: typeof SCHEMA_ECART;

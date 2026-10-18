@@ -5,7 +5,7 @@ import { z } from "zod";
 import { sha256, stringify2 } from "../lib/json";
 import { FAMILLES, FIGURES } from "../pivot/seance-spec";
 
-export const SCHEMA_PROFIL = "graduis/profil-source@0";
+const SCHEMA_PROFIL = "graduis/profil-source@0";
 
 /** Un motif : un texte cherché tel quel (sensible à la casse), ou une expression écrite `/…/drapeaux`. */
 const Motif = z.string().min(1);
@@ -45,7 +45,7 @@ export type ProfilSource = z.infer<typeof ProfilSource>;
 export type ReglesDeProjection = ProfilSource["projection"];
 export type PratiqueDOrigine = NonNullable<ProfilSource["pratique"]>;
 
-export interface MotifCompile {
+interface MotifCompile {
   readonly teste: (texte: string) => boolean;
   /** Le passage qui répond, tel qu'il est écrit dans le texte ; `null` sinon. */
   readonly trouve: (texte: string) => string | null;

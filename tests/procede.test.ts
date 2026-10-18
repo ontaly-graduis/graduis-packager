@@ -85,7 +85,11 @@ describe("le code ne nomme aucun client (GEN-1)", () => {
 
   it("aucune mention dans src/ : profil, thème, charte et procédé vivent dans gabarits/ et procedes/", () => {
     const mentions = fichiers("src").flatMap((f) => readFileSync(f, "utf8").split("\n")
-      .flatMap((l, i) => TERMES.filter((t) => t.test(l)).map((t) => `${f}:${i + 1} ${t}`)));
-    expect(mentions).toEqual([]);
+      .flatMap((l, i) => (TERMES.some((t) => t.test(l)) ? [{ f, l: l.trim() }] : [])));
+    // L'exception nommée (décision du 18/10) : le texte du logo dans le lecteur de la salle, qui garde la salle à l'octet de
+    // v0 ; elle part à la première montée de version. Elle ne s'étend pas.
+    const exception = (m: { f: string; l: string }) => m.f === join("src", "salle", "lecteur", "rendu.ts") && /alt: "Onet" \}\)\);$/.test(m.l);
+    expect(mentions.filter((m) => !exception(m))).toEqual([]);
+    expect(mentions.filter(exception)).toHaveLength(2);
   });
 });

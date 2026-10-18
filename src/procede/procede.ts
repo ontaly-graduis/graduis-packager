@@ -9,7 +9,7 @@ import { sha256, stringify2 } from "../lib/json";
 import { chargerProfil, empreinteDuProfil, type ProfilSource } from "../profil/profil";
 import { chargerTheme, type Theme } from "../theme/theme";
 
-export const SCHEMA_PROCEDE = "graduis/procede@0";
+const SCHEMA_PROCEDE = "graduis/procede@0";
 
 const hash = z.string().regex(/^sha256:[0-9a-f]{64}$/);
 const Piece = z.object({ chemin: z.string(), empreinte: hash }).strict();

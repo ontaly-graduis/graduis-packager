@@ -29,7 +29,7 @@ interface Reference {
   readonly cas: Readonly<Record<string, { readonly qualification?: Readonly<Record<string, string>>; readonly "validation.pptx": string } & Readonly<Record<string, unknown>>>>;
 }
 
-export interface Comparaison {
+interface Comparaison {
   readonly quoi: string;
   readonly attendue: string | null;
   readonly obtenue: string | null;
@@ -47,7 +47,7 @@ export interface Rejeu {
   readonly conforme: boolean;
 }
 
-export interface OptionsDeRejeu {
+interface OptionsDeRejeu {
   readonly deck: string;
   /** Le PPT de validation revu : les décisions humaines, d'où l'on repart (sans lui, le PPT émis, sans revue). */
   readonly revue?: string;

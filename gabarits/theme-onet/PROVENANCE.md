@@ -12,6 +12,8 @@ Repris tel quel (copie, jamais modifiée ici) le 2026-10-17, décision David du 
 - **Dessin** (ajouté le 17/10, ouverture de PKG-B2) : `dessin.css` donne leurs valeurs aux rôles de couleur des schémas redessinés. Il n'introduit **aucune valeur** : chaque rôle est une primitive `--c-*` (tokens.css, ds-onet.css) ou un `color-mix` de primitives. C'est un fichier du packager, sans origine à recopier.
 - **Chasse** (ajoutée le 17/10, PKG-B2) : `chasse.json` donne, pour les polices des decks d'origine, le rapport de leur chasse à celle de Montserrat ; le texte d'un schéma redessiné prend ce rapport sur son corps, pour occuper la place qu'il avait. Mesure décrite dans le fichier ; une police absente garde son corps (rapport 1).
 
+- **Identité** (ajoutée le 18/10, GEN-1) : `identite.json` dit le nom du thème (« Onet » : le thème Office du PPT, le texte du logo), sa police, son logo et l'ordre de ses feuilles, pour que le code ne nomme plus le client. C'est un fichier du packager, sans origine à recopier ; `theme.json` (`graduis/theme@1`) le remplacera (THM-1).
+
 Toute évolution du thème se fait à l'origine (ou se décide dans `docs/decisions.md`), puis se recopie ici avec ses nouveaux hashes.
 
 | Fichier | Source | sha256 |

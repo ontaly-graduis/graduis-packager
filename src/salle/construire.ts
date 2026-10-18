@@ -30,12 +30,11 @@ export interface OptionsDeSalle {
   readonly pratique?: PratiqueDOrigine;
 }
 
-/** Le lecteur, regroupé en un script, le nom du thème injecté : même source, même thème et même esbuild ⇒ mêmes octets. */
-async function lecteur(nom: string): Promise<string> {
+/** Le lecteur, regroupé en un script : même source et même version d'esbuild ⇒ mêmes octets. */
+async function lecteur(): Promise<string> {
   const r = await build({
     entryPoints: [fileURLToPath(new URL("./lecteur/main.ts", import.meta.url))],
     bundle: true, format: "iife", minify: true, write: false, target: "es2020", legalComments: "none", charset: "utf8",
-    define: { NOM_DU_THEME: JSON.stringify(nom) },
   });
   return r.outputFiles[0]!.text;
 }
@@ -64,7 +63,7 @@ export async function construireSalle(spec: SeanceSpec, o: OptionsDeSalle): Prom
 <body><div id="scene"></div><div id="surcouche"></div>
 <script type="application/json" id="donnees">${jsonInline(donnees)}</script>
 <script type="application/json" id="medias">${jsonInline(medias)}</script>
-<script>${await lecteur(o.theme.nom)}</script>
+<script>${await lecteur()}</script>
 </body></html>
 `;
   return { html, nonAffichables };
