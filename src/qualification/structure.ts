@@ -7,7 +7,7 @@ import type { Noeud, Structure } from "../pivot/seance-spec";
 import type { FormeReleve } from "../releve/releve";
 import { ecartBord } from "../releve/geometrie";
 
-/** Seuils de lecture (mesurés sur le deck acheteur, 17/10). */
+/** Seuils de lecture (mesurés sur le premier corpus, 17/10). */
 export const SEUILS_STRUCTURE = {
   /** Un intertitre ou un terme : au plus tant de mots. */
   motsTitre: 12,

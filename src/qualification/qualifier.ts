@@ -9,6 +9,7 @@ import { inventaireDeSchema, textesDeStructure } from "../pivot/textes";
 import { composerCas, composerTableau, harmoniser } from "./gabarits";
 import { structurer } from "./structure";
 import { estDeService, qualifier as qualifierDiapo, type Qualification } from "./figures";
+import type { ProfilSource } from "../profil/profil";
 
 /** Tolérance d'une rangée pour l'ordre de lecture : deux boîtes dont les hauts diffèrent de moins sont sur la même ligne. */
 const RANGEE = 0.15 * POUCE;
@@ -85,7 +86,7 @@ function pasDe(d: DiapositiveReleve, largeur: number): Pas[] {
   return pas.map((x) => x.p);
 }
 
-/** Seuils des visuels (points, proportions), réglés sur le deck acheteur (17/10). */
+/** Seuils des visuels (points, proportions), réglés sur le premier corpus (17/10). */
 export const SEUILS_VISUELS = {
   /** Un logo : allongé, bas, dans le bandeau du haut. */
   logoRapport: 1.8, logoHauteur: 40, bandeau: 0.2,
@@ -108,7 +109,7 @@ const PT = 12700;
  * et, sur un écran, la légende posée sous elle quand plusieurs images en portent une (une galerie : la météo).
  * Une capture est une image matricielle large, hors couverture et écrans d'animation : un pictogramme vectoriel n'en est pas une.
  */
-function visuelsDe(d: DiapositiveReleve, r: Releve, figure: string, textes: readonly FormeReleve[]): { visuels: Visuel[]; legendes: Set<FormeReleve> } {
+function visuelsDe(d: DiapositiveReleve, r: Releve, figure: string, textes: readonly FormeReleve[], profil: ProfilSource): { visuels: Visuel[]; legendes: Set<FormeReleve> } {
   const S = SEUILS_VISUELS;
   const { largeur, hauteur } = r.deck;
   const heritees = new Set(d.heritees ?? []);
@@ -151,7 +152,7 @@ function visuelsDe(d: DiapositiveReleve, r: Releve, figure: string, textes: read
     const a = aplats.filter((x) => x.boite[2] * x.boite[3] >= 0.8 * f.boite[2] * f.boite[3]
       && c[0] >= x.boite[0] && c[0] <= x.boite[0] + x.boite[2] && c[1] >= x.boite[1] && c[1] <= x.boite[1] + x.boite[3])
       .sort((x, y) => x.boite[2] * x.boite[3] - y.boite[2] * y.boite[3])[0];
-    return a?.style?.fond && a.style.fond !== "aucun" ? roleDe(a.style.fond) : undefined;
+    return a?.style?.fond && a.style.fond !== "aucun" ? roleDe(a.style.fond, profil.projection) : undefined;
   };
   return {
     visuels: retenues.map((f) => {
@@ -170,7 +171,7 @@ function visuelsDe(d: DiapositiveReleve, r: Releve, figure: string, textes: read
   };
 }
 
-function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): { bloc: Bloc; q: Qualification } {
+function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification, profil: ProfilSource): { bloc: Bloc; q: Qualification } {
   const { largeur, hauteur } = r.deck;
   const titre = titreDe(d, hauteur);
   const pas = q.figure === "pas-a-pas" ? pasDe(d, largeur) : [];
@@ -182,13 +183,13 @@ function blocDe(d: DiapositiveReleve, r: Releve, q: Qualification): { bloc: Bloc
     ...(d.heritees ?? []).filter((f) => dansLaDiapo(f) && !/^‹N°›$/.test(texteDe(f as Forme))),
   ].filter((f) => f !== titre && aCadreTexte(f as Forme) && !estDeService(f) && !estPastille(f as Forme)
     && texteDe(f as Forme) && !consignes.some((c) => normal(texteDe(f as Forme)).includes(c)));
-  const { visuels, legendes } = visuelsDe(d, r, q.figure, candidats);
+  const { visuels, legendes } = visuelsDe(d, r, q.figure, candidats, profil);
   const textes = ordreDeLecture(candidats.filter((f) => !legendes.has(f)), (f) => f.boite).map((f) => texteDe(f as Forme));
   const tableaux = d.formes.filter((f) => f.nature === "tableau").map((f) => (f.lignes ?? []).map((l) => [...l]));
   // Écartés du dessin : le titre, les espaces de service, un numéro de page saisi à la main en bas de diapositive.
   const numeroSaisi = (f: FormeReleve) => texteDe(f as Forme) === String(d.n) && f.boite[1] > hauteur * 0.85;
   const ecartees = new Set(d.formes.filter((f) => f === titre || estDeService(f) || numeroSaisi(f)));
-  const schema = q.figure === "schema" ? dessinDe(d, ecartees) : undefined;
+  const schema = q.figure === "schema" ? dessinDe(d, ecartees, profil.projection) : undefined;
   const structure = TEXTUELLES.has(q.figure)
     ? structurer(
       d.formes.filter((f) => f !== titre && aCadreTexte(f as Forme) && !estDeService(f) && !estPastille(f as Forme) && texteDe(f as Forme)),
@@ -229,12 +230,13 @@ export interface Qualifie {
   readonly qualifications: ReadonlyMap<number, Qualification>;
 }
 
-export function qualifierReleve(r: Releve): Qualifie {
+/** Relevé → pivot₀, selon le profil de source de sa famille de gabarit. */
+export function qualifierReleve(r: Releve, profil: ProfilSource): Qualifie {
   const qualifications = new Map<number, Qualification>();
   const sequences: Sequence[] = [];
   for (const d of r.diapositives) {
     const titre = titreDe(d, r.deck.hauteur);
-    const { bloc, q } = blocDe(d, r, qualifierDiapo(d, r.deck.largeur, titre ? texteDe(titre as Forme) : null));
+    const { bloc, q } = blocDe(d, r, qualifierDiapo(d, r.deck.largeur, titre ? texteDe(titre as Forme) : null, profil), profil);
     qualifications.set(d.n, q);
     const courante = sequences[sequences.length - 1];
     if (!courante || q.figure === "transition") sequences.push({ id: `s${trois(d.n)}`, blocs: [bloc] });

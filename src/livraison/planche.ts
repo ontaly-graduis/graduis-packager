@@ -79,7 +79,7 @@ export async function planche(deck: string, spec: SeanceSpec, salle: string, the
 .avant-apres figure{margin:0}.avant-apres img{display:block;width:100%;aspect-ratio:16/9;object-fit:contain;background:var(--color-surface);border:var(--border-hairline)}
 .avant-apres figcaption{margin-top:var(--space-1);font-size:var(--fs-meta);color:var(--text-secondary);text-align:center}</style></head>
 <body><div class="page">
-<header><img src="${theme.logo}" alt="Onet"><div><h1>Avant / après</h1><p>${esc(titre)} · ${blocs.length} diapositives</p></div></header>
+<header><img src="${theme.logo}" alt="${esc(theme.nom)}"><div><h1>Avant / après</h1><p>${esc(titre)} · ${blocs.length} diapositives</p></div></header>
 ${lignes}
 <footer>Graduis Packager · Ontaly — le deck d'origine rendu par LibreOffice, la salle livrée à son dernier dévoilement.</footer>
 </div></body></html>

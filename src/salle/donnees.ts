@@ -4,6 +4,7 @@ import { compenserChasse, type TableDeChasse } from "../theme/chasse";
 import { habiller, type Maniere } from "../theme/maniere";
 import { regionMap, type RegionMap } from "./region-map";
 import { planDeDevoilement } from "./unites";
+import { motif, type PratiqueDOrigine } from "../profil/profil";
 
 export const SCHEMA_SALLE = "graduis/salle@0";
 
@@ -68,21 +69,27 @@ function lignesDe(b: Bloc): string[] {
 
 type Dimensions = (media: string) => readonly [number, number] | null;
 
-/** Ce que le thème apporte au rendu des schémas : la chasse de sa police, sa manière. */
+/**
+ * Ce qui habille le rendu : du thème, la chasse de sa police et sa manière (les schémas) ; du profil de source, l'habillage
+ * d'origine d'une mise en pratique, que la salle retire parce que le sien le dit déjà.
+ */
 export interface Habillage {
   readonly chasse?: TableDeChasse;
   readonly maniere?: Maniere;
+  readonly pratique?: PratiqueDOrigine;
 }
 
 function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, h: Habillage): BlocDeSalle {
   let lignes = lignesDe(b);
   let titre = b.titre;
   let aide = false;
-  if (b.figure === "mise-en-pratique") {
-    // L'écran « À vous de jouer » : la pastille le dit déjà ; l'énoncé prend la place du titre générique.
-    aide = [titre ?? "", ...lignes].some((l) => /aider du/i.test(l));
-    lignes = lignes.filter((l) => !/vous de jouer|aider du/i.test(l));
-    if (/vous de jouer/i.test(titre ?? "") && lignes.length) [titre, lignes] = [lignes[0]!, lignes.slice(1)];
+  if (b.figure === "mise-en-pratique" && h.pratique) {
+    // Le titre générique d'origine : la pastille de la salle le dit déjà ; l'énoncé prend sa place. Le renvoi au pas-à-pas
+    // devient la ligne d'aide.
+    const [generique, renvoi] = [motif(h.pratique.titre), motif(h.pratique.aide)];
+    aide = [titre ?? "", ...lignes].some((l) => renvoi.teste(l));
+    lignes = lignes.filter((l) => !generique.teste(l) && !renvoi.teste(l));
+    if (generique.teste(titre ?? "") && lignes.length) [titre, lignes] = [lignes[0]!, lignes.slice(1)];
   }
   // La durée d'un écran se dit dans sa puce (avec l'icône du minuteur) : la ligne qui ne dit qu'elle n'est pas répétée.
   const minutes = MINUTEES.has(b.figure) ? lignes.join(" ").match(/(\d{1,3})\s*min/i) : null;

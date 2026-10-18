@@ -1,0 +1,11 @@
+{
+  "nom": "Onet",
+  "police": "Montserrat",
+  "logo": "logo-onet-bleu.svg",
+  "feuilles": [
+    "tokens.css",
+    "ds-onet.css",
+    "mouvement.css",
+    "dessin.css"
+  ]
+}

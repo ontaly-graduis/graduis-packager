@@ -6,6 +6,7 @@ import { aplatir } from "../src/ooxml/formes";
 import { relever } from "../src/releve/releve";
 import { mesurer } from "../src/releve/mesures";
 import { CONSIGNES, deckSynthetique } from "./fixture";
+import { PROFIL } from "./procede";
 
 describe("relevé du deck synthétique", async () => {
   const octets = await deckSynthetique();
@@ -29,7 +30,7 @@ describe("relevé du deck synthétique", async () => {
   });
 
   it("mesure le deck : un pas-à-pas, une transition, un marqueur d'inachèvement", () => {
-    const m = mesurer(releve);
+    const m = mesurer(releve, PROFIL);
     expect(m.pasAPas).toBe(1);
     expect(m.pastillesSur).toBe(2);
     expect(m.pastillesSurZone).toBe(2);

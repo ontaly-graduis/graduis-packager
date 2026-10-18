@@ -1,30 +1,7 @@
 // L'harmonisation des couleurs : chaque couleur du deck (opacité composée sur le blanc) va à un rôle du thème, par famille de teinte et ton.
 import type { Couleur } from "../ooxml/couleurs";
 import type { Role } from "../pivot/seance-spec";
-
-/** Seuils de la projection (OKLab : clarté L de 0 à 1, chroma C). Réglés sur les schémas du deck Boost acheteur (17/10). */
-export const SEUILS_ROLES = {
-  /** En deçà de cette saturation (TSL) ou de ce chroma, la couleur est un gris. */
-  saturationNeutre: 0.15,
-  chromaNeutre: 0.012,
-  /** Gris très clair : papier ; gris très sombre : encre. */
-  papier: 0.97,
-  encre: 0.3,
-  /** Ton fort sous cette clarté, ou sous `fortVif` si le chroma dépasse `vif` ; ton pâle au-dessus de `pale` si peu saturé. */
-  fort: 0.66,
-  fortVif: 0.78,
-  vif: 0.15,
-  pale: 0.85,
-  chromaPale: 0.1,
-  /** Deux couleurs d'un schéma se fondent si leur écart OKLab est en deçà et, colorées toutes deux, si leurs teintes sont proches. */
-  fusion: 0.12,
-  teinteFusion: 30,
-} as const;
-
-/** Familles par teinte TSL, en degrés : [début, fin, famille]. */
-const TEINTES: readonly (readonly [number, number, string])[] = [
-  [0, 15, "rouge"], [15, 65, "ambre"], [65, 165, "vert"], [165, 200, "ciel"], [200, 300, "marine"], [300, 360, "rouge"],
-];
+import type { ReglesDeProjection } from "../profil/profil";
 
 /** Les rôles sombres (texte clair dessus) ; tous les autres sont clairs (texte sombre dessus). */
 export const ROLES_SOMBRES: ReadonlySet<Role> = new Set(["marine-fort", "marine-moyen", "vert-fort", "ambre-fort", "rouge-fort", "gris-fort", "encre"]);
@@ -60,8 +37,12 @@ function teinteEtSaturation(c: Couleur): { h: number; s: number } {
   return { h: h * 60, s };
 }
 
-export function roleDe(c: Couleur): Role {
-  const S = SEUILS_ROLES;
+/**
+ * Le rôle naturel d'une couleur, selon les règles du profil : un gris (papier, encre, gris en trois tons) en deçà d'une
+ * saturation ou d'un chroma ; sinon une famille par sa teinte, un ton par sa clarté et son chroma.
+ */
+export function roleDe(c: Couleur, P: ReglesDeProjection): Role {
+  const S = P.seuils;
   const { L, C } = oklab(c);
   const { h, s } = teinteEtSaturation(c);
   if (s < S.saturationNeutre || C < S.chromaNeutre) {
@@ -69,7 +50,7 @@ export function roleDe(c: Couleur): Role {
     if (L < S.encre) return "encre";
     return L < S.fort ? "gris-fort" : L < S.pale ? "gris-moyen" : "gris-pale";
   }
-  const famille = TEINTES.find(([a, b]) => h >= a && h < b)?.[2] ?? "rouge";
+  const famille = P.teintes.find(([a, b]) => h >= a && h < b)?.[2] ?? "rouge";
   const ton = L < S.fort || (C >= S.vif && L < S.fortVif) ? "fort" : L >= S.pale && C < S.chromaPale ? "pale" : "moyen";
   return `${famille}-${ton}` as Role;
 }
@@ -86,13 +67,13 @@ export function roleDeTexte(texte: Role, fond: Role | undefined): Role {
 export const cleDeCouleur = (c: Couleur) => c.rgb + (c.alpha !== undefined && c.alpha < 100000 ? `/${Math.round(c.alpha / 1000)}` : "");
 
 /** Deux nuances d'une même couleur : proches en OKLab et, si toutes deux sont colorées, de teintes voisines. */
-function semblables(x: Couleur, y: Couleur): boolean {
+function semblables(x: Couleur, y: Couleur, P: ReglesDeProjection): boolean {
   const [p, q] = [oklab(x), oklab(y)];
-  if (Math.hypot(p.L - q.L, p.a - q.a, p.b - q.b) > SEUILS_ROLES.fusion) return false;
+  if (Math.hypot(p.L - q.L, p.a - q.a, p.b - q.b) > P.seuils.fusion) return false;
   const [u, v] = [teinteEtSaturation(x), teinteEtSaturation(y)];
-  if (u.s < SEUILS_ROLES.saturationNeutre || v.s < SEUILS_ROLES.saturationNeutre) return true;
+  if (u.s < P.seuils.saturationNeutre || v.s < P.seuils.saturationNeutre) return true;
   const d = Math.abs(u.h - v.h) % 360;
-  return Math.min(d, 360 - d) <= SEUILS_ROLES.teinteFusion;
+  return Math.min(d, 360 - d) <= P.seuils.teinteFusion;
 }
 
 export interface Projection {
@@ -116,12 +97,12 @@ function affectations(k: number): number[][] {
 }
 
 /**
- * La projection des couleurs d'un schéma. Des nuances d'une même couleur (écart OKLab sous `fusion`, teintes voisines) se
+ * La projection des couleurs d'un schéma. Des nuances d'une même couleur (écart OKLab sous le seuil de fusion du profil, teintes voisines) se
  * fondent : c'est l'harmonisation. Dans une famille, les groupes nettement distincts prennent des tons distincts, rangés du plus sombre au
  * plus clair et au plus près de leur ton naturel, pour qu'une légende garde ses distinctions ; au-delà de trois groupes, ils
  * gardent leur ton naturel et le rapport signale la confusion. Le papier et l'encre n'ont pas de tons : tout y fond.
  */
-export function projeter(couleurs: readonly Couleur[]): Projection {
+export function projeter(couleurs: readonly Couleur[], P: ReglesDeProjection): Projection {
   const usages = new Map<string, { c: Couleur; n: number }>();
   for (const c of couleurs) {
     const k = cleDeCouleur(c);
@@ -132,14 +113,14 @@ export function projeter(couleurs: readonly Couleur[]): Projection {
   const distinctes = new Set<Role>();
   const familles = new Map<string, { rep: Couleur; ton: number; cles: string[]; n: number }[]>();
   for (const [k, { c, n }] of ordre) {
-    const naturel = roleDe(c);
+    const naturel = roleDe(c, P);
     const [famille, ton] = naturel.split("-") as [string, string | undefined];
     if (!ton) {
       roles.set(k, naturel);
       continue;
     }
     const groupes = familles.get(famille) ?? [];
-    const g = groupes.find((x) => semblables(c, x.rep));
+    const g = groupes.find((x) => semblables(c, x.rep, P));
     if (g) {
       g.cles.push(k);
       g.n += n;

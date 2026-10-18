@@ -8,12 +8,13 @@ import { qualifierReleve } from "../src/qualification/qualifier";
 import { construireSalle } from "../src/salle/construire";
 import { chargerTheme } from "../src/theme/theme";
 import { deckSynthetique } from "../tests/fixture";
+import { PROFIL } from "../tests/procede";
 
 let url = "";
 
 test.beforeAll(async () => {
   const { releve, medias } = relever(await deckSynthetique(), "synthetique.pptx");
-  const { spec } = qualifierReleve(releve);
+  const { spec } = qualifierReleve(releve, PROFIL);
   const { html } = await construireSalle(spec, {
     prise: { devoilement: "pastille" },
     theme: chargerTheme("gabarits/theme-onet"),

@@ -2,8 +2,8 @@
 import { ROLES } from "../pivot/seance-spec";
 import { ROLES_SOMBRES } from "../qualification/roles";
 
-/** Les schémas redessinés : un rôle de couleur → remplissage (f-), trait (s-), texte (c-), d'après `--dessin-<rôle>` du thème. */
-const STYLE_DESSIN = `
+/** Les schémas redessinés (le nom du thème signe sa manière) : un rôle de couleur → remplissage (f-), trait (s-), texte (c-), d'après `--dessin-<rôle>` du thème. */
+const styleDuDessin = (nom: string) => `
 .f-schema .corps.centre{justify-content:center;align-items:stretch}
 .schema{flex:1;min-height:0;width:100%;display:flex}
 .dessin{width:100%;height:100%;overflow:visible;font-family:var(--font-base)}
@@ -32,7 +32,7 @@ ${ROLES.map((r) => `.dessin .f-${r}{fill:var(--dessin-${r})}.dessin .s-${r}{stro
 .dessin .trace path[pathLength]{stroke-dasharray:1;animation:traitIn calc(var(--mvt-entree) * 1.4) linear both,aplatIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--apres-titre,0s) + var(--r) * var(--mvt-decalage)),calc(var(--apres-titre,0s) + var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .45)}
 .dessin .trace foreignObject,.dessin .trace image{animation:fonduIn var(--mvt-temps) var(--courbe-douce) both;animation-delay:calc(var(--apres-titre,0s) + var(--r) * var(--mvt-decalage) + var(--mvt-entree) * .7)}
 @keyframes traitIn{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
-/* Le gabarit « cas » : colonnes en regard, bandeau numéroté, étapes numérotées à leur manière, légende. Angles droits (DS Onet).
+/* Le gabarit « cas » : colonnes en regard, bandeau numéroté, étapes numérotées à leur manière, légende. Angles droits (DS ${nom}).
    Tout se dimensionne sur --echelle, que le lecteur resserre (jusqu'à 70 %) pour que le cas tienne dans sa page. */
 .cas{--k:var(--echelle,1);flex:1 1 auto;display:flex;flex-direction:column;gap:calc(22px * var(--k));width:100%;min-height:0}
 .cas-colonnes{margin-top:auto;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:calc(40px * var(--k));align-items:start}
@@ -87,7 +87,8 @@ ${ROLES.map((r) => `.compo .b-${r}{background:var(--dessin-${r});color:${ROLES_S
 @keyframes fonduIn{from{opacity:0}to{opacity:1}}
 `;
 
-export const STYLE_SALLE = `
+/** La feuille de la salle, au nom de son thème. */
+export const styleDeSalle = (nom: string) => `
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--color-nav-bg);font-family:var(--font-base)}
 #scene{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center;background:var(--color-background);overflow:hidden;color:var(--text-body)}
@@ -272,4 +273,4 @@ body.presentateur{display:grid;grid-template-columns:3fr 2fr;gap:24px;padding:24
 .presentateur .barre{display:flex;justify-content:space-between;font-size:22px;font-weight:var(--fw-semibold)}
 .presentateur #chrono{font-variant-numeric:tabular-nums}
 .presentateur .notes-p{flex:1;overflow:auto;padding:20px;background:var(--color-background);color:var(--text-body);font-size:20px;line-height:1.5;white-space:pre-wrap}
-`+ STYLE_DESSIN;
+`+ styleDuDessin(nom);

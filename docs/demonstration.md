@@ -5,7 +5,10 @@ séquence `s030`), la même séquence avant et après (tranché le 18/10). David
 tout est jouable dès maintenant ; une répétition à blanc devant Karim et Mehdi la précède.
 
 Les sorties vivent dans `out/boost-acheteur/` (hors dépôt, I-PKG-9). Les commandes se lancent à la racine du dépôt
-(`npx tsx src/cli/packager.ts …`) ; imprimer demande Google Chrome (ou `PW_CHROMIUM`), la planche LibreOffice.
+(`npx tsx src/cli/packager.ts …`) et prennent le procédé ONET : `--procede onet-boost` (depuis GEN-1, le code ne nomme plus
+le client) ; imprimer demande le Chromium de Playwright (`npx playwright install chromium`, à défaut Google Chrome ou
+`PW_CHROMIUM`), la planche LibreOffice. `packager rejouer onet-boost "docs/sources/<deck>.pptx"` refait toute la chaîne et
+la compare à la référence v0.
 
 ## Préparer (la veille)
 

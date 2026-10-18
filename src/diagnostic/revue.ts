@@ -6,7 +6,7 @@ import { stringify2 } from "../lib/json";
 import { verifierSequences, type SeanceSpec } from "../pivot/seance-spec";
 import type { Theme } from "../theme/theme";
 import { esc, STYLE_DOCUMENT } from "./rapport-html";
-import { REGLES, type Rapport } from "./regles";
+import { regles, type Charte, type Rapport } from "./regles";
 
 /** Le geste attendu dans le PPT de validation, par règle. */
 const GESTES_DE_PAS: readonly (readonly [RegExp, string])[] = [
@@ -35,7 +35,8 @@ interface Point {
   readonly geste: string;
 }
 
-export function revueHtml(rapport: Rapport, spec: SeanceSpec, positions: ReadonlyMap<string, number>, sequences: readonly string[], theme: Theme): string {
+export function revueHtml(rapport: Rapport, spec: SeanceSpec, positions: ReadonlyMap<string, number>, sequences: readonly string[], theme: Theme, charte: Charte): string {
+  const actions = regles(charte);
   verifierSequences(spec, sequences);
   const blocs = spec.sequences.flatMap((q) => q.blocs);
   const positionDe = (source: number) => { const b = blocs.find((x) => x.source.diapo === source); return (b ? positions.get(b.id) : undefined) ?? 10000 + source; };
@@ -53,7 +54,7 @@ export function revueHtml(rapport: Rapport, spec: SeanceSpec, positions: Readonl
     // Dans l'ordre du PPT : ce qui vaut pour la séquence d'abord, puis diapositive par diapositive.
     ...retenus.map((k, i) => ({ k, i, n: k.diapo === null ? -1 : positionDe(k.diapo) })).sort((a, b) => a.n - b.n || a.i - b.i).map(({ k, i }) => ({
       id: `${k.regle}-${i}`, regle: k.regle, niveau: k.niveau, ou: diapoDuBloc(k.diapo), message: k.message,
-      geste: (k.regle === "PAS" ? GESTES_DE_PAS.find(([m]) => m.test(k.message))?.[1] : undefined) ?? GESTES[k.regle] ?? REGLES[k.regle]?.action ?? "",
+      geste: (k.regle === "PAS" ? GESTES_DE_PAS.find(([m]) => m.test(k.message))?.[1] : undefined) ?? GESTES[k.regle] ?? actions[k.regle]?.action ?? "",
     })),
   ];
   // Les comptes de toute la journée, pour l'extrapolation : constats par règle, diapositives à relire.
@@ -80,7 +81,7 @@ export function revueHtml(rapport: Rapport, spec: SeanceSpec, positions: Readonl
 .actions label{font-size:var(--fs-meta);color:var(--text-secondary)}
 .actions input{width:64px;font:inherit}</style></head>
 <body><div class="page">
-<header><img src="${theme.logo}" alt="Onet"><div><h1>Fiche de revue chronométrée</h1>
+<header><img src="${theme.logo}" alt="${esc(theme.nom)}"><div><h1>Fiche de revue chronométrée</h1>
 <p>${esc(rapport.source.nom)} · séquences ${esc(sequences.join(", "))} · ${points.length} points · pivot ${esc(rapport.pivot.slice(7, 19))}</p></div></header>
 <div class="tuiles"><div class="tuile"><b id="mesure">0 min</b><span>mesurées sur les séquences</span></div>
 <div class="tuile"><b id="faits">0 / ${points.length}</b><span>points tranchés</span></div>

@@ -8,13 +8,14 @@ import { diagnostiquer } from "../src/diagnostic/regles";
 import { rapportHtml } from "../src/diagnostic/rapport-html";
 import { chargerTheme } from "../src/theme/theme";
 import { CONSIGNES, deckSynthetique } from "./fixture";
+import { CADRE, ONET, PROFIL } from "./procede";
 
 const POUCE = 914400;
 const p = (v: number) => Math.round(v * POUCE);
 
 describe("qualification du deck synthétique", async () => {
   const { releve } = relever(await deckSynthetique(), "synthetique.pptx");
-  const { spec, qualifications } = qualifierReleve(releve);
+  const { spec, qualifications } = qualifierReleve(releve, PROFIL);
   const blocs = spec.sequences.flatMap((s) => s.blocs);
 
   it("produit un seance-spec valide, un bloc par diapositive", () => {
@@ -32,18 +33,18 @@ describe("qualification du deck synthétique", async () => {
   });
 
   it("diagnostique : le marqueur d'inachèvement est bloquant, le rapport n'a aucun hex hors jetons", () => {
-    const r = diagnostiquer(spec, releve, qualifications);
+    const r = diagnostiquer(spec, releve, qualifications, CADRE);
     expect(r.constats.filter((k) => k.niveau === "bloquant")).toEqual([
       { regle: "H8", niveau: "bloquant", diapo: 3, sequence: "s001", message: "Marqueur « A rédiger »." },
     ]);
-    const html = rapportHtml(r, chargerTheme("gabarits/theme-onet"));
+    const html = rapportHtml(r, chargerTheme("gabarits/theme-onet"), ONET.procede.charte);
     const horsJetons = html.slice(html.indexOf("</style>"));
     expect(horsJetons).not.toMatch(/#[0-9a-f]{3,6}\b/i);
     expect(html).toContain("Rapport d'anomalies et d'équilibrage");
   });
 
   it("est déterministe : deux qualifications du même relevé sont identiques à l'octet", () => {
-    expect(stringify2(qualifierReleve(releve).spec)).toBe(stringify2(spec));
+    expect(stringify2(qualifierReleve(releve, PROFIL).spec)).toBe(stringify2(spec));
   });
 });
 
@@ -70,7 +71,7 @@ describe("zones proposées par ordre de lecture (décision du 17/10)", () => {
   };
 
   it("attribue les zones libres aux pas sans zone, marquées « proposee »", () => {
-    const pas = qualifierReleve(releve).spec.sequences[0]!.blocs[0]!.pas;
+    const pas = qualifierReleve(releve, PROFIL).spec.sequences[0]!.blocs[0]!.pas;
     const parNumero = new Map(pas.map((x) => [x.numero, x]));
     expect(parNumero.get(1)).toMatchObject({ ancrage: "proposee", zone: [50, 16.67, 33.33, 16.67] });
     expect(parNumero.get(2)).toMatchObject({ ancrage: "proposee", zone: [16.67, 66.67, 33.33, 16.67] });

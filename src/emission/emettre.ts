@@ -16,6 +16,7 @@ import { ARBRE_VIDE, ENTETE, XMLNS, paragraphe, relations, x, xfrm } from "./xml
 import { cadreXml, disposerStructure } from "./structure";
 import { blipXml, groupeXml, placer, type ContexteDeDessin } from "./dessin";
 import { compositionXml } from "./composition";
+import type { Theme } from "../theme/theme";
 
 export interface MediaDEmission {
   readonly ext: string;
@@ -25,8 +26,8 @@ export interface MediaDEmission {
 }
 
 export interface OptionsDEmission {
-  /** Les jetons du thème (le CSS du DS Onet) : les seules valeurs de couleur du PPT. */
-  readonly jetons: string;
+  /** Le thème : ses jetons (les seules valeurs de couleur du PPT), son nom et sa police (le thème Office). */
+  readonly theme: Pick<Theme, "jetons" | "nom" | "police">;
   readonly media: (hash: string) => MediaDEmission | undefined;
 }
 
@@ -284,7 +285,7 @@ function diapositive(b: Bloc, n: number, o: OptionsDEmission, medias: Medias): P
 /** Pivot → PPT de validation (octets d'un .pptx). */
 export function emettre(spec: SeanceSpec, o: OptionsDEmission): Uint8Array {
   const blocs = spec.sequences.flatMap((s) => s.blocs);
-  const palette = paletteDesJetons(o.jetons);
+  const palette = paletteDesJetons(o.theme.jetons);
   const medias: Medias = { parties: new Map() };
   const parties: Partie[] = [];
   // Un bloc, une diapositive ; un schéma recomposé, sa diapositive annexe à la suite.
@@ -303,7 +304,7 @@ export function emettre(spec: SeanceSpec, o: OptionsDEmission): Uint8Array {
   });
   const nm = masqueDeNotes();
   parties.push({ chemin: "ppt/notesMasters/notesMaster1.xml", xml: nm.xml }, { chemin: "ppt/notesMasters/_rels/notesMaster1.xml.rels", xml: nm.rels });
-  parties.push({ chemin: "ppt/theme/theme1.xml", xml: theme(palette) }, { chemin: "ppt/theme/theme2.xml", xml: theme(palette, "Onet · Graduis (notes)") });
+  parties.push({ chemin: "ppt/theme/theme1.xml", xml: theme(palette, o.theme) }, { chemin: "ppt/theme/theme2.xml", xml: theme(palette, o.theme, true) });
   parties.push({ chemin: "ppt/presProps.xml", xml: PRES_PROPS }, { chemin: "ppt/viewProps.xml", xml: VIEW_PROPS }, { chemin: "ppt/tableStyles.xml", xml: TABLE_STYLES });
 
   const presentation = `${ENTETE}<p:presentation ${XMLNS} saveSubsetFonts="1"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>`

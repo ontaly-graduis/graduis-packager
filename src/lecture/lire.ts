@@ -18,6 +18,7 @@ import { lireComposition } from "./composition";
 import { roleDe } from "../qualification/roles";
 import { structurer } from "../qualification/structure";
 import { qualifierReleve } from "../qualification/qualifier";
+import type { ProfilSource } from "../profil/profil";
 import { relever, type FormeReleve } from "../releve/releve";
 import { textesDeStructure } from "../pivot/textes";
 import { lireStructure } from "./structure";
@@ -101,10 +102,10 @@ function pasDe(formes: readonly Forme[], hashDe: (f: Forme) => string | undefine
 
 /**
  * Le rôle d'une couleur de remplissage : celui dont la couleur du thème (émise par la grammaire) donne ce RVB dans le
- * thème du paquet ; une autre couleur (choisie dans PowerPoint) va au rôle le plus proche, par la projection du relevé.
+ * thème du paquet ; une autre couleur (choisie dans PowerPoint) va au rôle le plus proche, par la projection du profil.
  */
 const parPaquet = new WeakMap<Paquet, Map<string, (rgb: string) => Role>>();
-function rolesDeCouleur(p: Paquet, diapo: string): (rgb: string) => Role {
+function rolesDeCouleur(p: Paquet, diapo: string, profil: ProfilSource): (rgb: string) => Role {
   const masque = p.masqueDe(p.disposition(diapo)?.chemin ?? "") ?? "";
   let parMasque = parPaquet.get(p);
   if (!parMasque) { parMasque = new Map(); parPaquet.set(p, parMasque); }
@@ -117,17 +118,17 @@ function rolesDeCouleur(p: Paquet, diapo: string): (rgb: string) => Role {
       const c = lireCouleur(el.firstChild as Element, palette);
       if (c && !table.has(c.rgb.toUpperCase())) table.set(c.rgb.toUpperCase(), r);
     }
-    f = (rgb) => table.get(rgb.toUpperCase()) ?? roleDe({ rgb });
+    f = (rgb) => table.get(rgb.toUpperCase()) ?? roleDe({ rgb }, profil.projection);
     parMasque.set(masque, f);
   }
   return f;
 }
 
 /** Ce qu'il faut pour relire les formes d'une diapositive : thème, couleurs proches, médias. */
-function lecteurDe(p: Paquet, diapo: string): LecteurDeDessin {
+function lecteurDe(p: Paquet, diapo: string, profil: ProfilSource): LecteurDeDessin {
   const masque = p.masqueDe(p.disposition(diapo)?.chemin ?? "");
   const st = stylesDuMasque(p, masque);
-  const proche = rolesDeCouleur(p, diapo);
+  const proche = rolesDeCouleur(p, diapo, profil);
   const rels = new Map(p.relations(diapo).filter((r) => r.type === "image").map((r) => [r.id, r.cible]));
   const hashs = new Map<string, string | undefined>();
   return {
@@ -147,13 +148,13 @@ const estEspaceReserve = (el: Element) => el.getElementsByTagNameNS(NS.p, "ph").
 interface SchemaLu {
   readonly dessin?: Dessin;
   readonly composition?: Composition;
-  /** Les identifiants des formes lues ici (groupes de la grammaire, formes ajoutées par ONET) : le reste de la lecture les ignore. */
+  /** Les identifiants des formes lues ici (groupes de la grammaire, formes ajoutées par le client) : le reste de la lecture les ignore. */
   readonly prises: ReadonlySet<number>;
 }
 
 /**
  * Le schéma d'une diapositive (PKG-C3) : le dessin du groupe « G·schéma » et ses tableaux, ou la composition posée en
- * formes. Ce qu'ONET ajoute sur un dessin y entre (dans son repère) ; sur une composition, il est signalé et laissé.
+ * formes. Ce que le client ajoute sur un dessin y entre (dans son repère) ; sur une composition, il est signalé et laissé.
  */
 function schemaDe(arbre: Element, l: LecteurDeDessin, ecart: (m: string) => void): SchemaLu | null {
   const enfants = elementsEnfants(arbre).filter((e) => e.namespaceURI === NS.p && ["sp", "pic", "cxnSp", "grpSp", "graphicFrame"].includes(e.localName ?? ""));
@@ -198,8 +199,8 @@ function schemaDe(arbre: Element, l: LecteurDeDessin, ecart: (m: string) => void
   return { composition: lue.composition, prises };
 }
 
-/** PPT de validation → pivot, et les écarts à la grammaire. */
-export function lire(octets: Uint8Array): { spec: SeanceSpec; ecarts: Ecart[] } {
+/** PPT de validation → pivot, et les écarts à la grammaire ; le profil de source relit ce qui est venu hors grammaire. */
+export function lire(octets: Uint8Array, profil: ProfilSource): { spec: SeanceSpec; ecarts: Ecart[] } {
   const paquet = new Paquet(octets);
   const ecarts: Ecart[] = [];
   const props = proprietes(paquet);
@@ -211,7 +212,7 @@ export function lire(octets: Uint8Array): { spec: SeanceSpec; ecarts: Ecart[] } 
   // grammaire), on la lit comme on a lu le deck hérité. Calculée une fois, au besoin.
   let heuristique: Map<number, Bloc> | undefined;
   const parHeuristique = (n: number) => {
-    heuristique ??= new Map(qualifierReleve(relever(octets, props.get(PROPRIETES.nom) ?? "validation.pptx").releve).spec.sequences.flatMap((s) => s.blocs).map((b) => [b.source.diapo, b]));
+    heuristique ??= new Map(qualifierReleve(relever(octets, props.get(PROPRIETES.nom) ?? "validation.pptx").releve, profil).spec.sequences.flatMap((s) => s.blocs).map((b) => [b.source.diapo, b]));
     return heuristique.get(n)!;
   };
   for (const d of paquet.diapositives()) {
@@ -229,7 +230,7 @@ export function lire(octets: Uint8Array): { spec: SeanceSpec; ecarts: Ecart[] } 
       continue;
     }
     const arbre = chemin(paquet.racine(d.chemin), ["p:cSld", "p:spTree"]);
-    const lecteur = lecteurDe(paquet, d.chemin);
+    const lecteur = lecteurDe(paquet, d.chemin, profil);
     const annexe = tags.get(ETIQUETTES.annexe);
     if (annexe) {
       const s = arbre ? schemaDe(arbre, lecteur, ecart) : null;
@@ -242,9 +243,9 @@ export function lire(octets: Uint8Array): { spec: SeanceSpec; ecarts: Ecart[] } 
     const hashDe = (f: Forme) => { const o = f.media ? paquet.octets(f.media) : undefined; return o ? sha256(o) : undefined; };
     const titre = formes.find((f) => f.espace?.type === "title" || f.espace?.type === "ctrTitle");
     const contenu = espace(formes, ESPACES.contenu);
-    const roleDeFond = rolesDeCouleur(paquet, d.chemin);
+    const roleDeFond = rolesDeCouleur(paquet, d.chemin, profil);
     const { structure: lue, illustrations: _ill } = lireStructure(formes, hashDe);
-    // Ce qu'ONET a ajouté hors grammaire (ingestion complémentaire) : des cadres de texte, des images. Rien ne se perd :
+    // Ce que le client a ajouté hors grammaire (ingestion complémentaire) : des cadres de texte, des images. Rien ne se perd :
     // les textes vont à la structure par l'heuristique de l'ingestion initiale, ou à l'inventaire ; tout est signalé.
     const deLaGrammaire = (f: Forme) => f.nom.startsWith("G·") || (f.espace !== undefined);
     const textesLibres = formes.filter((f) => !deLaGrammaire(f) && f.nature !== "image" && f.nature !== "tableau" && texteDe(f));

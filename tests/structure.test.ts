@@ -7,6 +7,7 @@ import { planDeDevoilement } from "../src/salle/unites";
 import { habiller, type Maniere } from "../src/theme/maniere";
 import { composerCas, composerTableau, harmoniser } from "../src/qualification/gabarits";
 import { deckDEcrans, deckDeCas, deckDeSchema, deckDeTableau } from "./fixture";
+import { PROFIL } from "./procede";
 
 describe("le dévoilement par niveau de hiérarchie 1", () => {
   it("une fiche paraît entière, une section avec son intertitre, hors section chaque élément seul", () => {
@@ -27,7 +28,7 @@ describe("le dévoilement par niveau de hiérarchie 1", () => {
 
 describe("le schéma synthétique joué par ses pastilles", async () => {
   const { releve } = relever(await deckDeSchema(), "schema.pptx");
-  const dessin = qualifierReleve(releve).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!.dessin!;
+  const dessin = qualifierReleve(releve, PROFIL).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!.dessin!;
 
   it("se partitionne par ses six pastilles numérotées : chaque étape, sa pastille et le trait qui en part", () => {
     expect(dessin.partition).toEqual({ mode: "etapes", pas: 6 });
@@ -52,7 +53,7 @@ describe("le schéma synthétique joué par ses pastilles", async () => {
 
 describe("le processus en phases recomposé au gabarit « cas » du wizard (PKG-B4)", async () => {
   const { releve } = relever(await deckDeCas(), "cas.pptx");
-  const bloc = qualifierReleve(releve).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
+  const bloc = qualifierReleve(releve, PROFIL).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
 
   it("se partitionne en colonnes rangées par les numéros de leurs bandeaux, la pastille débordante comprise", () => {
     expect(bloc.figure).toBe("schema");
@@ -76,7 +77,7 @@ describe("le processus en phases recomposé au gabarit « cas » du wizard (PKG-
 
   it("ne recompose pas un logigramme joué par étapes", async () => {
     const { releve: r } = relever(await deckDeSchema(), "schema.pptx");
-    const b = qualifierReleve(r).spec.sequences.flatMap((s) => s.blocs).find((x) => x.source.diapo === 2)!;
+    const b = qualifierReleve(r, PROFIL).spec.sequences.flatMap((s) => s.blocs).find((x) => x.source.diapo === 2)!;
     expect(b.composition).toBeUndefined();
     expect(composerCas(b.dessin!)).toBeNull();
   });
@@ -84,7 +85,7 @@ describe("le processus en phases recomposé au gabarit « cas » du wizard (PKG-
 
 describe("la fiche persona en couloirs recomposée au gabarit « tableau » du wizard (PKG-B5)", async () => {
   const { releve } = relever(await deckDeTableau(), "tableau.pptx");
-  const bloc = qualifierReleve(releve).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
+  const bloc = qualifierReleve(releve, PROFIL).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
   const t = bloc.composition;
 
   it("lit les phases à leur couleur et les couloirs avec leur signe", () => {
@@ -127,16 +128,16 @@ describe("la fiche persona en couloirs recomposée au gabarit « tableau » du w
 
   it("ne lit en tableau ni un cas ni un logigramme, ni en cas une fiche en couloirs", async () => {
     expect(composerCas(bloc.dessin!)).toBeNull();
-    const cas = qualifierReleve(relever(await deckDeCas(), "cas.pptx").releve).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
+    const cas = qualifierReleve(relever(await deckDeCas(), "cas.pptx").releve, PROFIL).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
     expect(composerTableau(cas.dessin!)).toBeNull();
-    const schema = qualifierReleve(relever(await deckDeSchema(), "schema.pptx").releve).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
+    const schema = qualifierReleve(relever(await deckDeSchema(), "schema.pptx").releve, PROFIL).spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
     expect(composerTableau(schema.dessin!)).toBeNull();
   });
 });
 
 describe("les visuels d'origine : pictogrammes, minuteur, météo, icônes de section, photos (PKG-B6)", async () => {
   const { releve } = relever(await deckDEcrans(), "ecrans.pptx");
-  const blocs = qualifierReleve(releve).spec.sequences.flatMap((s) => s.blocs);
+  const blocs = qualifierReleve(releve, PROFIL).spec.sequences.flatMap((s) => s.blocs);
   const ext = (h: string) => releve.medias[h]?.ext;
   const lus = (i: number) => blocs[i]!.visuels.map((v) => ({ ext: ext(v.media), role: v.role ?? null, fond: v.fond ?? null, legende: v.legende ?? null, capture: v.capture }));
 

@@ -9,12 +9,13 @@ import { qualifierReleve } from "../src/qualification/qualifier";
 import { relever } from "../src/releve/releve";
 import { chargerTheme } from "../src/theme/theme";
 import { CONSIGNES, deckDEcrans, deckDeTableau, deckSynthetique } from "./fixture";
+import { PROFIL } from "./procede";
 
 const theme = chargerTheme("gabarits/theme-onet");
 
 async function pivot(deck: Uint8Array, nom: string) {
   const { releve, medias } = relever(deck, nom);
-  const spec = SeanceSpec.parse(qualifierReleve(releve).spec);
+  const spec = SeanceSpec.parse(qualifierReleve(releve, PROFIL).spec);
   const media = (h: string) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; };
   return { spec, media, px: (h: string) => releve.medias[h]?.px ?? null };
 }

@@ -10,13 +10,14 @@ import { construireSalle } from "../src/salle/construire";
 import { chargerTheme } from "../src/theme/theme";
 import type { SeanceSpec } from "../src/pivot/seance-spec";
 import { deckDEcrans } from "../tests/fixture";
+import { PROFIL } from "../tests/procede";
 
 let url = "";
 let urlAplat = "";
 
 test.beforeAll(async () => {
   const { releve, medias } = relever(await deckDEcrans(), "ecrans.pptx");
-  const { spec } = qualifierReleve(releve);
+  const { spec } = qualifierReleve(releve, PROFIL);
   const ecrire = async (s: SeanceSpec) => {
     const { html, nonAffichables } = await construireSalle(s, {
       prise: { devoilement: "pastille" },

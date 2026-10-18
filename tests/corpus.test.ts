@@ -1,5 +1,7 @@
 // Témoins corpus (local, hors dépôt) : le relevé TS retrouve les mesures de `scripts/releve_pptx.py` sur le deck acheteur.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { stringify2 } from "../src/lib/json";
 import { relever, type Releve } from "../src/releve/releve";
@@ -13,6 +15,10 @@ import { lire } from "../src/lecture/lire";
 import { SeanceSpec } from "../src/pivot/seance-spec";
 import { chargerTheme } from "../src/theme/theme";
 import { construirePapier } from "../src/papier/construire";
+import { chromiumDisponible, imprimer, versionDuNavigateur } from "../src/papier/imprimer";
+import { versionDeLibreOffice } from "../src/medias/convertir";
+import { rejouer } from "../src/procede/rejouer";
+import { CADRE, ONET, PROFIL } from "./procede";
 
 const DECK = process.env.PKG_CORPUS ?? "docs/sources/boost acheteur areprendre v1.pptx";
 const NOM = "boost acheteur areprendre v1.pptx";
@@ -26,10 +32,10 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   beforeAll(() => {
     octets = new Uint8Array(readFileSync(DECK));
     releve = relever(octets, NOM).releve;
-    m = mesurer(releve);
-    const q = qualifierReleve(releve);
+    m = mesurer(releve, PROFIL);
+    const q = qualifierReleve(releve, PROFIL);
     spec = q.spec;
-    rapport = diagnostiquer(spec, releve, q.qualifications);
+    rapport = diagnostiquer(spec, releve, q.qualifications, CADRE);
   });
 
   it("qualifie les 166 diapositives (mesure du 17/10)", () => {
@@ -134,10 +140,10 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     expect(harmonisees).toEqual([[20, "12"], [20, "2"]]);
   });
 
-  it("se relit à l'identique depuis le PPT de validation : lire(émettre(pivot₀)) ≡ pivot₀ sur les 166 diapositives (PKG-C1)", () => {
+  it("se relit à l'identique depuis le PPT de validation : lire(émettre(pivot₀), PROFIL) ≡ pivot₀ sur les 166 diapositives (PKG-C1)", () => {
     const { medias } = relever(octets, NOM);
-    const pptx = emettre(spec, { jetons: chargerTheme("gabarits/theme-onet").jetons, media: (h) => { const x = medias.get(h); return x ? { ext: x.ext, octets: x.octets, px: releve.medias[h]?.px ?? null } : undefined; } });
-    const { spec: relu, ecarts } = lire(pptx);
+    const pptx = emettre(spec, { theme: ONET.theme, media: (h) => { const x = medias.get(h); return x ? { ext: x.ext, octets: x.octets, px: releve.medias[h]?.px ?? null } : undefined; } });
+    const { spec: relu, ecarts } = lire(pptx, PROFIL);
     expect(ecarts).toEqual([]);
     expect(stringify2(relu)).toBe(stringify2(SeanceSpec.parse(spec)));
   }, 30_000); // l'aller-retour des 166 diapositives frôle les 5 s par défaut quand la suite tourne en parallèle
@@ -156,7 +162,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   });
 
   it("qualifie de façon déterministe", () => {
-    expect(stringify2(qualifierReleve(relever(octets, NOM).releve).spec)).toBe(stringify2(spec));
+    expect(stringify2(qualifierReleve(relever(octets, NOM).releve, PROFIL).spec)).toBe(stringify2(spec));
   });
 
   it("retrouve les mesures du relevé Python (17/10)", () => {
@@ -172,7 +178,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
 
   it("retrouve les séquences du § 0.3", () => {
     const op = m.sequences.filter((q) => [30, 59, 68, 99, 112, 138].includes(q.n0));
-    expect(op.map((q) => [q.diapositives, q.demonstrations, q.pasAPas, q.captures, q.aVousDeJouer, q.reglesDuJeu, q.etapesCles, q.mots])).toEqual([
+    expect(op.map((q) => [q.diapositives, q.demonstrations, q.pasAPas, q.captures, q.pratiquesParFormule, q.pratiquesParDisposition, q.etapesCles, q.mots])).toEqual([
       [29, 3, 18, 0, 1, 0, 1, 1770], [9, 0, 1, 4, 1, 1, 1, 415], [31, 0, 21, 4, 1, 1, 1, 1244],
       [13, 0, 5, 4, 0, 1, 1, 601], [26, 0, 6, 15, 0, 1, 1, 768], [23, 0, 7, 9, 0, 1, 1, 1305],
     ]);
@@ -201,4 +207,15 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     expect(s030.donnees.sequences.map((q) => q.blocs.length)).toEqual([26]);
     expect(s030.donnees.extrait).toMatch(/^Séquence 6 · /);
   });
+
+  it("rejoue le procédé ONET : la journée sans revue refusée par H8, la séquence 30 aux empreintes de la référence v0 (GEN-1)", async () => {
+    const sortie = mkdtempSync(join(tmpdir(), "rejeu-"));
+    const moteurs = { chromium: await versionDuNavigateur(), libreoffice: versionDeLibreOffice() };
+    const journee = await rejouer(ONET, { deck: DECK, sortie, moteurs });
+    expect(journee.refus.map((r) => r.split(" · ")[0])).toEqual(["diapo 2", "diapo 16", "diapo 24", "diapo 146", "diapo 159"]);
+    expect(journee.conforme).toBe(true);
+    const s030 = await rejouer(ONET, { deck: DECK, sequences: ["s030"], sortie, moteurs, ...(await chromiumDisponible() ? { imprimer } : {}) });
+    expect(s030.comparaisons.filter((c) => c.attendue !== c.obtenue)).toEqual([]);
+    expect([s030.ecart.chaine.inventes, s030.ecart.chaine.inversions, s030.ecart.franchies]).toEqual([[], 0, []]);
+  }, 300_000);
 });

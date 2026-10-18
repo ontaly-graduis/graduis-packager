@@ -22,7 +22,7 @@ export function textesDeStructure(s: Structure): string[] {
 }
 
 // Les textes d'un schéma (PKG-C3) : son inventaire se dérive de ce qui le montre — la composition quand un gabarit l'a
-// recomposé (c'est elle qu'ONET relit et que la salle joue), sinon le dessin ; ses tableaux, des tableaux du dessin.
+// recomposé (c'est elle que le client relit et que la salle joue), sinon le dessin ; ses tableaux, des tableaux du dessin.
 
 /** Tolérance d'une rangée pour l'ordre de lecture, en points (0,15 pouce, comme à la qualification). */
 const RANGEE = 10.8;

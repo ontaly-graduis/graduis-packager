@@ -10,6 +10,7 @@ import { fondLisible } from "../src/salle/lecteur/contraste";
 import type { Role } from "../src/pivot/seance-spec";
 import { chargerTheme } from "../src/theme/theme";
 import { CONSIGNES, deckSynthetique } from "./fixture";
+import { ONET, PROFIL } from "./procede";
 
 describe("navigation", () => {
   const etapes = [0, 2, 0];
@@ -53,7 +54,7 @@ describe("contraste des pictogrammes", () => {
 
 describe("salle du deck synthétique", async () => {
   const { releve, medias } = relever(await deckSynthetique(), "synthetique.pptx");
-  const { spec } = qualifierReleve(releve);
+  const { spec } = qualifierReleve(releve, PROFIL);
   const pas = spec.sequences[0]!.blocs[1]!;
   const media = (h: string) => {
     const m = medias.get(h);
@@ -98,7 +99,7 @@ describe("salle d'un schéma recomposé", () => {
   it("embarque les images des dessins et des vignettes, qui ne sont plus des visuels depuis PKG-C3", async () => {
     const { deckDeTableau } = await import("./fixture");
     const { releve, medias } = relever(await deckDeTableau(), "tableau.pptx");
-    const { spec } = qualifierReleve(releve);
+    const { spec } = qualifierReleve(releve, PROFIL);
     const b = spec.sequences.flatMap((s) => s.blocs).find((x) => x.composition?.gabarit === "tableau")!;
     const c = b.composition!;
     const illustration = c.gabarit === "tableau" ? c.illustration?.elements.find((e) => e.type === "image") : undefined;

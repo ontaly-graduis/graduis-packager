@@ -7,6 +7,9 @@ import { capture, cas, composerTableau, el, liste, schema, structure, tableau, t
 import { relier } from "../../salle/lecteur/liens";
 import { ajusterTextes } from "../../salle/lecteur/textes";
 
+/** Le nom du thème (le texte de remplacement du logo), injecté à la construction du lecteur. */
+declare const NOM_DU_THEME: string;
+
 const lire = <T>(id: string): T => JSON.parse(document.getElementById(id)?.textContent ?? "null") as T;
 const d = lire<DonneesDePapier>("donnees");
 const medias = lire<Record<string, string>>("medias");
@@ -38,7 +41,7 @@ function garde(): HTMLElement {
   const haut = el(document, "div", "garde-haut");
   // Le logo dans une boîte : une image en tête de la garde lui ferait perdre sa page nommée (Chromium).
   const logo = el(document, "div", "garde-logo");
-  logo.append(el(document, "img", "logo", undefined, { src: medias.logo ?? "", alt: "Onet" }));
+  logo.append(el(document, "img", "logo", undefined, { src: medias.logo ?? "", alt: NOM_DU_THEME }));
   haut.append(logo);
   haut.append(el(document, "div", "etiquette", "Support participant"));
   // Le titre, puis les autres lignes de la couverture (sa première ligne quand elle n'a pas de titre).

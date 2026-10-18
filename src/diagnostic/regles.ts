@@ -1,4 +1,5 @@
 // Le diagnostic d'un pivot : règles d'harmonisation H1–H9, anomalies de la source, état des pas (rapport `graduis/rapport@0`).
+import { z } from "zod";
 import type { Forme } from "../ooxml/formes";
 import { sha256, stringify2 } from "../lib/json";
 import type { Releve } from "../releve/releve";
@@ -6,11 +7,17 @@ import { estCapture } from "../releve/geometrie";
 import { FIGURES, TEMPS_DE_FIGURE, type Bloc, type Figure, type SeanceSpec, type Temps } from "../pivot/seance-spec";
 import type { Qualification } from "../qualification/figures";
 import { GEOMETRIES } from "../dessin/geometries";
+import { motif, type ProfilSource } from "../profil/profil";
 
 export const SCHEMA_RAPPORT = "graduis/rapport@0";
 
-/** Seuils provisoires de la charte d'harmonisation (décision du 17/10), à valider avec ONET sur le démonstrateur. */
-export const CHARTE = { motsParEcran: 60, pastillesParCapture: 9, ecartSequence: 2 } as const;
+/** La charte d'harmonisation : les seuils de H2, H3 et H9, validés avec le client sur son démonstrateur ; elle vit au procédé. */
+export const Charte = z.object({
+  motsParEcran: z.number().int().positive(),
+  pastillesParCapture: z.number().int().positive(),
+  ecartSequence: z.number().positive(),
+}).strict();
+export type Charte = z.infer<typeof Charte>;
 
 export const NIVEAUX = ["bloquant", "avis", "a-valider", "info"] as const;
 export type Niveau = (typeof NIVEAUX)[number];
@@ -51,11 +58,11 @@ export interface Rapport {
   readonly qualification: readonly { readonly diapo: number; readonly figure: Figure; readonly temps: Temps | null; readonly signal: string; readonly titre: string | null }[];
 }
 
-/** Les règles telles que le rapport les présente : leur libellé et ce qu'on fait d'un constat. */
-export const REGLES: Readonly<Record<string, { readonly libelle: string; readonly action: string }>> = {
+/** Les règles telles que le rapport les présente, à la charte du procédé : leur libellé et ce qu'on fait d'un constat. */
+export const regles = (charte: Charte): Readonly<Record<string, { readonly libelle: string; readonly action: string }>> => ({
   H1: { libelle: "Une séquence opératoire a ses trois temps", action: "Exposition (pas-à-pas ou démonstration), Réalisation (mise en pratique), Régulation (étapes clés)." },
-  H2: { libelle: `Au plus ${CHARTE.motsParEcran} mots par écran projeté`, action: "Le surplus descend aux notes de l'animateur ou au papier du participant." },
-  H3: { libelle: `Au plus ${CHARTE.pastillesParCapture} pastilles par capture`, action: "Au-delà, la capture se découpe." },
+  H2: { libelle: `Au plus ${charte.motsParEcran} mots par écran projeté`, action: "Le surplus descend aux notes de l'animateur ou au papier du participant." },
+  H3: { libelle: `Au plus ${charte.pastillesParCapture} pastilles par capture`, action: "Au-delà, la capture se découpe." },
   H4: { libelle: "La numérotation se dérive", action: "Les numéros saisis sont ignorés : l'ordre les donne." },
   H5: { libelle: "Des captures lisibles et commentées", action: "Recapturer ce qui est trop pauvre pour le zoom (moins d'un pixel source par pixel affiché à 1920) ; commenter ou passer en pas-à-pas ce qui est muet." },
   H6: { libelle: "Chaque mise en pratique a son propre énoncé", action: "Un énoncé repris d'un autre cas est une erreur de copie." },
@@ -64,9 +71,8 @@ export const REGLES: Readonly<Record<string, { readonly libelle: string; readonl
   PAS: { libelle: "Les pas à ancrer dans le PPT de validation", action: "Confirmer les zones proposées par ordre de lecture ; compléter les zones et consignes manquantes." },
   VIDE: { libelle: "Les diapositives sans contenu", action: "À supprimer ou à compléter." },
   DESSIN: { libelle: "Les schémas redessinés au thème", action: "Relire chaque schéma dans le PPT de validation : les couleurs d'origine regroupées sur un même rôle y perdent leur distinction ; une géométrie non prise en charge est dessinée en rectangle ; le dévoilement proposé et la recomposition en gabarit sont des lectures à confirmer." },
-};
+});
 
-const INACHEVE = [/\ba rédiger\b/i, /\ba supprimer\b/i, /\binsérer\b/i, /xxx/i] as const;
 const mots = (s: string) => s.match(/\S+/gu)?.length ?? 0;
 
 /** Similarité de Dice sur les bigrammes de lettres : tolère une coquille (« Tra,sformer » ≈ « Transformer »). */
@@ -96,7 +102,13 @@ function median(v: readonly number[]): number {
   return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
 }
 
-export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: ReadonlyMap<number, Qualification>): Rapport {
+/** Ce que le diagnostic tient du procédé : sa charte et son profil de source (marqueurs, habillage d'origine). */
+export interface Cadre {
+  readonly charte: Charte;
+  readonly profil: ProfilSource;
+}
+
+export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: ReadonlyMap<number, Qualification>, { charte, profil }: Cadre): Rapport {
   const constats: Constat[] = [];
   const c = (regle: string, niveau: Niveau, diapo: number | null, sequence: string | null, message: string) =>
     constats.push({ regle, niveau, diapo, sequence, message });
@@ -135,7 +147,7 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
     for (const [mesure, unite] of [["diapositives", "diapositives"], ["mots", "mots"]] as const) {
       const m = median(op.map((l) => l[mesure]));
       for (const l of op) {
-        if (l[mesure] > CHARTE.ecartSequence * m || l[mesure] < m / CHARTE.ecartSequence) {
+        if (l[mesure] > charte.ecartSequence * m || l[mesure] < m / charte.ecartSequence) {
           c("H9", "avis", null, l.id, `« ${l.titre} » : ${l[mesure]} ${unite}, pour une médiane de ${m} sur les séquences opératoires.`);
         }
       }
@@ -153,7 +165,7 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
   const vus: { cle: string; diapo: number }[] = [];
   for (const s of spec.sequences) {
     for (const b of s.blocs.filter((x) => x.figure === "mise-en-pratique")) {
-      const cle = b.textes.filter((t) => !/vous de jouer/i.test(t)).join(" ").replace(/\s+/g, " ").trim();
+      const cle = b.textes.filter((t) => !(profil.pratique && motif(profil.pratique.titre).teste(t))).join(" ").replace(/\s+/g, " ").trim();
       if (!cle) continue;
       const deja = vus.find((v) => similarite(v.cle, cle) >= SIMILAIRE);
       if (deja) c("H6", "avis", b.source.diapo, s.id, `Énoncé repris de la diapositive ${deja.diapo} : « ${cle.slice(0, 80)} ».`);
@@ -166,19 +178,19 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
       const n = b.source.diapo;
       const texte = [texteDuBloc(b), b.notes].join(" ");
       // H8
-      for (const motif of INACHEVE) {
-        const m = texte.match(motif);
-        if (m) c("H8", "bloquant", n, s.id, `Marqueur « ${m[0]} »${b.masquee ? " (diapositive masquée)" : ""}.`);
+      for (const marqueur of profil.inacheve) {
+        const m = motif(marqueur).trouve(texte);
+        if (m !== null) c("H8", "bloquant", n, s.id, `Marqueur « ${m} »${b.masquee ? " (diapositive masquée)" : ""}.`);
       }
       // H2
       if (!b.masquee && !["glossaire", "schema"].includes(b.figure)) {
         const nb = mots([...b.textes, ...b.pas.map((p) => p.consigne ?? "")].join(" "));
-        if (nb > CHARTE.motsParEcran) c("H2", "avis", n, s.id, `${nb} mots à l'écran.`);
+        if (nb > charte.motsParEcran) c("H2", "avis", n, s.id, `${nb} mots à l'écran.`);
       }
       // H3
       const parCapture = new Map<string, number>();
       for (const p of b.pas) if (p.capture) parCapture.set(p.capture, (parCapture.get(p.capture) ?? 0) + 1);
-      for (const nb of parCapture.values()) if (nb > CHARTE.pastillesParCapture) c("H3", "avis", n, s.id, `${nb} pas sur une même capture : à découper.`);
+      for (const nb of parCapture.values()) if (nb > charte.pastillesParCapture) c("H3", "avis", n, s.id, `${nb} pas sur une même capture : à découper.`);
       // H5
       const d = diapos.get(n);
       const zoomables = b.figure === "pas-a-pas" || b.figure === "capture";

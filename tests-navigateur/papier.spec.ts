@@ -8,6 +8,7 @@ import { qualifierReleve } from "../src/qualification/qualifier";
 import { relever } from "../src/releve/releve";
 import { chargerTheme } from "../src/theme/theme";
 import { deckDEcrans, deckDeCas, deckDeSchema, deckDeTableau, deckDeTextes, deckSynthetique } from "../tests/fixture";
+import { PROFIL } from "../tests/procede";
 
 const theme = chargerTheme("gabarits/theme-onet");
 
@@ -15,7 +16,7 @@ for (const [nom, deck] of [["synthetique", deckSynthetique], ["ecrans", deckDEcr
   test(`imprime le papier « ${nom} » et retrouve chaque ligne attendue dans sa couche texte`, async () => {
     test.setTimeout(60000);
     const { releve, medias } = relever(await deck(), `${nom}.pptx`);
-    const { spec } = qualifierReleve(releve);
+    const { spec } = qualifierReleve(releve, PROFIL);
     const p = await construirePapier(spec, { theme, media: (h) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; } });
     const i = await imprimer(p.html);
     const r = recetter(p.attendus, i.lu.pages);
