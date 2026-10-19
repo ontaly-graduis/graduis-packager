@@ -129,7 +129,30 @@ function etenduesDe(l: Lectures, repli: ReadonlySet<number>): Etendues {
   };
 }
 
-function ligneDe(m: MesureDeDeck, gabarit: string): LigneDeDeck {
+/** La clé d'un nom libre : sans accents, sans ponctuation ni espaces, sans « s » final par mot. */
+const cleDeNom = (v: string) => v.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+  .split(/[^a-z0-9]+/).filter(Boolean).map((m) => m.replace(/s$/, "")).join("");
+
+/**
+ * Les graphies d'une même figure « autre : … » (mesuré : quatre graphies d'un même nom sous la main d'un seul relecteur) se
+ * comptent ensemble, sous la plus fréquente (à égalité, la première dans l'ordre alphabétique).
+ */
+function graphies(mesures: readonly MesureDeDeck[]): Map<string, string> {
+  const parCle = new Map<string, Compte>();
+  for (const m of mesures) for (const v of m.verite?.values() ?? []) {
+    if (!v.startsWith("autre : ")) continue;
+    const k = cleDeNom(v);
+    parCle.set(k, { ...(parCle.get(k) ?? {}), [v]: (parCle.get(k)?.[v] ?? 0) + 1 });
+  }
+  const canon = new Map<string, string>();
+  for (const c of parCle.values()) {
+    const choisie = Object.entries(c).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0]![0];
+    for (const v of Object.keys(c)) canon.set(v, choisie);
+  }
+  return canon;
+}
+
+function ligneDe(m: MesureDeDeck, gabarit: string, canon: ReadonlyMap<string, string>): LigneDeDeck {
   const q = m.qualifications!;
   const figures: Compte = {};
   const signaux: Compte = {};
@@ -146,7 +169,7 @@ function ligneDe(m: MesureDeDeck, gabarit: string): LigneDeDeck {
     const confusions: Compte = {};
     const manquantes: Compte = {};
     for (const [n, x] of q) {
-      const v = m.verite.get(n)!;
+      const v = canon.get(m.verite.get(n)!) ?? m.verite.get(n)!;
       if (!(FIGURES as readonly string[]).includes(v)) plus(manquantes, v);
       if (x.signal === SIGNAL_POSITION) continue;
       if (repli.has(n)) { if (v === "contenu") repliContenu++; else { repliAutre++; plus(confusions, `repli → ${v}`); } }
@@ -164,7 +187,8 @@ function ligneDe(m: MesureDeDeck, gabarit: string): LigneDeDeck {
 
 export function tableauDuCorpus(corpus: Tableau["corpus"], mesures: readonly MesureDeDeck[]): Tableau {
   const gabarits = famillesDeGabarit(mesures);
-  const decks = mesures.flatMap((m, i) => (m.role === "tableau" && m.qualifications ? [ligneDe(m, gabarits[i]!)] : []));
+  const canon = graphies(mesures);
+  const decks = mesures.flatMap((m, i) => (m.role === "tableau" && m.qualifications ? [ligneDe(m, gabarits[i]!, canon)] : []));
   const familles = FAMILLES_DE_DECK.flatMap((famille) => {
     const ls = decks.filter((l) => l.famille === famille);
     if (!ls.length) return [];

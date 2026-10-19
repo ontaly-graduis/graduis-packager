@@ -194,6 +194,15 @@ describe("le tableau comparé", () => {
     expect(t.decks[0]!.etendues).toEqual({ smartart: 1, graphiques: 0, animees: 1, devoilements: 1, selonLaLecture: 1, questions: 1, duplications: 0, potentiel: 3 });
   });
 
+  it("compte ensemble les graphies d'une même figure libre, sous la plus fréquente", () => {
+    const verite = (v: string) => new Map([...qualifs.keys()].map((n) => [n, n === 2 ? v : n === 3 ? "autre : questions métacognitives" : "contenu"]));
+    const deux = tableauDuCorpus(t.corpus, [
+      { ...mesures[0]!, verite: verite("autre : questions métacognitives") },
+      { ...mesures[0]!, nom: "a2.pptx", verite: verite("autre : Questions metacognitive") },
+    ]);
+    expect(deux.familles[0]!.verite!.manquantes).toEqual({ "autre : questions métacognitives": 4 });
+  });
+
   it("range les gabarits en familles, par client", () => {
     expect(t.gabarits).toEqual([{ client: "c1", decks: 2, empreintes: 2, familles: ["G1"] }, { client: "c2", decks: 2, empreintes: 2, familles: ["G2", "G3"] }]);
   });

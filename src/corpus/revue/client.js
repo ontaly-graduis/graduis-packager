@@ -116,7 +116,14 @@ function afficherBande() {
   $("bande").children[etat.i]?.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 
+/** Les noms « autre » déjà saisis dans tout le corpus : proposés à la saisie, pour qu'une figure garde une seule graphie. */
+function afficherAutres() {
+  const noms = [...new Set(etat.donnees.decks.flatMap((d) => d.lignes.map((l) => l.verite)).filter((v) => v.startsWith("autre : ")).map((v) => v.slice(8)))].sort();
+  $("autres").replaceChildren(...noms.map((n) => { const o = document.createElement("option"); o.value = n; return o; }));
+}
+
 function afficher() {
+  afficherAutres();
   afficherDecks();
   afficherChoix();
   afficherBande();
