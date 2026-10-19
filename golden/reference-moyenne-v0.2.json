@@ -1,0 +1,62 @@
+{
+  "nom": "Référence v0.2 — le procédé onet-boost-moyenne sur boost acheteur areprendre v1.pptx",
+  "version": {
+    "tag": "v0.2",
+    "commit": "7446d5f14920eda945a23d7a741bbcaa85f6ce66"
+  },
+  "date": "2026-10-19",
+  "environnement": {
+    "systeme": "darwin arm64",
+    "node": "v22.22.3",
+    "verrou": "sha256:2f1e8cc4fc7f08a6984f13907edf0a69b6f648ec2fae5d03a02d2bd386010697",
+    "playwright-core": "1.64.1",
+    "chromium": "156.0.8078.4",
+    "libreoffice": null,
+    "conversions": "sha256:8fbeba383f67ed511c622fd22dc0b26654a1c5314624ec0bad7936a734d96237"
+  },
+  "deck": {
+    "nom": "boost acheteur areprendre v1.pptx",
+    "empreinte": "sha256:98e27442a4c1aaaf1985333eae0087acd8c9a8d1d905e4e2e2995d8a1caa3ba1",
+    "largeur": 9144000,
+    "hauteur": 5143500,
+    "masques": 2
+  },
+  "cas": {
+    "deck": {
+      "entrees": "le deck seul, sans revue",
+      "validation.pptx": "sha256:ad42097a59bdfc7e3c17dc21cf1edc5d67235700de6cd32e7022d2cea8f77b75",
+      "qualification": {
+        "releve.json": "sha256:6050565c01fdf3f51be06a0610d87f1c4ffe9003710304c26f8bd57db197a6b9",
+        "pivot": "sha256:f42cbbeedf991896a58d7a2f1a746bcbbadf2040c37a291e16f92e87143a2a8e",
+        "rapport.json": "sha256:0bc59634c84b4453bcceb0d71a5af8f22c524e329967f827dc7201e28cd67861",
+        "rapport.html": "sha256:6eb3650a9485bcc6f1ca2dcc14fffe99c299141b64750f93c6e42aafac04efee"
+      },
+      "journee": {
+        "refusee": [
+          "diapo 2 · H8 · Marqueur « A supprimer » (diapositive masquée).",
+          "diapo 16 · H8 · Marqueur « XXX ».",
+          "diapo 24 · H8 · Marqueur « Insérer ».",
+          "diapo 146 · H8 · Marqueur « XXX ».",
+          "diapo 159 · H8 · Marqueur « A rédiger »."
+        ],
+        "code": 1
+      },
+      "s030": {
+        "ppt": "sha256:ad42097a59bdfc7e3c17dc21cf1edc5d67235700de6cd32e7022d2cea8f77b75",
+        "pivot": "sha256:f42cbbeedf991896a58d7a2f1a746bcbbadf2040c37a291e16f92e87143a2a8e",
+        "sorties": {
+          "salle-s030.html": "sha256:304d7824553387b552c60abbac07232a3a48b02d0ee584cd38d57f7b3ebd3e28",
+          "participant-s030.pdf": {
+            "texte": "sha256:07045e96c773712b24587136114cd3dfb54fb67b5380885647da6b2981c6c7e4",
+            "pages": 26,
+            "recette": "304/304"
+          },
+          "animation-s030.pptx": "sha256:6fba96d4ab252dc723e111031e670fca17d5ff9046130a49936bce5122283602",
+          "rapport.html": "sha256:6eb3650a9485bcc6f1ca2dcc14fffe99c299141b64750f93c6e42aafac04efee"
+        },
+        "rapport.json": "sha256:0bc59634c84b4453bcceb0d71a5af8f22c524e329967f827dc7201e28cd67861",
+        "ecarts": 0
+      }
+    }
+  }
+}

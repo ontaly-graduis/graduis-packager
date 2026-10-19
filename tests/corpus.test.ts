@@ -12,12 +12,13 @@ import { diagnostiquer, type Rapport } from "../src/diagnostic/regles";
 import { GEOMETRIES } from "../src/dessin/geometries";
 import { emettre } from "../src/emission/emettre";
 import { lire } from "../src/lecture/lire";
-import { SeanceSpec, blocsDe } from "../src/pivot/seance-spec";
+import { SeanceSpec, activitesDe, blocsDe, estActivite } from "../src/pivot/seance-spec";
 import { chargerTheme } from "../src/theme/theme";
 import { construirePapier } from "../src/papier/construire";
 import { chromiumDisponible, imprimer, versionDuNavigateur } from "../src/papier/imprimer";
 import { versionDeLibreOffice } from "../src/medias/convertir";
 import { rejouer } from "../src/procede/rejouer";
+import { activitesDuProcede, chargerProcede } from "../src/procede/procede";
 import { CADRE, ONET, PROFIL } from "./procede";
 
 const DECK = process.env.PKG_CORPUS ?? "docs/sources/boost acheteur areprendre v1.pptx";
@@ -208,7 +209,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     expect(s030.donnees.extrait).toMatch(/^Séquence 6 · /);
   });
 
-  it("rejoue le procédé ONET : la journée sans revue refusée par H8, la séquence 30 aux empreintes de la référence v0 (GEN-1)", async () => {
+  it("rejoue le procédé ONET : la journée sans revue refusée par H8, la séquence 30 aux empreintes de sa référence (v0.2)", async () => {
     const sortie = mkdtempSync(join(tmpdir(), "rejeu-"));
     const moteurs = { chromium: await versionDuNavigateur(), libreoffice: versionDeLibreOffice() };
     const journee = await rejouer(ONET, { deck: DECK, sortie, moteurs });
@@ -217,5 +218,24 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     const s030 = await rejouer(ONET, { deck: DECK, sequences: ["s030"], sortie, moteurs, ...(await chromiumDisponible() ? { imprimer } : {}) });
     expect(s030.comparaisons.filter((c) => c.attendue !== c.obtenue)).toEqual([]);
     expect([s030.ecart.chaine.inventes, s030.ecart.chaine.inversions, s030.ecart.franchies]).toEqual([[], 0, []]);
+  }, 300_000);
+
+  it("active la séquence 30 en moyenne (ACT-1) : trois activités proposées, relues sans écart sur les 166 diapositives, rejouées à leur référence", async () => {
+    const moyenne = chargerProcede("procedes/onet-boost-moyenne.json");
+    const durees = activitesDuProcede(moyenne.procede)!;
+    const pivot0 = qualifierReleve(releve, PROFIL, durees).spec;
+    const s030 = pivot0.sequences.find((q) => q.id === "s030")!;
+    expect(s030.blocs.filter(estActivite).map((a) => `${a.id} ${a.derivation} ← ${a.derive_de}`)).toEqual(["a031 etapes-a-replacer ← b031", "a032 qui-fait-quoi ← b032", "a058 rappel ← b058"]);
+    expect(activitesDe(pivot0)).toHaveLength(8);
+    const { medias } = relever(octets, NOM);
+    const pptx = emettre(pivot0, { theme: ONET.theme, gestes: true, media: (h) => { const x = medias.get(h); return x ? { ext: x.ext, octets: x.octets, px: releve.medias[h]?.px ?? null } : undefined; } });
+    const { spec: relu, ecarts } = lire(pptx, PROFIL, durees);
+    expect(ecarts).toEqual([]);
+    expect(stringify2(relu)).toBe(stringify2(pivot0));
+    const sortie = mkdtempSync(join(tmpdir(), "rejeu-moyenne-"));
+    const moteurs = { chromium: await versionDuNavigateur(), libreoffice: versionDeLibreOffice() };
+    const r = await rejouer(moyenne, { deck: DECK, sequences: ["s030"], sortie, moteurs, ...(await chromiumDisponible() ? { imprimer } : {}) });
+    expect(r.comparaisons.filter((c) => c.attendue !== c.obtenue)).toEqual([]);
+    expect([r.ecart.franchies, r.ecart.livrees.activites.length, r.ecart.livrees.activites.flatMap((a) => a.inventes)]).toEqual([[], 8, []]);
   }, 300_000);
 });

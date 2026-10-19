@@ -6,7 +6,7 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 
 **Les indicateurs du chantier** : part des diapositives décidées aux étages 1 et 2 · heures humaines par deck, par sensibilité · coût IA par deck · taux d'acceptation par acte · écart à la source, par sensibilité · temps d'embarquement d'une famille de gabarit · mots inventés dans les activités dérivées (cible : zéro).
 
-**La référence** : celle du procédé ONET, `golden/reference-v0.1.json` (tag `v0.1`, depuis MV-1 ; `golden/reference-v0.json` et le tag `v0` restent, comme trace) — les empreintes de la chaîne sur le deck acheteur (le deck reste hors dépôt). Chaque session qui touche à la chaîne rejoue le procédé ONET contre elle (I-PKG-18), ou monte de version : rejeu, diff, décision, `rejouer --nouvelle-reference`, nouveau tag.
+**La référence** : celle du procédé ONET, `golden/reference-v0.2.json` (tag `v0.2`, depuis ACT-1 ; `reference-v0.1.json`, `reference-v0.json` et leurs tags restent, comme trace) — les empreintes de la chaîne sur le deck acheteur (le deck reste hors dépôt) ; celle du procédé dupliqué en moyenne, `golden/reference-moyenne-v0.2.json`. Chaque session qui touche à la chaîne rejoue le procédé ONET contre elle (I-PKG-18), ou monte de version : rejeu, diff, décision, `rejouer --nouvelle-reference`, nouveau tag.
 
 ---
 
@@ -57,20 +57,19 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 
 ---
 
-## ACT-1 · Sensibilité moyenne : activités dérivées, modes projeté et papier
+## ACT-1 · Sensibilité moyenne : activités dérivées, modes projeté et papier — Sortie atteinte le 19/10
 
-**Livrer** : les dérivations sans invention (§ 5.3), la régie, les fiches et cartons du livret, les dispositions `G · geste` ; `graduis/seance-spec@1` (sources, durée, blocs `activite`) ; les bornes de la moyenne.
+**Livré** : `graduis/seance-spec@1` — l'activité pointe (`derivation`, `derive_de`, `duree`), le geste se dérive de la dérivation, le repli du geste ; cinq dérivations sans invention (`src/activites/` : rappel, étapes à replacer, qui fait quoi, ordre des pas, où cliquez-vous), au mélange déterministe ; en moyenne, la chaîne propose les dérivations sans choix (étapes clés, schéma partitionné par étapes, processus) ; le PPT d'auteur porte une disposition par geste (dès la moyenne seulement), l'activité telle qu'elle se jouera, son corrigé en notes, sa durée, et la relit — ajoutée à la main après sa source, retouchée (signalée, non reprise), sa source modifiée (elle suit), supprimée (elle disparaît) ; la salle les joue en deux temps, la régie au clavier (1–9, ⌫, Échap) et à la télécommande, le présentateur lit corrigé, touches et état ; le livret porte la fiche de chacune (zone d'écriture, liste à numéroter, tableau à cocher, capture à entourer), recettée ; l'écart borne la moyenne et compte activités et minutes ; le procédé `onet-boost-moyenne` (dupliqué d'`onet-boost`) et sa référence ; `onet-boost` monté en v0.2.
 
-**À trancher au démarrage**
-- Le passage de `seance-spec@0` à `@1` sans casser le procédé ONET : le procédé reste-t-il épinglé sur `@0` (rejeu à l'octet), ou monte-t-il de version avec un diff accepté ?
-- Le rôle « cible » de la Sélection sur image : présent dans le contrat `RegionMap`, ou à y ajouter (le pas-à-pas emploie `observe`) ?
-- Les trois activités dérivées de la séquence de démonstration, et leur repli papier.
-- La tolérance de durée de la moyenne (Arb-7 : ± 10 % ?).
-- La régie : touches de comptage (1 à 4), minuteur, dévoilement du corrigé ; ce que voit le présentateur.
-- Le nom du pivot v1 (Arb-9).
+**Tranché le 19/10** : le procédé ONET monte de version, la démonstration se joue sur un procédé dupliqué ; le rôle « cible » est `act` en régime `find` ; les activités de la démonstration et leur repli ; la durée des activités maintenant, celle de la séance avec le déroulé ; la chaîne propose, la main ajoute ; la régie ; `seance-spec@1` ; ce qui reste hors du pivot (I-OCKHAM).
 
-**Sortie**
-- La séquence de démonstration jouée en salle avec au moins trois activités dérivées ; zéro mot inventé ; le repli papier de chacune.
+**Sortie** (139 témoins Vitest et 25 Playwright, verts)
+- La séquence de démonstration jouée en salle avec quatre activités dérivées : étapes à replacer (diapositive 31, Classement de 9 étapes), qui fait quoi (diapositive 32, Catégorisation sur la colonne Outil — Oracle, DocuSign —, l'Acteur ne départageant pas), rappel des étapes clés (avant la diapositive 58), proposées par la chaîne, et un « où cliquez-vous ? » ajouté à la main après la diapositive 36 ; la régie jouée au clavier et à la télécommande (Chromium : saisies, corrigé juste ou faux, présentateur).
+- **Zéro mot inventé** : mesuré sur les huit activités de la journée (43 minutes) et sur ce que la salle affiche (témoin navigateur : aucun mot hors de la source et de l'habillage).
+- **Le repli papier de chacune** : la fiche au livret, imprimée par Chromium, recettée (s030 : 26 pages, 310 lignes sur 310).
+- L'aller-retour des activités sur les 166 diapositives : `lire(émettre(pivot₀)) ≡ pivot₀`, sans écart (I-PKG-3).
+- `onet-boost` en v0.2 : relevé, PPT de validation et d'animation, couche texte du PDF identiques à v0.1 ; le pivot ne change que par le libellé de son schéma, les rapports par l'empreinte du pivot qu'ils citent, la salle par son lecteur (script, et 52 règles de feuille ajoutées, aucune retirée) ; les quatre cas conformes à `reference-v0.2.json`.
+- Non couvert, nommé : la séance jouée par un animateur devant une salle (la démonstration chez ONET) ; la durée de la séance et sa borne (ACT-2) ; positionnement et terme ↔ définition (ACT-2) ; les cartons A–D (avec la première Sélection) ; une activité réécrite dans PowerPoint (l'activité fixée, avec `contenu`) ; plus de neuf éléments à saisir au clavier.
 
 ---
 
@@ -154,6 +153,12 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 - Les seuils de départ (Arb-7) : H10 (15 minutes ?), la tolérance de H13.
 - La posture par défaut de la prise (`didactic` ou `facilitator`) et son chrome.
 - Les deux decks de la mesure.
+- **La durée de la séance** (reportée d'ACT-1, décision du 19/10) : elle entre au pivot avec la source qui la porte — le déroulé (§ 4.2), d'où `sources` —, et avec elle la borne de durée de la moyenne (± 10 % proposé) ; ONET ne la dit qu'en texte (« Durée : 2 jours • Horaires : 9h – 17h ») : la lire en proposition, ou attendre le déroulé ? Combien de minutes vaut une journée ?
+- **Les dérivations reportées d'ACT-1** : positionnement (les objectifs, en ouverture et en clôture : le comptage 1–4 de la régie, la place de la clôture) ; terme ↔ définition (un glossaire structuré : ONET l'écrit en alternance terme / définition, sans structure lue).
+- **Les dérivations d'un pas-à-pas** : H10 choisira lequel activer ; « dans quel ordre ? » ne vaut que pour des pas qui sont des actions — beaucoup de pas ONET décrivent des zones de l'écran (b034 : « Barre de recherche et filtres… ») : une règle, ou le choix humain ?
+- **La place du rappel** (H11) : la chaîne le pose avant ses étapes clés, qui redisent ensuite la liste que son corrigé vient de dévoiler ; le garder, ou faire du rappel le dévoilement même des étapes clés ?
+- **L'activité fixée** : `contenu` au pivot (activités générées, et activité réécrite dans PowerPoint, que `lire` signale aujourd'hui sans la reprendre).
+- **Les cartons A–D** du livret, avec la première Sélection (vrai / faux à distracteurs ✦, ou quiz hérité de GEN-2) ; et la dérogation de mode (projeté / papier) par activité, sans appelant en ACT-1.
 
 **Sortie**
 - Taux d'acceptation des activités proposées, mesuré sur deux decks.

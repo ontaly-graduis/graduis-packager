@@ -338,7 +338,8 @@ async function rejouerCommande(p: ProcedeCharge, deck: string, revue: string | u
     ...(r.versions.length ? ["versions en écart (la conformité se juge aux empreintes) :", ...r.versions.map((v) => `  ${v.quoi} : ${v.trouvee ?? "absent"} au lieu de ${v.attendue ?? "absent"}`)] : ["versions : celles du procédé"]),
     ...r.comparaisons.map((c) => (c.attendue !== null && c.attendue === c.obtenue ? `  identique  ${c.quoi}` : `  DIFFÉRENT  ${c.quoi} : ${c.obtenue ?? "absent"} au lieu de ${c.attendue ?? "(pas de référence)"}`)),
     ...(r.refus.length ? [`livraison refusée (${r.refus.length}) :`, ...r.refus.map((x) => `  ${x}`)] : []),
-    `écart à la source : chaîne ${r.ecart.chaine.inventes.length} mot(s) inventé(s), ${r.ecart.chaine.inversions} inversion(s) ; revue ${r.ecart.revue.inventes.length} mot(s) nouveau(x), ${r.ecart.revue.retirees.length} diapositive(s) retirée(s)`,
+    `écart à la source : chaîne ${r.ecart.chaine.inventes.length} mot(s) inventé(s), ${r.ecart.chaine.inversions} inversion(s) ; revue ${r.ecart.revue.inventes.length} mot(s) nouveau(x), ${r.ecart.revue.retirees.length} diapositive(s) retirée(s)`
+      + (r.ecart.livrees.activites.length ? ` ; activités : ${r.ecart.livrees.activites.length} livrée(s), ${r.ecart.livrees.minutes} minutes, ${r.ecart.livrees.activites.reduce((n, a) => n + a.inventes.length, 0)} mot(s) inventé(s)` : ""),
     ...(nouvelleReference ? [`empreintes obtenues écrites dans ${nouvelleReference} (${r.cas} · ${r.extrait})`] : []),
     r.conforme ? `conforme à la référence (${r.comparaisons.length} empreintes identiques)` : `NON CONFORME : ${r.comparaisons.filter((c) => c.attendue === null || c.attendue !== c.obtenue).length} écart(s) à la référence — monter de version est un acte (rejeu, diff, décision)`,
   ];
