@@ -1,0 +1,87 @@
+<!doctype html>
+<!-- La page de revue de la vérité de terrain (GEN-0) : decks, diapositive rendue, figure des règles, choix de la vérité. -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revue des figures</title>
+<style>
+  :root {
+    --fond: #f4f3ef; --carte: #ffffff; --encre: #1d1d1b; --doux: #6b6a66; --trait: #dcdad3;
+    --accent: #1f5fa8; --accent-pale: #e3edf8; --juste: #2e7d4f; --corrige: #b5651d; --nonvu: #c9c7bf; --alerte: #a3261a; --sur-accent: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; background: var(--fond); color: var(--encre); }
+  header { display: flex; align-items: baseline; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--trait); background: var(--carte); }
+  header h1 { font-size: 16px; margin: 0; }
+  header .progres { color: var(--doux); }
+  header .aide { margin-left: auto; color: var(--doux); font-size: 12px; }
+  kbd { font: 11px ui-monospace, monospace; border: 1px solid var(--trait); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--carte); }
+  main { display: grid; grid-template-columns: 230px 1fr 300px; gap: 12px; padding: 12px 16px; height: calc(100vh - 46px - 64px); }
+  aside, section { background: var(--carte); border: 1px solid var(--trait); border-radius: 8px; overflow: auto; }
+  #decks { padding: 6px; }
+  .deck { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 8px; border-radius: 6px; cursor: pointer; color: inherit; font: inherit; }
+  .deck:hover { background: var(--fond); }
+  .deck.actif { background: var(--accent-pale); }
+  .deck .nom { display: block; font-weight: 600; overflow-wrap: anywhere; }
+  .deck .info { display: block; color: var(--doux); font-size: 12px; }
+  .barre { height: 4px; background: var(--trait); border-radius: 2px; margin-top: 4px; overflow: hidden; }
+  .barre > i { display: block; height: 100%; background: var(--juste); }
+  #scene { display: flex; flex-direction: column; padding: 12px; gap: 8px; }
+  #cadre { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; background: var(--fond); border-radius: 6px; }
+  #cadre canvas { max-width: 100%; max-height: 100%; box-shadow: 0 1px 4px rgb(0 0 0 / 0.2); background: var(--sur-accent); }
+  #cadre.charge canvas { opacity: 0.35; transition: opacity 0.2s; }
+  #cadre .vide { color: var(--doux); padding: 24px; text-align: center; }
+  #legende { display: flex; gap: 12px; align-items: baseline; }
+  #legende .n { font-weight: 600; white-space: nowrap; }
+  #legende .titre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #choix { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .regles { background: var(--fond); border-radius: 6px; padding: 8px; }
+  .regles .signal { color: var(--doux); font-size: 12px; }
+  .groupe h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--doux); margin: 4px 0; }
+  .figures { display: flex; flex-wrap: wrap; gap: 4px; }
+  .figure { border: 1px solid var(--trait); background: var(--carte); color: inherit; border-radius: 14px; padding: 3px 10px; cursor: pointer; font: inherit; font-size: 13px; }
+  .figure:hover { border-color: var(--accent); }
+  .figure.proposee { border-style: dashed; border-color: var(--doux); }
+  .figure.choisie { background: var(--accent); border-color: var(--accent); color: var(--sur-accent); }
+  .figure.cachee { display: none; }
+  input[type=text] { width: 100%; font: inherit; padding: 5px 8px; border: 1px solid var(--trait); border-radius: 6px; }
+  #filtre:not(:placeholder-shown) { border-color: var(--accent); }
+  button.action { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--sur-accent); cursor: pointer; }
+  button.action.secondaire { background: var(--carte); color: var(--accent); }
+  button.action:disabled { opacity: 0.4; cursor: default; }
+  .erreur { color: var(--alerte); font-size: 12px; min-height: 1em; }
+  footer { height: 64px; padding: 6px 16px; overflow-x: auto; white-space: nowrap; }
+  .case { display: inline-block; width: 14px; height: 22px; margin-right: 2px; border-radius: 3px; background: var(--nonvu); cursor: pointer; vertical-align: top; }
+  .case.vue { background: var(--juste); }
+  .case.corrigee { background: var(--corrige); }
+  .case.courante { outline: 2px solid var(--accent); outline-offset: 1px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="titre">Revue des figures</h1>
+  <span class="progres" id="progres"></span>
+  <span class="aide"><kbd>→</kbd> ou <kbd>Entrée</kbd> confirmer · <kbd>←</kbd> précédente · taper pour filtrer les figures, <kbd>Entrée</kbd> choisir · <kbd>Échap</kbd> effacer · <kbd>N</kbd> prochaine non vue</span>
+</header>
+<main>
+  <aside id="decks"></aside>
+  <section id="scene">
+    <div id="cadre"><div class="vide">Chargement…</div></div>
+    <div id="legende"><span class="n" id="numero"></span><span class="titre" id="titre-diapo"></span></div>
+  </section>
+  <aside id="choix">
+    <div class="regles"><div>Les règles proposent : <strong id="proposee"></strong></div><div class="signal" id="signal"></div></div>
+    <input type="text" id="filtre" placeholder="Filtrer les figures…" autocomplete="off">
+    <div class="groupe"><h2>Les quinze figures</h2><div class="figures" id="figures"></div></div>
+    <div class="groupe"><h2>Candidates (§ 4.5)</h2><div class="figures" id="candidates"></div></div>
+    <div class="groupe"><h2>Autre</h2><input type="text" id="autre" list="autres" placeholder="Nom de la figure, puis Entrée" autocomplete="off"><datalist id="autres"></datalist></div>
+    <div class="groupe"><h2>Note</h2><input type="text" id="note" placeholder="Facultative" autocomplete="off"></div>
+    <div class="erreur" id="erreur"></div>
+    <button class="action" id="revu" disabled>Marquer ce deck revu</button>
+  </aside>
+</main>
+<footer id="bande"></footer>
+<script type="module" src="/client.js"></script>
+</body>
+</html>

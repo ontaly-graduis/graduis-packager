@@ -38,22 +38,22 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 
 ---
 
-## GEN-0 · Corpus d'épreuve
+## GEN-0 · Corpus d'épreuve — Sortie atteinte le 19/10
 
 **Livrer** : 8 à 10 decks hors ONET, d'au moins trois gabarits et trois familles (procédural logiciel, comportemental, réglementaire ou métier) ; le relevé étendu (SmartArt, graphiques natifs, ordre des animations, paires question → réponse) ; un tableau comparé.
 
-**À trancher au démarrage**
-- La provenance des decks (Ontaly, clients passés avec leur accord, supports publics) et l'accord écrit qu'il faut ; leur lieu (hors dépôt, I-PKG-9).
-- Les exports Google Slides, Keynote et Canva à inclure, et sur quels decks.
-- La vérité de terrain : qui dit la figure juste d'une diapositive, pour mesurer la part décidée par les seules règles génériques ; et ce qu'est une diapositive « décidée » (le repli `contenu` — « aucune règle particulière » — n'en est pas une ; la couverture par sa seule position ?).
-- **Le profil et le procédé de mesure** (révélé par GEN-1) : qualifier un deck exige un profil — ses dispositions, mais aussi la projection des couleurs, sans laquelle un schéma ne se dessine pas — et diagnostiquer, une charte et un thème. Un profil neutre (aucune disposition ; quels seuils de projection : ceux d'ONET repris comme défaut Graduis, ou réglés sur le corpus ?), une charte Graduis par défaut (§ 4.8), et pour les pages de travail un thème — le thème neutre Graduis n'existe pas encore (§ 4.7, THM-1).
-- **Le relevé étendu sans casser le rejeu ONET** : un champ de plus au relevé (SmartArt, graphiques, ordre des animations) change l'empreinte de `releve.json`, que porte la référence v0.1. `graduis/releve@1` et une montée de version (rejeu, diff, décision), ou les lectures étendues à côté du relevé, dans un fichier distinct ?
-- Les figures candidates au cercle de référence (§ 4.5) que le tableau doit compter.
+**Livré** : le corpus, hors dépôt (`docs/sources/corpus/`, manifeste `graduis/corpus@0`, decks et profil épinglés) — dix decks au tableau (473 diapositives), cinq gabarits, six clients ou éditeurs : six supports d'Ontaly (comportemental : « Conduire les transformations » ×4, « Design thinking » J1, « Coopération ») et quatre supports publics (procédural logiciel : deux ateliers de l'ANCT, Zotero à l'École du Louvre ; métier : prévention des infections du CDC), plus deux decks (« Design thinking » J2, J3) pour l'hypothèse des gabarits ; le profil neutre (`gabarits/profil-neutre.json`) ; les lectures étendues (`src/corpus/lectures.ts`, `graduis/lectures@0`, à côté du relevé, qui ne change pas) ; la vérité de terrain, un tableur par deck, préremplie, et sa page de revue (`corpus revoir` : chaque diapositive rendue par PowerPoint, un geste par figure) ; le tableau comparé (`graduis/tableau-corpus@0`, JSON et Markdown) ; `packager corpus preparer|mesurer <corpus.json>`.
 
-**Sortie**
-- Part des diapositives décidées par les seules règles génériques, par famille.
-- Figures manquantes nommées et comptées.
-- L'hypothèse « peu de gabarits par client » confrontée.
+**Tranché le 18 et le 19/10** : la provenance et le lieu du corpus ; aucun export Google Slides, Keynote ou Canva ; la vérité de terrain et ce qu'est une diapositive décidée ; la mesure hors chaîne (profil neutre, lectures dans un fichier à part, ni procédé, ni thème, ni charte) ; les supports publics retenus ; la paire de diapositives et la famille de gabarit ; la page de revue ; les graphies d'une figure libre comptées ensemble.
+
+**Sortie** (124 témoins Vitest et 20 Playwright, verts ; la vérité de terrain revue par David sur les 473 diapositives, 227 corrigées)
+- **Part décidée par les seules règles génériques** (profil neutre), et ce qu'en dit la vérité : procédural logiciel 64/150 décidées (42,7 %), 46 justes (30,7 % du deck, 71,9 % des décisions) ; comportemental 127/301 (42,2 %), 27 justes (9 %, 21,3 %) ; métier 0/22. Sur tout le corpus, 73 diapositives sur 473 sont décidées et justes (15 %). Le signal « capture sans pastille » fait l'essentiel des décisions et des erreurs : juste à 71 % en procédural logiciel, à 14 % en comportemental (des photos et des illustrations), sans que le format de l'image départage.
+- **Figures manquantes, nommées et comptées** : `consigne-atelier` ×59 (dans les trois familles, une fois écrite « autre : consignes d'ateliers »), `graphique` ×11 (des images de graphiques ; aucun graphique natif), « questions d'introspection / métacognitives » ×8 (hors des candidates du § 4.5, quatre graphies), « points clés » ×3, `video` ×3 ; aucune citation, chiffre clé, comparaison, chronologie, quiz ni programme dans ce corpus. Et des figures connues que rien ne décide : 58 transitions (aucune décidée, faute de profil), 13 objectifs (dont 11 laissés au repli).
+- **L'hypothèse « peu de gabarits par client », confrontée** : chaque client garde une seule famille de gabarit (« Conduire les transformations » : 4 decks, 3 empreintes ; « Design thinking » : 3 decks, 3 empreintes ; ANCT : 2 decks, 1 empreinte), mais l'empreinte exacte change d'un deck à l'autre. Les decks partis du modèle Office par défaut n'ont pas de gabarit propre.
+- **Deux suppositions du § 12, confrontées** : « hors du procédural logiciel, les règles génériques décident assez » — non (9 % de décidées et justes en comportemental, 0 en métier) ; « les decks d'un client se rangent en peu de familles » — oui, sur ce petit corpus.
+- **La vérité de terrain elle-même hésite** : « Je ne suis pas entièrement satisfait de ma qualification / contre-proposition […] le problème de beaucoup de supports de formation c'est qu'ils ne sont pas qualifiés sémantiquement » (David). 207 diapositives sur 473 (44 %) restent du `contenu`, sans figure qui les dise.
+- Lectures étendues : aucun SmartArt ni graphique natif ; des animations presque seulement dans « Design thinking » J1 (45 diapositives se dévoilent en deux temps ou plus, 41 dans l'ordre de lecture) ; 11 paires question → réponse et 18 dévoilements par duplication dans les ateliers de l'ANCT.
+- Non couvert, nommé : les exports Google Slides, Keynote et Canva ; le réglementaire (un seul deck métier) ; SmartArt et graphiques natifs, absents du corpus ; les deux diapositives masquées de J1, absentes du rendu PDF (revues dans PowerPoint).
 
 ---
 
@@ -115,6 +115,9 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 - Le catalogue (Arb-6) : trois cercles (référence, client, projet), ou un catalogue fermé.
 - Le contrat d'un module de figure (pivot, émission, lecture, salle, papier, diagnostics) et où vivent les figures d'un cercle client (`cas` et `tableau` d'ONET).
 - Les médias lourds (Arb-8), si `video` entre au catalogue : embarquer, lier, ou poser à côté.
+- **Les lectures étendues au relevé** (révélé par GEN-0) : `graduis/lectures@0` vit à côté du relevé, hors de la chaîne. Quand une règle les lit (ordre des animations → partition d'un contenu ; paire question → réponse → `quiz` ; SmartArt → schéma sans deviner ; graphique natif → `graphique`), entrent-elles au relevé (`releve@1`, montée de version du procédé ONET) ou restent-elles un fichier compagnon épinglé ?
+- **Les figures que GEN-0 révèle** : `consigne-atelier` (59, dans les trois familles) en tête ; `graphique` (11, des images de graphiques à redessiner, pas des graphiques natifs) ; « questions d'introspection / métacognitives » (8, hors des candidates) ; « points clés » (3 : une figure, ou des `etapes-cles` sans leur disposition ?) ; `video` (3). Lesquelles entrent au cercle de référence, et celles que ce corpus n'a jamais vues (citation, chiffre clé, comparaison, chronologie, quiz, programme) y restent-elles candidates ?
+- **Le dévoilement par duplication** (révélé par GEN-0) : une chaîne de diapositives qui se reprennent en ajoutant chacune un élément (ateliers de l'ANCT) est-elle un seul bloc partitionné, comme une animation, ou autant de blocs ?
 
 **Sortie**
 - I-PKG-3 sur tout le corpus d'épreuve.
@@ -130,6 +133,11 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 - Les seuils de confiance de chaque étage (Arb-7).
 - Le format du registre et des mémos (clé : entrée canonique, prompt versionné, modèle), et leur place dans le procédé.
 - Le plafond de budget par lot (G-6).
+- **Le rattachement d'un deck à son profil** (révélé par GEN-0) : l'empreinte exacte du gabarit (§ 4.3) ne tient pas d'un deck à l'autre d'un même client (4 decks, 3 empreintes ; 3 decks, 3 empreintes). Rattacher par ressemblance (noms de dispositions et images des masques, comme le tableau comparé), et à quel seuil ?
+- **Le signal « capture sans pastille »** (révélé par GEN-0) : il décide 156 des 191 diapositives décidées du corpus ; juste à 71 % en procédural logiciel, à 14 % en comportemental, sans que le format de l'image départage. Le réserver au procédural (par la famille du profil), ou en laisser la décision à l'étage 3 ?
+- **Des règles génériques que la vérité de GEN-0 suggère** : la disposition d'en-tête de section (noms Office, français et anglais) → `transition` aurait trouvé 32 des 58 transitions, avec 15 erreurs ; « objectif » dans le titre → `objectifs`, 5 justes pour 1 erreur. À l'étage 2, à l'étage 1 d'un profil par défaut, ou à l'étage 3 ? (Mesurées sur le corpus qui les suggère : à revalider sur d'autres decks.)
+- **Une vérité de terrain qui hésite** (GEN-0) : un seul relecteur, insatisfait de sa propre qualification, et 44 % de `contenu`. L'éval de qualification se fait-elle à deux relecteurs (accord mesuré), et que vaut une décision contre une vérité incertaine ?
+- **La projection des couleurs par défaut** : le profil neutre reprend celle d'ONET ; la confirmer comme défaut Graduis ou la régler sur le corpus d'épreuve.
 
 **Sortie**
 - Une famille nouvelle profilée en une demi-journée humaine.

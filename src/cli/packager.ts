@@ -1,6 +1,6 @@
 // CLI du packager — relever, qualifier, émettre le PPT de validation, le lire, construire la salle, le papier ; préparer
-// la revue chronométrée, livrer, comparer deux livraisons ; rejouer un procédé contre sa référence. Tout ce qui fait une
-// production (profil, thème, charte, prise) vient du procédé (`--procede`) : le code ne nomme aucun client.
+// la revue chronométrée, livrer, comparer deux livraisons ; rejouer un procédé contre sa référence ; mesurer le corpus d'épreuve.
+// Tout ce qui fait une production (profil, thème, charte, prise) vient du procédé (`--procede`) : le code ne nomme aucun client.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join } from "node:path";
 import { sha256, stringify2 } from "../lib/json";
@@ -26,6 +26,11 @@ import { planche } from "../livraison/planche";
 import type { Releve } from "../releve/releve";
 import { chargerProcede, type ProcedeCharge } from "../procede/procede";
 import { rejouer } from "../procede/rejouer";
+import { chargerCorpus } from "../corpus/corpus";
+import { mesurerCorpus, veritesAPreparer } from "../corpus/mesure";
+import { tableauEnMarkdown } from "../corpus/tableau";
+import { servirRevue } from "../corpus/revue";
+import { rendreParPowerPoint } from "../corpus/rendus";
 
 /** Relève un deck et écrit `releve.json` et les médias hashés dans le dossier de sortie. */
 function ecrireReleve(deck: string, sortie: string | undefined) {
@@ -337,6 +342,44 @@ async function rejouerCommande(p: ProcedeCharge, deck: string, revue: string | u
   if (!r.conforme) process.exit(1);
 }
 
+/**
+ * Le corpus d'épreuve (GEN-0), hors chaîne : `preparer` écrit les tableurs de vérité manquants (jamais ceux qui existent) ;
+ * `mesurer` écrit les lectures étendues de chaque deck et le tableau comparé ; `revoir` sert la page de revue de la vérité,
+ * les diapositives rendues en PDF par PowerPoint (une fois, dans le dossier de la mesure).
+ */
+function corpusCommande(action: string, manifeste: string, sortie: string | undefined, port: number): void {
+  const c = chargerCorpus(manifeste);
+  if (action === "revoir") {
+    const dossier = sortie ?? join("out", "corpus", c.corpus.nom);
+    servirRevue(c, manifeste, { dossier, rendre: rendreParPowerPoint }).listen(port, "127.0.0.1", () => {
+      console.log(`# Corpus ${c.corpus.nom} — revue des figures sur http://localhost:${port} (Ctrl-C pour arrêter)\nRendus PDF dans ${dossier}/rendus/ ; PowerPoint ouvre et referme les decks qui n'en ont pas encore.`);
+    });
+    return;
+  }
+  if (action === "preparer") {
+    const aEcrire = veritesAPreparer(c);
+    for (const { deck, contenu } of aEcrire) writeFileSync(deck.verite, contenu);
+    const gardes = c.decks.filter((d) => d.deck.role === "tableau" && !aEcrire.some((x) => x.deck === d));
+    console.log([
+      `# Corpus ${c.corpus.nom} — vérité de terrain`,
+      ...aEcrire.map(({ deck }) => `écrit ${deck.verite}`),
+      ...gardes.map((d) => `gardé ${d.verite}`),
+      "Corriger la colonne « verite » là où les règles se trompent, puis passer le deck à « verite »: \"revue\" dans le manifeste.",
+    ].join("\n"));
+    return;
+  }
+  const { tableau, lectures } = mesurerCorpus(c);
+  const dossier = sortie ?? join("out", "corpus", c.corpus.nom);
+  for (const [nom, l] of lectures) {
+    mkdirSync(join(dossier, basename(nom, extname(nom))), { recursive: true });
+    writeFileSync(join(dossier, basename(nom, extname(nom)), "lectures.json"), stringify2(l));
+  }
+  writeFileSync(join(dossier, "tableau.json"), stringify2(tableau));
+  const md = tableauEnMarkdown(tableau);
+  writeFileSync(join(dossier, "tableau.md"), md);
+  console.log(md + `\n→ ${dossier}/tableau.md, tableau.json et les lectures de ${lectures.size} deck(s)`);
+}
+
 const [commande, ...args] = process.argv.slice(2);
 const option = (nom: string) => {
   const i = args.indexOf(nom);
@@ -376,7 +419,9 @@ else if (commande === "salle" && args[0]) {
   diffCommande(args[0], args[1], option("--sortie"), procede());
 } else if (commande === "rejouer" && args[0] && args[1] && !args[1].startsWith("--")) {
   await rejouerCommande(chargerProcede(args[0]), args[1], option("--revue"), option("--sortie"), sequences, option("--nouvelle-reference"));
+} else if (commande === "corpus" && (args[0] === "preparer" || args[0] === "mesurer" || args[0] === "revoir") && args[1]) {
+  corpusCommande(args[0], args[1], option("--sortie"), Number(option("--port") ?? 4810));
 } else {
-  console.error("usage : packager relever|qualifier|emettre|lire|salle|papier|revue|livrer <deck.pptx | validation.pptx> --procede <procédé> | imprimer <papier.html> | diff <livraison> <livraison> --procede <procédé> | planche <deck> <livraison> --procede <procédé> | rejouer <procédé> <deck.pptx> [--revue <validation revue.pptx>] [--sortie <dossier>] [--sequences s030,…] [--nouvelle-reference <golden/…json>] [--devoilement pastille|ecran]");
+  console.error("usage : packager relever|qualifier|emettre|lire|salle|papier|revue|livrer <deck.pptx | validation.pptx> --procede <procédé> | imprimer <papier.html> | diff <livraison> <livraison> --procede <procédé> | planche <deck> <livraison> --procede <procédé> | rejouer <procédé> <deck.pptx> [--revue <validation revue.pptx>] [--sortie <dossier>] [--sequences s030,…] [--nouvelle-reference <golden/…json>] [--devoilement pastille|ecran] | corpus preparer|mesurer|revoir <corpus.json> [--sortie <dossier>] [--port 4810]");
   process.exit(2);
 }
