@@ -15,6 +15,8 @@ import { lireEtendu, type Lectures } from "../src/corpus/lectures";
 import { chargerCorpus, figureDeVerite, lireVerite, tableurDeVerite } from "../src/corpus/corpus";
 import { mesurerCorpus, veritesAPreparer } from "../src/corpus/mesure";
 import { tableauDuCorpus, tableauEnMarkdown, type MesureDeDeck } from "../src/corpus/tableau";
+import { servirRevue } from "../src/corpus/revue";
+import type { AddressInfo } from "node:net";
 
 const NEUTRE = chargerProfil("gabarits/profil-neutre.json");
 
@@ -234,6 +236,45 @@ describe("le manifeste du corpus", () => {
     m.decks[0].empreinte = "sha256:" + "0".repeat(64);
     writeFileSync(join(dossier, "change.json"), stringify2(m));
     expect(() => chargerCorpus(join(dossier, "change.json"))).toThrow(/le deck etendu\.pptx \(sha256:[0-9a-f]{64}\)/);
+  });
+});
+
+describe("la page de revue de la vérité", () => {
+  it("écrit chaque geste au tableur, refuse une figure inconnue, et ne dit un deck revu qu'une fois tout vu", async () => {
+    const dossier = mkdtempSync(join(tmpdir(), "revue-"));
+    const o = await deckEtendu();
+    writeFileSync(join(dossier, "etendu.pptx"), o);
+    const manifeste = join(dossier, "corpus.json");
+    writeFileSync(manifeste, stringify2({
+      schema: "graduis/corpus@0", nom: "essai",
+      profil: { chemin: join(process.cwd(), "gabarits/profil-neutre.json"), empreinte: empreinteDuProfil(NEUTRE) },
+      decks: [{ chemin: "etendu.pptx", empreinte: sha256(o), famille: "metier", client: "essai", role: "tableau" }],
+    }));
+    const c = chargerCorpus(manifeste);
+    for (const { deck, contenu } of veritesAPreparer(c)) writeFileSync(deck.verite, contenu);
+    const serveur = servirRevue(c, manifeste, { dossier });
+    await new Promise<void>((ok) => serveur.listen(0, "127.0.0.1", ok));
+    const base = `http://127.0.0.1:${(serveur.address() as AddressInfo).port}`;
+    const poster = (chemin: string, x: unknown) => fetch(base + chemin, { method: "POST", body: JSON.stringify(x) });
+    try {
+      const donnees = await (await fetch(base + "/donnees")).json() as { decks: { rendu: string; lignes: unknown[] }[]; figures: unknown[] };
+      expect(donnees.decks[0]).toMatchObject({ rendu: "absent" });
+      expect(donnees.decks[0]!.lignes).toHaveLength(5);
+      expect(donnees.figures).toHaveLength(24);
+      expect(await (await fetch(base + "/")).text()).toContain("Revue des figures");
+      const r = await poster("/verite/0", { diapo: 4, verite: "Quiz", note: "question écrite" });
+      expect(await r.json()).toMatchObject({ diapo: "4", verite: "quiz", vue: "1", note: "question écrite" });
+      expect((await poster("/verite/0", { diapo: 4, verite: "photo" })).status).toBe(400);
+      expect((await poster("/revue/0", { revue: true })).status).toBe(409);
+      for (const n of [1, 2, 3, 5]) await poster("/verite/0", { diapo: n, verite: n === 2 ? "autre : graphique et schéma" : "contenu" });
+      expect((await poster("/revue/0", { revue: true })).status).toBe(200);
+      const m = chargerCorpus(manifeste);
+      expect(m.decks[0]!.deck.verite).toBe("revue");
+      expect(lireVerite(m.decks[0]!.verite, 5).get(2)).toBe("autre : graphique et schéma");
+      expect(mesurerCorpus(m).tableau.decks[0]!.verite?.manquantes).toEqual({ "autre : graphique et schéma": 1, quiz: 1 });
+    } finally {
+      serveur.close();
+    }
   });
 });
 

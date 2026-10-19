@@ -51,7 +51,7 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 - Lectures étendues : aucun SmartArt ni graphique natif dans le corpus ; des animations presque seulement dans « Design thinking » J1 (45 diapositives se dévoilent en deux temps ou plus, 41 dans l'ordre de lecture ; une seule ailleurs) ; 11 paires question → réponse et 18 dévoilements par duplication dans les ateliers de l'ANCT.
 - Gabarits : chaque client garde une seule famille de gabarit (« Conduire les transformations » : 4 decks, 3 empreintes ; « Design thinking » : 3 decks, 3 empreintes ; ANCT : 2 decks, 1 empreinte) ; l'ANCT et l'École du Louvre partagent le modèle Office par défaut, sans gabarit propre.
 
-**Reste, pour la Sortie** : la vérité de terrain revue par David (dix tableurs `*.verite.csv`, puis `"verite": "revue"` au manifeste) ; elle seule donne la justesse des décisions et compte les figures manquantes.
+**Reste, pour la Sortie** : la vérité de terrain revue par David, dans la page de revue (`npm run packager -- corpus revoir docs/sources/corpus/corpus.json`, puis http://localhost:4810) : chaque diapositive rendue par PowerPoint, la figure des règles, un geste pour la confirmer ou la corriger, écrit aussitôt au tableur ; « Marquer ce deck revu » passe le deck au manifeste. Elle seule donne la justesse des décisions et compte les figures manquantes.
 
 **Sortie**
 - Part des diapositives décidées par les seules règles génériques, par famille.

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "revue-corpus",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "-s", "packager", "--", "corpus", "revoir", "docs/sources/corpus/corpus.json"],
+      "port": 4810
+    }
+  ]
+}
