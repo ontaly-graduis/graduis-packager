@@ -38,22 +38,26 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 
 ---
 
-## GEN-0 · Corpus d'épreuve
+## GEN-0 · Corpus d'épreuve — outillage livré le 19/10, Sortie en attente de la vérité de terrain
 
 **Livrer** : 8 à 10 decks hors ONET, d'au moins trois gabarits et trois familles (procédural logiciel, comportemental, réglementaire ou métier) ; le relevé étendu (SmartArt, graphiques natifs, ordre des animations, paires question → réponse) ; un tableau comparé.
 
-**À trancher au démarrage**
-- La provenance des decks (Ontaly, clients passés avec leur accord, supports publics) et l'accord écrit qu'il faut ; leur lieu (hors dépôt, I-PKG-9).
-- Les exports Google Slides, Keynote et Canva à inclure, et sur quels decks.
-- La vérité de terrain : qui dit la figure juste d'une diapositive, pour mesurer la part décidée par les seules règles génériques ; et ce qu'est une diapositive « décidée » (le repli `contenu` — « aucune règle particulière » — n'en est pas une ; la couverture par sa seule position ?).
-- **Le profil et le procédé de mesure** (révélé par GEN-1) : qualifier un deck exige un profil — ses dispositions, mais aussi la projection des couleurs, sans laquelle un schéma ne se dessine pas — et diagnostiquer, une charte et un thème. Un profil neutre (aucune disposition ; quels seuils de projection : ceux d'ONET repris comme défaut Graduis, ou réglés sur le corpus ?), une charte Graduis par défaut (§ 4.8), et pour les pages de travail un thème — le thème neutre Graduis n'existe pas encore (§ 4.7, THM-1).
-- **Le relevé étendu sans casser le rejeu ONET** : un champ de plus au relevé (SmartArt, graphiques, ordre des animations) change l'empreinte de `releve.json`, que porte la référence v0.1. `graduis/releve@1` et une montée de version (rejeu, diff, décision), ou les lectures étendues à côté du relevé, dans un fichier distinct ?
-- Les figures candidates au cercle de référence (§ 4.5) que le tableau doit compter.
+**Livré** : le corpus, hors dépôt (`docs/sources/corpus/`, manifeste `graduis/corpus@0`, decks et profil épinglés) — dix decks au tableau (473 diapositives), cinq gabarits, six clients ou éditeurs : six supports d'Ontaly (comportemental : « Conduire les transformations » ×4, « Design thinking » J1, « Coopération ») et quatre supports publics (procédural logiciel : deux ateliers de l'ANCT, Zotero à l'École du Louvre ; métier : prévention des infections du CDC), plus deux decks (« Design thinking » J2, J3) pour l'hypothèse des gabarits ; le profil neutre (`gabarits/profil-neutre.json`) ; les lectures étendues (`src/corpus/lectures.ts`, `graduis/lectures@0`, à côté du relevé, qui ne change pas) ; la vérité de terrain préremplie, un tableur par deck ; le tableau comparé (`graduis/tableau-corpus@0`, JSON et Markdown) ; `packager corpus preparer|mesurer <corpus.json>`.
+
+**Tranché le 18 et le 19/10** : la provenance et le lieu du corpus ; aucun export Google Slides, Keynote ou Canva ; la vérité de terrain et ce qu'est une diapositive décidée ; la mesure hors chaîne (profil neutre, lectures dans un fichier à part, ni procédé, ni thème, ni charte) ; les supports publics retenus ; la paire de diapositives et la famille de gabarit.
+
+**Mesuré le 19/10** (sans vérité de terrain : décidé ne veut pas encore dire juste)
+- Part décidée par les seules règles génériques : procédural logiciel 64/150 (42,7 %), comportemental 127/301 (42,2 %), métier 0/22. Le signal « capture sans pastille » en décide 156 sur 191 : il retient aussi photos, fonds pleine page et pictogrammes vectoriels.
+- Lectures étendues : aucun SmartArt ni graphique natif dans le corpus ; des animations presque seulement dans « Design thinking » J1 (45 diapositives se dévoilent en deux temps ou plus, 41 dans l'ordre de lecture ; une seule ailleurs) ; 11 paires question → réponse et 18 dévoilements par duplication dans les ateliers de l'ANCT.
+- Gabarits : chaque client garde une seule famille de gabarit (« Conduire les transformations » : 4 decks, 3 empreintes ; « Design thinking » : 3 decks, 3 empreintes ; ANCT : 2 decks, 1 empreinte) ; l'ANCT et l'École du Louvre partagent le modèle Office par défaut, sans gabarit propre.
+
+**Reste, pour la Sortie** : la vérité de terrain revue par David (dix tableurs `*.verite.csv`, puis `"verite": "revue"` au manifeste) ; elle seule donne la justesse des décisions et compte les figures manquantes.
 
 **Sortie**
 - Part des diapositives décidées par les seules règles génériques, par famille.
 - Figures manquantes nommées et comptées.
 - L'hypothèse « peu de gabarits par client » confrontée.
+- Non couvert, nommé : les exports Google Slides, Keynote et Canva ; le réglementaire (un seul deck métier) ; SmartArt et graphiques natifs, absents du corpus.
 
 ---
 
@@ -115,6 +119,8 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 - Le catalogue (Arb-6) : trois cercles (référence, client, projet), ou un catalogue fermé.
 - Le contrat d'un module de figure (pivot, émission, lecture, salle, papier, diagnostics) et où vivent les figures d'un cercle client (`cas` et `tableau` d'ONET).
 - Les médias lourds (Arb-8), si `video` entre au catalogue : embarquer, lier, ou poser à côté.
+- **Les lectures étendues au relevé** (révélé par GEN-0) : `graduis/lectures@0` vit à côté du relevé, hors de la chaîne. Quand une règle les lit (ordre des animations → partition d'un contenu ; paire question → réponse → `quiz` ; SmartArt → schéma sans deviner ; graphique natif → `graphique`), entrent-elles au relevé (`releve@1`, montée de version du procédé ONET) ou restent-elles un fichier compagnon épinglé ?
+- **Le dévoilement par duplication** (révélé par GEN-0) : une chaîne de diapositives qui se reprennent en ajoutant chacune un élément (ateliers de l'ANCT) est-elle un seul bloc partitionné, comme une animation, ou autant de blocs ?
 
 **Sortie**
 - I-PKG-3 sur tout le corpus d'épreuve.
@@ -130,6 +136,9 @@ Ce qui reste à faire, session par session (spec v1, § 10). Chaque session a se
 - Les seuils de confiance de chaque étage (Arb-7).
 - Le format du registre et des mémos (clé : entrée canonique, prompt versionné, modèle), et leur place dans le procédé.
 - Le plafond de budget par lot (G-6).
+- **Le rattachement d'un deck à son profil** (révélé par GEN-0) : l'empreinte exacte du gabarit (§ 4.3) ne tient pas d'un deck à l'autre d'un même client (4 decks, 3 empreintes ; 3 decks, 3 empreintes). Rattacher par ressemblance (noms de dispositions et images des masques, comme le tableau comparé), et à quel seuil ?
+- **Le signal « capture sans pastille »** (révélé par GEN-0) : il décide 156 des 191 diapositives décidées du corpus, photos et pictogrammes compris. Le resserrer à l'étage 2 (capture d'écran contre photo ou illustration), ou en laisser la décision à l'étage 3 ? La vérité de terrain de GEN-0 en donne la justesse.
+- **La projection des couleurs par défaut** : le profil neutre reprend celle d'ONET ; la confirmer comme défaut Graduis ou la régler sur le corpus d'épreuve.
 
 **Sortie**
 - Une famille nouvelle profilée en une demi-journée humaine.
