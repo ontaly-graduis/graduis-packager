@@ -1,5 +1,5 @@
 // Le plan de la séance : toutes les diapositives par séquence, filtrables au clavier ; on y choisit où aller.
-import { LIBELLES } from "../../pivot/libelles";
+import { libelleDeBloc } from "../../pivot/libelles";
 import type { DonneesDeSalle } from "../donnees";
 import { el } from "./rendu";
 
@@ -18,7 +18,7 @@ export function sequencesDuPlan(d: DonneesDeSalle): { titre: string; entrees: En
   let bloc = 0;
   return d.sequences.map((s) => ({
     titre: s.numero !== null ? `Séquence ${s.numero} · ${s.titre}` : s.titre,
-    entrees: s.blocs.map((b) => ({ bloc: bloc++, titre: b.titre || b.lignes[0] || LIBELLES[b.figure], figure: LIBELLES[b.figure] })),
+    entrees: s.blocs.map((b) => ({ bloc: bloc++, titre: b.titre || b.lignes[0] || libelleDeBloc(b), figure: libelleDeBloc(b) })),
   }));
 }
 

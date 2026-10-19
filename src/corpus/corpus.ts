@@ -5,7 +5,7 @@ import { basename, dirname, resolve } from "node:path";
 import { z } from "zod";
 import { sha256 } from "../lib/json";
 import { chargerProfil, empreinteDuProfil, type ProfilSource } from "../profil/profil";
-import { FIGURES, type SeanceSpec } from "../pivot/seance-spec";
+import { FIGURES, blocsDe, type SeanceSpec } from "../pivot/seance-spec";
 import { LIBELLES } from "../pivot/libelles";
 import type { Qualification } from "../qualification/figures";
 
@@ -104,7 +104,7 @@ export function ecrireTableur(lignes: readonly LigneDeVerite[]): string {
 
 /** Le tableur prérempli : une ligne par diapositive, la figure des règles recopiée en vérité, à corriger là où elle est fausse. */
 export function tableurDeVerite(spec: SeanceSpec, qualifications: ReadonlyMap<number, Qualification>): string {
-  const titres = new Map(spec.sequences.flatMap((s) => s.blocs).map((b) => [b.source.diapo, b.titre ?? ""]));
+  const titres = new Map(blocsDe(spec).map((b) => [b.source.diapo, b.titre ?? ""]));
   return ecrireTableur([...qualifications].map(([n, q]) => ({
     diapo: String(n), titre: titres.get(n) ?? "", regles: q.figure, signal: q.signal, verite: q.figure, vue: "", note: "",
   })));

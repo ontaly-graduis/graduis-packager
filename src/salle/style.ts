@@ -87,6 +87,66 @@ ${ROLES.map((r) => `.compo .b-${r}{background:var(--dessin-${r});color:${ROLES_S
 @keyframes fonduIn{from{opacity:0}to{opacity:1}}
 `;
 
+/**
+ * Les activités dérivées (ACT-1) : la consigne et d'où elle dérive, puis le jeu — cases à retrouver, éléments à ordonner,
+ * cartes à ranger, zone à désigner. Juste, faux, à retenir : la couleur, et toujours un signe (✓, ✗, le numéro dicté).
+ * Tout se dimensionne sur --echelle, que le lecteur resserre pour que l'activité tienne dans sa page.
+ */
+const styleDesActivites = `
+.act{--k:var(--echelle,1);flex:1 1 auto;display:flex;flex-direction:column;gap:calc(26px * var(--k));width:100%;min-height:0;min-width:0}
+.act-tete{display:flex;flex-wrap:wrap;align-items:baseline;gap:calc(10px * var(--k)) calc(28px * var(--k))}
+.consigne-act{margin:0;flex:1 1 100%;font-size:calc(34px * var(--k));line-height:1.25;font-weight:var(--fw-bold);color:var(--color-primary)}
+.source-act{margin:0;font-size:calc(21px * var(--k));font-style:italic;color:var(--text-secondary)}
+.act-puces{display:flex;gap:16px;margin-left:auto}
+.act-puces .puce{font-size:calc(22px * var(--k));padding:.35em 1em}
+.puce.geste-act{background:var(--color-primary-tint);color:var(--color-primary)}
+.num-act,.rang-act,.num-colonne{flex:none;display:grid;place-items:center;width:1.7em;height:1.7em;border-radius:50%;font-size:.86em;font-weight:var(--fw-bold)}
+.num-act{background:var(--color-badge-step);color:var(--text-on-primary)}
+.rang-act{border:3px solid var(--color-primary);color:var(--color-primary)}
+.num-colonne{background:var(--text-on-primary);color:var(--color-primary)}
+.texte-act{min-width:0}
+.act li,.carte-act{list-style:none}
+.act .neuf{animation:popIn var(--mvt-entree) var(--courbe-ressort) both}
+.au-corrige .corrige,.au-corrige .a-retenir,.au-corrige .juste,.au-corrige .faux{animation:tempsIn var(--mvt-temps) var(--courbe-ressort) both;animation-delay:calc(var(--apres-titre,0s) + var(--i,0) * var(--mvt-decalage))}
+.act-rappel{margin:0;padding:0;display:grid;grid-template-columns:repeat(min(2,var(--n)),minmax(0,1fr));gap:calc(16px * var(--k)) calc(32px * var(--k));font-size:calc(28px * var(--k));line-height:1.3}
+.act-rappel li{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:.7em;align-items:center;min-height:2.6em;padding:.45em 2.2em .45em .9em;background:var(--color-surface);border-left:6px solid var(--color-border)}
+.act-rappel .vide .texte-act::after{content:"";display:block;width:55%;height:.18em;background:var(--color-border)}
+.act-rappel .sorti{background:var(--color-success-bg);border-left-color:var(--color-success);color:var(--text-strong);font-weight:var(--fw-semibold)}
+.act-rappel .sorti::after,.act-ordre .juste::after,.carte-act.juste::after{content:"✓";position:absolute;right:.6em;top:50%;transform:translateY(-50%);color:var(--color-success);font-weight:var(--fw-bold)}
+.act-rappel .a-retenir{background:var(--color-warning-bg);border-left-color:var(--color-warning);color:var(--text-strong)}
+.act-classement{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:calc(48px * var(--k));font-size:calc(25px * var(--k));line-height:1.28}
+.act-propositions,.act-ordre{margin:0;padding:0;display:flex;flex-direction:column;gap:calc(10px * var(--k))}
+.act-propositions li,.act-ordre li{position:relative;display:flex;align-items:center;gap:.6em;min-height:2.3em;padding:.3em 2em .3em .7em;background:var(--color-surface)}
+.act-propositions .placee{opacity:.35}
+.act-ordre li{background:var(--color-background);border:2px dashed var(--color-border)}
+.act-ordre .remplie,.act-ordre .corrige{border-style:solid;border-color:var(--color-primary)}
+.act-ordre .juste{background:var(--color-success-bg);border-color:var(--color-success)}
+.act-ordre .faux{background:var(--color-error-bg);border-color:var(--color-error)}
+.act-ordre .dicte{margin-left:auto;font-size:.8em;color:var(--color-error);white-space:nowrap}
+.act-ordre .dicte::before{content:"✗ "}
+.act-categorisation{display:flex;flex-direction:column;gap:calc(20px * var(--k));font-size:calc(23px * var(--k));line-height:1.25;min-height:0}
+.intitule-act{font-size:.9em;font-weight:var(--fw-semibold);letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary)}
+.act-reserve{display:flex;flex-wrap:wrap;gap:calc(12px * var(--k));min-height:calc(20px * var(--k))}
+.act-reserve .carte-act{width:calc(50% - 6px * var(--k))}
+.act-colonnes{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:calc(24px * var(--k));align-items:start}
+.colonne-act{display:flex;flex-direction:column;gap:calc(10px * var(--k));padding-bottom:calc(10px * var(--k));background:var(--color-surface);min-height:calc(120px * var(--k))}
+.tete-act{display:flex;align-items:center;gap:.6em;padding:.45em .8em;background:var(--color-primary);color:var(--text-on-primary);font-weight:var(--fw-bold)}
+.colonne-act .carte-act{margin:0 calc(10px * var(--k))}
+.carte-act{position:relative;display:flex;align-items:center;gap:.6em;padding:.4em 2em .4em .6em;background:var(--color-background);border:2px solid var(--color-border);box-shadow:var(--shadow-card)}
+.carte-act.choisie{border-color:var(--color-accent);outline:4px solid var(--color-accent);transform:translateY(-4px)}
+.carte-act.juste{background:var(--color-success-bg);border-color:var(--color-success)}
+.carte-act.faux{background:var(--color-error-bg);border-color:var(--color-error)}
+.carte-act.faux::after{content:"✗";position:absolute;right:.6em;top:50%;transform:translateY(-50%);color:var(--color-error);font-weight:var(--fw-bold)}
+.act-selection{display:flex;gap:48px;align-items:flex-start;min-height:0}
+.act-selection .zone.faite{border-color:var(--color-success);box-shadow:none}
+.act-selection .zone.faite .num{background:var(--color-success)}
+.act-pas{flex:1;min-width:0;margin:0;padding:0;display:flex;flex-direction:column;gap:18px;font-size:27px;line-height:1.35}
+.act-pas li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:start;color:var(--text-secondary)}
+.act-pas .courant{color:var(--text-strong);font-weight:var(--fw-semibold);font-size:1.12em}
+.act-pas .faite .num-act{background:var(--color-success)}
+.act-pas .a-venir{visibility:hidden}
+`;
+
 /** La feuille de la salle, au nom de son thème. */
 export const styleDeSalle = (nom: string) => `
 *{box-sizing:border-box}
@@ -273,4 +333,4 @@ body.presentateur{display:grid;grid-template-columns:3fr 2fr;gap:24px;padding:24
 .presentateur .barre{display:flex;justify-content:space-between;font-size:22px;font-weight:var(--fw-semibold)}
 .presentateur #chrono{font-variant-numeric:tabular-nums}
 .presentateur .notes-p{flex:1;overflow:auto;padding:20px;background:var(--color-background);color:var(--text-body);font-size:20px;line-height:1.5;white-space:pre-wrap}
-`+ styleDuDessin(nom);
+` + styleDesActivites + styleDuDessin(nom);

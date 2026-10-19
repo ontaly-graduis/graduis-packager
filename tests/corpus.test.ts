@@ -12,12 +12,13 @@ import { diagnostiquer, type Rapport } from "../src/diagnostic/regles";
 import { GEOMETRIES } from "../src/dessin/geometries";
 import { emettre } from "../src/emission/emettre";
 import { lire } from "../src/lecture/lire";
-import { SeanceSpec } from "../src/pivot/seance-spec";
+import { SeanceSpec, activitesDe, blocsDe, estActivite } from "../src/pivot/seance-spec";
 import { chargerTheme } from "../src/theme/theme";
 import { construirePapier } from "../src/papier/construire";
 import { chromiumDisponible, imprimer, versionDuNavigateur } from "../src/papier/imprimer";
 import { versionDeLibreOffice } from "../src/medias/convertir";
 import { rejouer } from "../src/procede/rejouer";
+import { activitesDuProcede, chargerProcede } from "../src/procede/procede";
 import { CADRE, ONET, PROFIL } from "./procede";
 
 const DECK = process.env.PKG_CORPUS ?? "docs/sources/boost acheteur areprendre v1.pptx";
@@ -63,7 +64,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   });
 
   it("redessine les 7 schémas : un dessin chacun, géométries prises en charge, aucune couleur au pivot (PKG-B2)", () => {
-    const schemas = spec.sequences.flatMap((s) => s.blocs).filter((b) => b.figure === "schema");
+    const schemas = blocsDe(spec).filter((b) => b.figure === "schema");
     expect(schemas.map((b) => b.source.diapo)).toEqual([15, 16, 17, 18, 19, 20, 31]);
     expect(schemas.every((b) => (b.dessin?.elements.length ?? 0) >= 20)).toBe(true);
     const geometries = new Set(schemas.flatMap((b) => b.dessin!.elements.flatMap((e) => (e.type === "forme" ? [e.geometrie] : []))));
@@ -78,7 +79,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   });
 
   it("organise les textes : étapes clés dans l'ordre de leurs numéros, définitions, fiches illustrées (PKG-B3)", () => {
-    const bloc = (n: number) => spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === n)!;
+    const bloc = (n: number) => blocsDe(spec).find((b) => b.source.diapo === n)!;
     const noeuds = (n: number) => bloc(n).structure!.rangees.flatMap((r) => r.colonnes.flatMap((c) => c.noeuds));
     const etapes = noeuds(58)[0]!;
     expect(etapes.type === "liste" && etapes.numerotee && etapes.items.map((i) => i.texte.split(" ")[0])).toEqual(["Accéder", "Vérifier", "Consolider/transformer", "Soumettre"]);
@@ -88,7 +89,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   });
 
   it("partitionne les schémas : colonnes rangées par leurs numéros, logigramme par ses étapes (PKG-B3)", () => {
-    const partition = (n: number) => spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === n)!.dessin!.partition;
+    const partition = (n: number) => blocsDe(spec).find((b) => b.source.diapo === n)!.dessin!.partition;
     expect([15, 16, 17, 18, 19, 20, 31].map(partition)).toEqual([
       undefined, undefined,
       { mode: "colonnes", pas: 4 }, { mode: "colonnes", pas: 4 }, { mode: "colonnes", pas: 4 }, { mode: "colonnes", pas: 4 },
@@ -97,7 +98,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   });
 
   it("recompose les processus en phases au gabarit « cas » du wizard (PKG-B4)", () => {
-    const bloc = (n: number) => spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === n)!;
+    const bloc = (n: number) => blocsDe(spec).find((b) => b.source.diapo === n)!;
     const lu = (n: number) => {
       const c = bloc(n).composition;
       return c?.gabarit === "cas" ? { phases: c.cas.map((k) => [k.numero, k.etapes.length, k.etapes.filter((e) => e.detail).length]), legende: c.legende?.length ?? 0 } : null;
@@ -110,7 +111,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   });
 
   it("recompose les fiches personae au gabarit « tableau » du wizard (PKG-B5)", () => {
-    const bloc = (n: number) => spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === n)!;
+    const bloc = (n: number) => blocsDe(spec).find((b) => b.source.diapo === n)!;
     const lu = (n: number) => {
       const t = bloc(n).composition;
       if (t?.gabarit !== "tableau") return null;
@@ -149,7 +150,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   }, 30_000); // l'aller-retour des 166 diapositives frôle les 5 s par défaut quand la suite tourne en parallèle
 
   it("garde les visuels d'origine : pictogrammes, minuteurs, météo, icônes de section, photo de couverture (PKG-B6)", () => {
-    const blocs = spec.sequences.flatMap((s) => s.blocs);
+    const blocs = blocsDe(spec);
     const avec = (role: string) => blocs.filter((b) => b.visuels.some((v) => v.role === role)).map((b) => b.source.diapo);
     expect(avec("duree")).toEqual([3, 5, 42]);
     expect(blocs.filter((b) => b.figure === "ecran-animation" || b.figure === "demonstration").filter((b) => !b.visuels.some((v) => v.role === "pictogramme")).map((b) => b.source.diapo)).toEqual([10]);
@@ -208,7 +209,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     expect(s030.donnees.extrait).toMatch(/^Séquence 6 · /);
   });
 
-  it("rejoue le procédé ONET : la journée sans revue refusée par H8, la séquence 30 aux empreintes de la référence v0 (GEN-1)", async () => {
+  it("rejoue le procédé ONET : la journée sans revue refusée par H8, la séquence 30 aux empreintes de sa référence (v0.2)", async () => {
     const sortie = mkdtempSync(join(tmpdir(), "rejeu-"));
     const moteurs = { chromium: await versionDuNavigateur(), libreoffice: versionDeLibreOffice() };
     const journee = await rejouer(ONET, { deck: DECK, sortie, moteurs });
@@ -217,5 +218,24 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
     const s030 = await rejouer(ONET, { deck: DECK, sequences: ["s030"], sortie, moteurs, ...(await chromiumDisponible() ? { imprimer } : {}) });
     expect(s030.comparaisons.filter((c) => c.attendue !== c.obtenue)).toEqual([]);
     expect([s030.ecart.chaine.inventes, s030.ecart.chaine.inversions, s030.ecart.franchies]).toEqual([[], 0, []]);
+  }, 300_000);
+
+  it("active la séquence 30 en moyenne (ACT-1) : trois activités proposées, relues sans écart sur les 166 diapositives, rejouées à leur référence", async () => {
+    const moyenne = chargerProcede("procedes/onet-boost-moyenne.json");
+    const durees = activitesDuProcede(moyenne.procede)!;
+    const pivot0 = qualifierReleve(releve, PROFIL, durees).spec;
+    const s030 = pivot0.sequences.find((q) => q.id === "s030")!;
+    expect(s030.blocs.filter(estActivite).map((a) => `${a.id} ${a.derivation} ← ${a.derive_de}`)).toEqual(["a031 etapes-a-replacer ← b031", "a032 qui-fait-quoi ← b032", "a058 rappel ← b058"]);
+    expect(activitesDe(pivot0)).toHaveLength(8);
+    const { medias } = relever(octets, NOM);
+    const pptx = emettre(pivot0, { theme: ONET.theme, gestes: true, media: (h) => { const x = medias.get(h); return x ? { ext: x.ext, octets: x.octets, px: releve.medias[h]?.px ?? null } : undefined; } });
+    const { spec: relu, ecarts } = lire(pptx, PROFIL, durees);
+    expect(ecarts).toEqual([]);
+    expect(stringify2(relu)).toBe(stringify2(pivot0));
+    const sortie = mkdtempSync(join(tmpdir(), "rejeu-moyenne-"));
+    const moteurs = { chromium: await versionDuNavigateur(), libreoffice: versionDeLibreOffice() };
+    const r = await rejouer(moyenne, { deck: DECK, sequences: ["s030"], sortie, moteurs, ...(await chromiumDisponible() ? { imprimer } : {}) });
+    expect(r.comparaisons.filter((c) => c.attendue !== c.obtenue)).toEqual([]);
+    expect([r.ecart.franchies, r.ecart.livrees.activites.length, r.ecart.livrees.activites.flatMap((a) => a.inventes)]).toEqual([[], 8, []]);
   }, 300_000);
 });

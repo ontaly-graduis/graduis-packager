@@ -1,5 +1,6 @@
 // Témoins de GEN-1 : le procédé (profil et thème en données, épinglés par leur empreinte), l'écart à la source (borné sur la
 // chaîne, compté sur la revue), et le code qui ne nomme aucun client.
+import type { Bloc } from "../src/pivot/seance-spec";
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -8,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { ecartDeLivraison } from "../src/ecart/ecart";
 import { emettre } from "../src/emission/emettre";
 import { lire } from "../src/lecture/lire";
-import { chargerProcede, versionsEnEcart } from "../src/procede/procede";
+import { activitesDuProcede, chargerProcede, versionsEnEcart } from "../src/procede/procede";
 import { avecConversionsFigees, chargerConversions } from "../src/medias/convertir";
 import { sha256 } from "../src/lib/json";
 import type { SeanceSpec } from "../src/pivot/seance-spec";
@@ -43,6 +44,15 @@ describe("le procédé (GEN-1)", () => {
     p.theme.chemin = resolve(p.theme.chemin);
     writeFileSync(join(dossier, "procedes", "autre.json"), JSON.stringify(p));
     expect(() => chargerProcede(join(dossier, "procedes", "autre.json"))).toThrow(/ne correspond\(ent\) plus à l'empreinte épinglée/);
+  });
+
+  it("se duplique (ACT-1) : le procédé en moyenne garde profil, thème, charte et conversions d'ONET, et dit la durée de chaque geste", () => {
+    const moyenne = chargerProcede("procedes/onet-boost-moyenne.json");
+    expect(moyenne.procede.sensibilite).toBe("moyenne");
+    for (const k of ["profil", "theme", "conversions", "prise"] as const) expect(moyenne.procede[k]).toEqual(ONET.procede[k]);
+    expect({ ...moyenne.procede.charte, durees: undefined }).toEqual({ ...ONET.procede.charte, durees: undefined });
+    expect(activitesDuProcede(moyenne.procede)).toEqual({ rappel: 5, classement: 5, categorisation: 8, "selection-sur-image": 3 });
+    expect(activitesDuProcede(ONET.procede)).toBeUndefined();
   });
 
   it("épingle ses versions : le verrou du dépôt est celui du procédé, rien ne refuse le rejeu", () => {
@@ -110,7 +120,7 @@ describe("l'écart à la source (I-PKG-19)", () => {
   it("un mot inventé ou un bloc déplacé par la chaîne franchit les bornes de la minimale", async () => {
     const { releve, pivot0 } = await chaine();
     const invente = copie(pivot0);
-    invente.sequences[0]!.blocs[2]!.textes.push("Distracteur");
+    (invente.sequences[0]!.blocs[2] as Bloc).textes.push("Distracteur");
     expect(ecartDeLivraison(releve, invente, invente, "minimale").franchies).toEqual([expect.stringMatching(/^1 mot\(s\) inventé\(s\) par la chaîne .*« distracteur »/)]);
     const deplace = copie(pivot0);
     const blocs = deplace.sequences[0]!.blocs;

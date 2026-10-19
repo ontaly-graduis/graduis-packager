@@ -15,7 +15,7 @@ import { livrer, type Livraison } from "../livraison/livrer";
 import type { Impression } from "../papier/imprimer";
 import { qualifierReleve } from "../qualification/qualifier";
 import { relever } from "../releve/releve";
-import { versionsEnEcart, type ProcedeCharge, type Version } from "./procede";
+import { activitesDuProcede, versionsEnEcart, type ProcedeCharge, type Version } from "./procede";
 
 /** Ce que la référence attend d'une livraison : ses empreintes, ou son refus. */
 interface LivraisonAttendue {
@@ -77,17 +77,20 @@ export async function rejouer(p: ProcedeCharge, o: OptionsDeRejeu): Promise<Reje
   const versions = versionsEnEcart(p, o.moteurs);
   const verrou = versions.find((v) => v.bloquante);
   if (verrou) throw new Error(`le ${verrou.quoi} diffère de celui du procédé (${verrou.trouvee ?? "absent"} au lieu de ${verrou.attendue}) : npm ci d'abord, ou monter de version`);
-  const reference = JSON.parse(readFileSync(resolve(p.racine, p.procede.reference), "utf8")) as Reference;
+  // Un procédé dupliqué n'a pas encore de référence : son premier rejeu n'est pas conforme, il l'écrit (`--nouvelle-reference`).
+  const fichierDeReference = resolve(p.racine, p.procede.reference);
+  const reference = existsSync(fichierDeReference) ? JSON.parse(readFileSync(fichierDeReference, "utf8")) as Reference : null;
+  if (!reference && !o.nouvelleReference) throw new Error(`référence absente (${p.procede.reference}) : un premier rejeu l'écrit, avec --nouvelle-reference`);
   const cas = o.revue ? "revue" : "deck";
   const extrait = o.sequences ? o.sequences.join("-") : "journee";
-  const attendu = reference.cas[cas];
+  const attendu = reference?.cas[cas];
   const comparaisons: Comparaison[] = [];
   const comparer = (quoi: string, attendue: string | null | undefined, obtenue: string | null) => comparaisons.push({ quoi, attendue: attendue ?? null, obtenue });
   mkdirSync(o.sortie, { recursive: true });
 
   // Relever et qualifier le deck : le pivot₀ et son rapport.
   const { releve, medias } = relever(new Uint8Array(readFileSync(o.deck)), basename(o.deck));
-  const { spec: pivot0, qualifications } = qualifierReleve(releve, p.profil);
+  const { spec: pivot0, qualifications } = qualifierReleve(releve, p.profil, activitesDuProcede(p.procede));
   const rapport = diagnostiquer(pivot0, releve, qualifications, { charte: p.procede.charte, profil: p.profil });
   const ecrits: [string, string | Uint8Array][] = [
     ["releve.json", stringify2(releve)], ["seance-spec.json", stringify2(pivot0)],
@@ -95,7 +98,7 @@ export async function rejouer(p: ProcedeCharge, o: OptionsDeRejeu): Promise<Reje
   ];
   // Émettre le PPT de validation : le support de la revue.
   const media = (h: string) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; };
-  const emis = emettre(pivot0, { theme: p.theme, media });
+  const emis = emettre(pivot0, { theme: p.theme, media, gestes: activitesDuProcede(p.procede) !== undefined });
   ecrits.push(["validation.pptx", emis]);
   for (const [f, c] of ecrits) writeFileSync(join(o.sortie, f), c);
   if (cas === "deck") {

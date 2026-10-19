@@ -97,6 +97,22 @@ h1,h2,h3{color:var(--text-strong);font-weight:var(--fw-bold);break-after:avoid}
 .notes-papier{break-before:page;break-after:page}
 .notes-papier h3{margin:0 0 4mm;font-size:13pt}
 .notes-papier .lignes{height:228mm;background:repeating-linear-gradient(to bottom,transparent 0,transparent calc(9mm - .25mm),var(--color-border) calc(9mm - .25mm),var(--color-border) 9mm)}
+/* Les activités : leur fiche, le repli papier (une case à remplir au stylo, jamais le corrigé). */
+.bloc.f-activite{break-inside:avoid}
+.encadre.activite{border-left-color:var(--color-badge-step)}
+.encadre.activite .etiquette{color:var(--color-badge-step)}
+.consigne-fiche{margin:0;font-weight:var(--fw-semibold);color:var(--text-strong)}
+.source-fiche{margin:0;font-size:8.5pt;font-style:italic;color:var(--text-secondary)}
+.case-fiche{display:inline-block;flex:none;width:6mm;height:6mm;border:.35mm solid var(--text-strong);background:var(--color-background)}
+.lignes-fiche{height:calc(var(--n) * 9mm);background:repeating-linear-gradient(to bottom,transparent 0,transparent calc(9mm - .25mm),var(--color-border) calc(9mm - .25mm),var(--color-border) 9mm)}
+.a-numeroter{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2mm}
+.a-numeroter li{display:grid;grid-template-columns:5.6mm minmax(0,1fr) 6mm;gap:3mm;align-items:center;break-inside:avoid}
+.a-cocher{border-collapse:collapse;width:100%;font-size:9.5pt}
+.a-cocher th{background:var(--color-primary);color:var(--text-on-primary);text-align:left;padding:1.6mm 2.4mm;font-weight:var(--fw-semibold)}
+.a-cocher td{padding:1.6mm 2.4mm;border-bottom:var(--border-hairline);background:var(--color-background)}
+.a-cocher td:first-child{display:flex;gap:2.6mm;align-items:baseline}
+.a-cocher td.coche{text-align:center;width:22mm}
+.a-numeroter .num,.a-cocher .num{flex:none;width:5.6mm;height:5.6mm;border-radius:50%;background:var(--color-badge-step);color:var(--text-on-primary);font-size:7.5pt;font-weight:var(--fw-bold);display:grid;place-items:center}
 .annexes{break-before:page}
 .annexes>h2{font-size:20pt;margin:0 0 6mm}
 .annexes .bloc{break-inside:auto}

@@ -4,8 +4,30 @@
     {
       "name": "revue-corpus",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "-s", "packager", "--", "corpus", "revoir", "docs/sources/corpus/corpus.json"],
+      "runtimeArgs": [
+        "run",
+        "-s",
+        "packager",
+        "--",
+        "corpus",
+        "revoir",
+        "docs/sources/corpus/corpus.json"
+      ],
       "port": 4810
+    },
+    {
+      "name": "salle-locale",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4820",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "out"
+      ],
+      "port": 4820
     }
   ]
 }

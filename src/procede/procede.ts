@@ -4,13 +4,17 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
-import { Charte } from "../diagnostic/regles";
+import { Charte, DUREES_GRADUIS, type Durees } from "../diagnostic/regles";
 import { sha256, stringify2 } from "../lib/json";
 import { chargerProfil, empreinteDuProfil, type ProfilSource } from "../profil/profil";
 import { chargerTheme, type Theme } from "../theme/theme";
 import { chargerConversions, type ConversionsFigees } from "../medias/convertir";
 
 const SCHEMA_PROCEDE = "graduis/procede@0";
+
+/** Les niveaux de la sensibilité de réingénierie ouverts à ce jour (spec v1 § 2.2). */
+export const SENSIBILITES = ["minimale", "moyenne"] as const;
+export type Sensibilite = (typeof SENSIBILITES)[number];
 
 const hash = z.string().regex(/^sha256:[0-9a-f]{64}$/);
 const Piece = z.object({ chemin: z.string(), empreinte: hash }).strict();
@@ -24,8 +28,8 @@ export const Procede = z.object({
   /** Les conversions figées des médias que le navigateur n'affiche pas (EMF) : leur manifeste, hors dépôt avec les sources du client. */
   conversions: Piece.optional(),
   charte: Charte,
-  /** La minimale seule en GEN-1 : la moyenne s'ouvre en ACT-1, l'élevée en REI-1. Les bornes de chaque niveau vivent dans le code. */
-  sensibilite: z.enum(["minimale"]),
+  /** La minimale (GEN-1) ou la moyenne (ACT-1) ; l'élevée s'ouvre en REI-1. Les bornes de chaque niveau vivent dans le code. */
+  sensibilite: z.enum(SENSIBILITES),
   prise: z.object({ devoilement: z.enum(["pastille", "ecran"]) }).strict(),
   versions: z.object({
     /** Le tag git de la bibliothèque dont la référence est le produit. */
@@ -50,6 +54,14 @@ export interface ProcedeCharge {
   /** Ce qui manque ici des entrées du procédé (des données du client hors dépôt) : le rejeu le dit, il ne peut être conforme. */
   readonly absences: readonly string[];
 }
+
+/**
+ * Ce qu'un procédé fait des activités : en moyenne, la durée de chacune selon son geste (la chaîne en propose, le gabarit
+ * offre leurs dispositions) ; en minimale, rien (aucune activité dérivée n'y est admise).
+ */
+export const activitesDuProcede = (p: Procede): Durees | undefined => (p.sensibilite === "minimale" ? undefined : dureesDuProcede(p));
+/** Les durées d'activité de la charte du procédé, ou celles de la charte Graduis : `lire` en complète une activité sans la sienne. */
+export const dureesDuProcede = (p: Procede): Durees => p.charte.durees ?? DUREES_GRADUIS;
 
 /** L'empreinte d'un thème chargé : celle que porte la prise au manifeste. */
 export const empreinteDuTheme = (t: Theme) => sha256(stringify2(t));

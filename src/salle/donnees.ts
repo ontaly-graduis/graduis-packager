@@ -1,8 +1,10 @@
 // Le pivot mis en salle : blocs projetés, étapes de dévoilement, durées, numéros dérivés, zones en `RegionMap`.
-import { verifierSequences, type Bloc, type Composition, type Dessin, type Figure, type SeanceSpec, type Structure, type Visuel } from "../pivot/seance-spec";
+import { blocsDe, estActivite, verifierSequences, type Activite, type Bloc, type Composition, type Derivation, type Dessin, type Figure, type Geste, type SeanceSpec, type Structure, type Visuel } from "../pivot/seance-spec";
+import { deriver, type ContenuDActivite } from "../activites/deriver";
+import { textesDActivite } from "../emission/grammaire";
 import { compenserChasse, type TableDeChasse } from "../theme/chasse";
 import { habiller, type Maniere } from "../theme/maniere";
-import { regionMap, type RegionMap } from "./region-map";
+import { regionMap, type RegionMap, type Zone } from "./region-map";
 import { planDeDevoilement } from "./unites";
 import { motif, type PratiqueDOrigine } from "../profil/profil";
 
@@ -18,9 +20,19 @@ export interface PriseDeSalle {
 /** Un visuel du pivot, avec ses dimensions en pixels (lues au relevé) pour une mise en page synchrone. */
 export type VisuelDeSalle = Visuel & { readonly px: readonly [number, number] | null };
 
+/** Une activité dérivée, en salle : son contenu tiré de sa source, l'habillage qui la présente. */
+export interface ActiviteDeSalle {
+  readonly derivation: Derivation;
+  readonly geste: Geste;
+  readonly consigne: string;
+  /** « D'après : <titre de la source> ». */
+  readonly source: string;
+  readonly contenu: ContenuDActivite;
+}
+
 export interface BlocDeSalle {
   readonly id: string;
-  readonly figure: Figure;
+  readonly figure: Figure | "activite";
   readonly titre: string | null;
   /** Les lignes affichées (paragraphes non vides des textes), hors numéro saisi d'une transition. */
   readonly lignes: readonly string[];
@@ -40,6 +52,8 @@ export interface BlocDeSalle {
   readonly structure?: Structure;
   /** Le schéma recomposé par un gabarit : la salle le compose au thème au lieu de redessiner. */
   readonly composition?: Composition;
+  /** Une activité dérivée : la régie la pilote (ACT-1). */
+  readonly activite?: ActiviteDeSalle;
 }
 
 
@@ -118,6 +132,34 @@ function blocDeSalle(b: Bloc, prise: PriseDeSalle, px: Dimensions, h: Habillage)
 }
 
 /**
+ * Une activité en salle : sa consigne, puis son corrigé (deux étapes) ; une Sélection sur image, la consigne de chaque pas
+ * puis sa zone. Elle se joue ainsi quelle que soit la prise : c'est la régie qui la pilote, la télécommande y suffit. Le
+ * présentateur lit le corrigé dans ses notes ; la Sélection sur image a sa `RegionMap`, des zones `act` jouées en `find`.
+ */
+function activiteDeSalle(a: Activite, source: Bloc, px: Dimensions): BlocDeSalle {
+  const contenu = deriver(a, source);
+  if (!contenu) throw new Error(`${a.id} : le bloc ${source.id} ne permet pas l'activité « ${a.derivation} »`);
+  const t = textesDActivite(a, contenu, source.titre ?? source.id);
+  const pas = contenu.geste === "selection-sur-image" ? contenu.pas : [];
+  const captures = [...new Set(pas.map((p) => p.capture))];
+  const zones: Record<string, Zone[]> = {};
+  for (const p of pas) (zones[p.capture] ??= []).push({ id: `${a.id}-p${p.numero}`, role: "act", required: true, rect: p.zone, step: `P${p.numero}`, consigne: p.consigne });
+  return {
+    id: a.id,
+    figure: "activite",
+    titre: t.titre,
+    lignes: [],
+    visuels: captures.map((h) => { const v = source.visuels.find((x) => x.media === h); return { media: h, capture: true, ...(v?.rognage ? { rognage: v.rognage } : {}), px: px(h) }; }),
+    tableaux: [],
+    notes: t.notes,
+    etapes: contenu.geste === "selection-sur-image" ? 2 * pas.length : 2,
+    duree: a.duree,
+    ...(pas.length ? { regionMap: { captures: zones, pas: pas.map((p) => ({ id: `P${p.numero}`, libelle: p.consigne })) } } : {}),
+    activite: { derivation: a.derivation, geste: contenu.geste, consigne: t.consigne, source: t.source, contenu },
+  };
+}
+
+/**
  * Les médias qu'un bloc montre : ses visuels, et les images de son dessin et des vignettes de sa composition (depuis PKG-C3,
  * une image que le dessin porte n'est plus un visuel de plus).
  */
@@ -131,13 +173,14 @@ export function mediasDuBloc(b: Pick<BlocDeSalle, "visuels" | "dessin" | "compos
 /** Met un pivot en salle : séquences retenues (toutes par défaut), blocs masqués écartés, textes des schémas à la chasse du thème. */
 export function mettreEnSalle(spec: SeanceSpec, prise: PriseDeSalle, px: Dimensions, retenues?: readonly string[], habillage: Habillage = {}): DonneesDeSalle {
   if (retenues) verifierSequences(spec, retenues);
+  const sources = new Map(blocsDe(spec).map((b) => [b.id, b]));
   let rang = 0;
   const sequences: SequenceDeSalle[] = [];
   for (const s of spec.sequences) {
-    const transition = s.blocs.find((b) => b.figure === "transition");
+    const transition = blocsDe(s).find((b) => b.figure === "transition");
     if (transition) rang += 1;
     if (retenues && !retenues.includes(s.id)) continue;
-    const blocs = s.blocs.filter((b) => !b.masquee).map((b) => blocDeSalle(b, prise, px, habillage));
+    const blocs = s.blocs.filter((b) => estActivite(b) || !b.masquee).map((b) => (estActivite(b) ? activiteDeSalle(b, sources.get(b.derive_de)!, px) : blocDeSalle(b, prise, px, habillage)));
     if (blocs.length) sequences.push({ id: s.id, numero: transition ? rang : null, titre: transition?.titre ?? "Ouverture", blocs });
   }
   return { schema: SCHEMA_SALLE, source: spec.source, prise, sequences };

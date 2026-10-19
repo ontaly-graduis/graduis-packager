@@ -1,8 +1,8 @@
 // Le gabarit du PPT de validation, généré du thème du procédé (PKG-C) : un thème Office dont les douze emplacements de couleur
 // et les polices viennent de ses jetons et de son identité (les seules valeurs hex du PPT), un masque, une disposition par figure.
 // Le masque des decks hérités n'est ni repris ni retouché.
-import { FIGURES, type Figure } from "../pivot/seance-spec";
-import { EMU, ESPACES, FIGURES_A_CAPTURE, disposition } from "./grammaire";
+import { FIGURES, GESTES, type Figure, type Geste } from "../pivot/seance-spec";
+import { EMU, ESPACES, FIGURES_A_CAPTURE, disposition, dispositionDeGeste } from "./grammaire";
 import { ARBRE_VIDE, ENTETE, XMLNS, paragraphe, relations, x, xfrm } from "./xml";
 
 export type Region = readonly [number, number, number, number];
@@ -102,19 +102,25 @@ export function masque(nombreDeDispositions: number): { xml: string; rels: strin
   return { xml, rels };
 }
 
-/** Les régions d'une figure : à capture ou à texte. */
-export const regionsDe = (f: Figure) => (FIGURES_A_CAPTURE.has(f) ? REGIONS.capture : REGIONS.texte);
+const estGeste = (f: Figure | Geste): f is Geste => (GESTES as readonly string[]).includes(f);
 
-export function dispositionXml(f: Figure): string {
+/** Les régions d'une figure ou d'un geste : à capture (la Sélection sur image en est une) ou à texte. */
+export const regionsDe = (f: Figure | Geste) => (estGeste(f) ? (f === "selection-sur-image" ? REGIONS.capture : REGIONS.texte) : FIGURES_A_CAPTURE.has(f) ? REGIONS.capture : REGIONS.texte);
+
+export function dispositionXml(f: Figure | Geste): string {
   const r = regionsDe(f);
-  return `${ENTETE}<p:sldLayout ${XMLNS} preserve="1" userDrawn="1"><p:cSld name="${x(disposition(f))}"><p:spTree>${ARBRE_VIDE}`
+  return `${ENTETE}<p:sldLayout ${XMLNS} preserve="1" userDrawn="1"><p:cSld name="${x(estGeste(f) ? dispositionDeGeste(f) : disposition(f))}"><p:spTree>${ARBRE_VIDE}`
     + espace(2, "Titre", PH_TITRE, TITRE, "", "Titre")
     + espace(3, "Contenu", PH_CONTENU, r.contenu, "", "Un paragraphe par texte")
     + espace(4, "Consignes", PH_CONSIGNES, r.consignes, STYLE_CONSIGNES, "Une consigne par pas, dans l'ordre des pastilles")
     + "</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>";
 }
 
-export const DISPOSITIONS: readonly Figure[] = FIGURES;
+/**
+ * Les dispositions du gabarit : une par figure ; à partir de la sensibilité moyenne, une par geste (une séance en minimale
+ * n'offre pas d'activité — décision du 19/10).
+ */
+export const dispositions = (gestes: boolean): readonly (Figure | Geste)[] => (gestes ? [...FIGURES, ...GESTES] : FIGURES);
 
 export function masqueDeNotes(): { xml: string; rels: string } {
   const xml = `${ENTETE}<p:notesMaster ${XMLNS}><p:cSld><p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg><p:spTree>${ARBRE_VIDE}`

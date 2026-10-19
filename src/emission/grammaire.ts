@@ -1,13 +1,21 @@
 // La grammaire du PPT de validation (PKG-C) : ce que `emettre` écrit et que `lire` lit, en un seul endroit. Une
 // disposition par figure, nommée par elle ; des formes nommées (pastille, zone, capture) ; des espaces réservés
 // (titre, contenu, consignes) ; l'identité du bloc dans des étiquettes OOXML, la source dans les propriétés du document.
-import { LIBELLES } from "../pivot/libelles";
-import { FIGURES, ROLES, ROLES_DE_VISUEL, type Figure, type Role } from "../pivot/seance-spec";
+import { LIBELLES, LIBELLES_DE_GESTE } from "../pivot/libelles";
+import { FIGURES, GESTES, ROLES, ROLES_DE_VISUEL, type Activite, type Figure, type Geste, type Role } from "../pivot/seance-spec";
+import { corrige, type ContenuDActivite } from "../activites/deriver";
+import { sha256, stringify2 } from "../lib/json";
+import { CONSIGNES_DE_SALLE, dApres, titreDActivite } from "../activites/habillage";
 
 /** Le nom de la disposition d'une figure : le contrat que `lire` lit, sans rien deviner. */
 export const disposition = (f: Figure) => `G · ${LIBELLES[f]}`;
 const FIGURE_DE_DISPOSITION = new Map(FIGURES.map((f) => [disposition(f), f]));
 export const figureDeDisposition = (nom: string): Figure | undefined => FIGURE_DE_DISPOSITION.get(nom.trim());
+
+/** La disposition d'un geste (ACT-1) : une activité dérivée, posée juste après sa source quand on l'ajoute à la main. */
+export const dispositionDeGeste = (g: Geste) => `G · ${LIBELLES_DE_GESTE[g]}`;
+const GESTE_DE_DISPOSITION = new Map(GESTES.map((g) => [dispositionDeGeste(g), g]));
+export const gesteDeDisposition = (nom: string): Geste | undefined => GESTE_DE_DISPOSITION.get(nom.trim());
 
 /** Les figures dont la capture occupe la diapositive, consignes à droite. */
 export const FIGURES_A_CAPTURE: ReadonlySet<Figure> = new Set(["pas-a-pas", "capture", "demonstration"]);
@@ -42,6 +50,11 @@ export const NOMS = {
   decor: "G·décor",
   /** L'étiquette de la diapositive annexe. */
   etiquette: "G·étiquette",
+  /** Une activité : sa consigne, sa durée (« 5 min », relue), sa source (« D'après : … »), les colonnes d'une catégorisation. */
+  consigne: "G·consigne",
+  duree: "G·durée",
+  source: "G·source",
+  colonnes: "G·colonnes",
 } as const;
 
 /** La diapositive annexe d'un schéma recomposé : masquée, elle montre le dessin d'origine, pour contrôle uniquement. */
@@ -105,6 +118,10 @@ export const ETIQUETTES = {
   lectures: "GRADUIS.LECTURES",
   /** La diapositive annexe d'un bloc : l'identifiant du bloc dont elle montre le dessin d'origine. */
   annexe: "GRADUIS.ANNEXE",
+  /** Une activité : le bloc dont elle dérive, sa dérivation, et l'empreinte des textes émis (une retouche dans PowerPoint se voit). */
+  derive: "GRADUIS.DERIVE",
+  derivation: "GRADUIS.DERIVATION",
+  textes: "GRADUIS.TEXTES",
 } as const;
 
 /** Les propriétés personnalisées du document : le deck hérité dont le pivot procède. */
@@ -134,3 +151,40 @@ export function couleurDeRole(r: Role): string {
 }
 export const ROLES_DE_COULEUR: readonly Role[] = ROLES;
 
+
+/**
+ * Les textes d'une diapositive d'activité, telle qu'elle se jouera (spec v1 § 5.7) : son titre et sa consigne (l'habillage),
+ * ses éléments dans l'ordre où ils se montrent, les consignes d'une Sélection sur image, les colonnes d'une catégorisation,
+ * le corrigé en notes. `emettre` les écrit, `lire` les compare à leur empreinte : ils dérivent de la source, ils ne se
+ * retouchent pas.
+ */
+export interface TextesDActivite {
+  readonly titre: string;
+  readonly consigne: string;
+  readonly contenu: readonly string[];
+  readonly consignes: readonly string[];
+  readonly colonnes: readonly string[];
+  readonly source: string;
+  readonly notes: string;
+}
+
+/** La case vide d'un élément à retrouver (aucune lettre : rien qui se compte comme un mot). */
+export const CASE_VIDE = "…";
+
+export function textesDActivite(a: Pick<Activite, "derivation">, c: ContenuDActivite, titreSource: string): TextesDActivite {
+  const contenu = c.geste === "rappel" ? c.items.map(() => CASE_VIDE)
+    : c.geste === "classement" ? c.presentation.map((i) => c.items[i]!)
+      : c.geste === "categorisation" ? c.presentation.map((i) => c.cartes[i]!.texte) : [];
+  return {
+    titre: titreDActivite(a.derivation, c.geste === "categorisation" ? c.intitule : undefined),
+    consigne: CONSIGNES_DE_SALLE[a.derivation],
+    contenu,
+    consignes: c.geste === "selection-sur-image" ? c.pas.map((p) => p.consigne) : [],
+    colonnes: c.geste === "categorisation" ? c.categories : [],
+    source: dApres(titreSource),
+    notes: ["Corrigé", ...corrige(c)].join("\n"),
+  };
+}
+
+/** L'empreinte de ce qu'une diapositive d'activité montre (ses textes, ses captures) : émise en étiquette, relue pour la comparer. */
+export const empreinteDesTextes = (t: TextesDActivite, captures: readonly string[]) => sha256(stringify2({ ...t, captures }));

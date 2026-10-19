@@ -7,7 +7,7 @@ import { sha256, stringify2 } from "../lib/json";
 import { relever } from "../releve/releve";
 import { medianeMots, medianeResolution, mesurer } from "../releve/mesures";
 import { qualifierReleve } from "../qualification/qualifier";
-import { SeanceSpec } from "../pivot/seance-spec";
+import { SeanceSpec, activitesDe, blocsDe } from "../pivot/seance-spec";
 import { diagnostiquer } from "../diagnostic/regles";
 import { rapportHtml } from "../diagnostic/rapport-html";
 import { construireSalle } from "../salle/construire";
@@ -24,7 +24,7 @@ import { livrer, type Manifeste } from "../livraison/livrer";
 import { differ, diffHtml } from "../livraison/diff";
 import { planche } from "../livraison/planche";
 import type { Releve } from "../releve/releve";
-import { chargerProcede, type ProcedeCharge } from "../procede/procede";
+import { activitesDuProcede, chargerProcede, dureesDuProcede, type ProcedeCharge } from "../procede/procede";
 import { rejouer } from "../procede/rejouer";
 import { chargerCorpus } from "../corpus/corpus";
 import { mesurerCorpus, veritesAPreparer } from "../corpus/mesure";
@@ -51,14 +51,14 @@ function ecrireReleve(deck: string, sortie: string | undefined) {
 function pivotDe(fichier: string, sortie: string | undefined, p: ProcedeCharge) {
   const octets = new Uint8Array(readFileSync(fichier));
   if (estUnPptDeValidation(octets)) {
-    const { spec, ecarts } = lire(octets, p.profil);
+    const { spec, ecarts } = lire(octets, p.profil, dureesDuProcede(p.procede));
     const { releve, medias } = relever(octets, basename(fichier));
     const dossier = sortie ?? join("out", basename(fichier, extname(fichier)));
     mkdirSync(dossier, { recursive: true });
     return { spec, releve, medias, dossier, grammaticale: true, ecarts };
   }
   const { releve, medias, dossier } = ecrireReleve(fichier, sortie);
-  const { spec } = qualifierReleve(releve, p.profil);
+  const { spec } = qualifierReleve(releve, p.profil, activitesDuProcede(p.procede));
   return { spec: SeanceSpec.parse(spec), releve, medias, dossier, grammaticale: false, ecarts: [] };
 }
 
@@ -66,16 +66,18 @@ function emettreCommande(deck: string, sortie: string | undefined, p: ProcedeCha
   const { spec, releve, medias, dossier } = pivotDe(deck, sortie, p);
   const octets = emettre(spec, {
     theme: p.theme,
+    gestes: activitesDuProcede(p.procede) !== undefined,
     media: (h) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; },
   });
   writeFileSync(join(dossier, "validation.pptx"), octets);
-  const blocs = spec.sequences.flatMap((s) => s.blocs);
+  const blocs = blocsDe(spec);
   console.log([
     `# PPT de validation — ${spec.source.nom}`,
     `${dossier}/validation.pptx · ${(octets.length / 1e6).toFixed(1)} Mo · empreinte ${sha256(octets)}`,
     `${blocs.length} blocs · ${spec.sequences.length} séquences · ${blocs.reduce((n, b) => n + b.pas.length, 0)} pas`
       + ` · ${blocs.filter((b) => b.figure === "schema" && (b.dessin || b.composition)).length} schémas en formes natives`
       + ` (${blocs.filter((b) => b.figure === "schema" && b.composition && b.dessin).length} recomposés, leur dessin d'origine en annexe masquée)`,
+    ...(activitesDe(spec).length ? [`${activitesDe(spec).length} activités proposées (${activitesDe(spec).map((a) => `${a.id} ${a.derivation}`).join(", ")}) : on les garde, ou l'on supprime leur diapositive`] : []),
     "à relire et corriger dans PowerPoint, puis : packager lire validation.pptx",
   ].join("\n"));
 }
@@ -86,7 +88,7 @@ function lireCommande(fichier: string, sortie: string | undefined, p: ProcedeCha
     console.error(`${fichier} n'est pas un PPT de validation (il ne dit pas de quel deck il procède).`);
     process.exit(2);
   }
-  const { spec, ecarts } = lire(octets, p.profil);
+  const { spec, ecarts } = lire(octets, p.profil, dureesDuProcede(p.procede));
   const dossier = sortie ?? join("out", basename(fichier, extname(fichier)));
   mkdirSync(dossier, { recursive: true });
   const texte = stringify2(spec);
@@ -94,6 +96,7 @@ function lireCommande(fichier: string, sortie: string | undefined, p: ProcedeCha
   console.log([
     `# Lecture — ${fichier}`,
     `pivot ${sha256(texte)} → ${dossier}/seance-spec.json`,
+    ...(activitesDe(spec).length ? [`activités : ${activitesDe(spec).map((a) => `${a.id} ${a.derivation} ← ${a.derive_de} (${a.duree} min)`).join(" · ")}`] : []),
     ecarts.length ? `écarts à la grammaire (${ecarts.length}) :` : "aucun écart à la grammaire",
     ...ecarts.map((e) => `  diapositive ${e.diapo} : ${e.message}`),
   ].join("\n"));
@@ -220,7 +223,7 @@ function revueCommande(fichier: string, sortie: string | undefined, p: ProcedeCh
   const voisin = join(dirname(fichier), "releve.json");
   if (!existsSync(voisin)) throw new Error(`relevé du deck hérité absent (${voisin}) : packager relever <deck> d'abord`);
   const releve = JSON.parse(readFileSync(voisin, "utf8")) as Releve;
-  const { spec } = lire(octets, p.profil);
+  const { spec } = lire(octets, p.profil, dureesDuProcede(p.procede));
   const rapport = diagnostiquer(spec, releve, qualifierReleve(releve, p.profil).qualifications, { charte: p.procede.charte, profil: p.profil });
   const retenues = sequences ?? spec.sequences.map((q) => q.id);
   const html = revueHtml(rapport, spec, diapositivesDesBlocs(octets), retenues, p.theme, p.procede.charte);
@@ -249,14 +252,14 @@ function diffCommande(a: string, b: string, sortie: string | undefined, p: Proce
   console.log([
     `# Diff — ${a} → ${b}`,
     `PPT d'auteur ${d.ppt.avant === d.ppt.apres ? "identique" : "modifié"} · pivot ${d.pivot.avant === d.pivot.apres ? "identique" : "modifié"} → ${dossier}/diff.html`,
-    ...d.blocs.map((k) => `  ${k.id} (diapositive d'origine ${k.diapo}) ${k.etat} : ${k.changements.map((c) => c.chemin).join(", ")}`),
+    ...d.blocs.map((k) => `  ${k.id} (${k.diapo !== null ? `diapositive d'origine ${k.diapo}` : k.titre}) ${k.etat} : ${k.changements.map((c) => c.chemin).join(", ")}`),
     ...d.sorties.map((s) => `  ${s.fichier} : ${s.etat}${s.note ? ` (${s.note})` : ""}`),
   ].join("\n"));
 }
 
 function qualifierCommande(deck: string, sortie: string | undefined, p: ProcedeCharge): void {
   const { releve, dossier } = ecrireReleve(deck, sortie);
-  const { spec, qualifications } = qualifierReleve(releve, p.profil);
+  const { spec, qualifications } = qualifierReleve(releve, p.profil, activitesDuProcede(p.procede));
   SeanceSpec.parse(spec);
   writeFileSync(join(dossier, "seance-spec.json"), stringify2(spec));
   const rapport = diagnostiquer(spec, releve, qualifications, { charte: p.procede.charte, profil: p.profil });
@@ -314,7 +317,8 @@ function ecartEnTexte(m: Manifeste): string {
   const e = m.ecart;
   return `écart à la source (sensibilité ${e.sensibilite}) : chaîne ${e.chaine.inventes} mot(s) inventé(s), ${e.chaine.inversions} inversion(s)`
     + ` ; revue ${e.revue.inventes} mot(s) nouveau(x), ${e.revue.inversions} inversion(s), ${e.revue.retirees} diapositive(s) retirée(s),`
-    + ` ${e.revue.ajoutes + e.revue.dupliques} bloc(s) ajouté(s) ; ${Math.round(e.conserve * 1000) / 10} % du texte d'origine conservé`;
+    + ` ${e.revue.ajoutes + e.revue.dupliques} bloc(s) ajouté(s) ; ${Math.round(e.conserve * 1000) / 10} % du texte d'origine conservé`
+    + (e.sensibilite !== "minimale" || e.activites.livrees ? ` ; activités : ${e.activites.livrees} livrée(s) (${e.activites.chaine} proposée(s) par la chaîne, ${e.activites.revue} ajoutée(s) à la revue), ${e.activites.minutes} minutes, ${e.activites.inventes} mot(s) inventé(s)` : "");
 }
 
 /** Rejoue un procédé sur un deck (et le PPT revu) : la chaîne entière, puis la comparaison à sa référence. */
@@ -334,7 +338,8 @@ async function rejouerCommande(p: ProcedeCharge, deck: string, revue: string | u
     ...(r.versions.length ? ["versions en écart (la conformité se juge aux empreintes) :", ...r.versions.map((v) => `  ${v.quoi} : ${v.trouvee ?? "absent"} au lieu de ${v.attendue ?? "absent"}`)] : ["versions : celles du procédé"]),
     ...r.comparaisons.map((c) => (c.attendue !== null && c.attendue === c.obtenue ? `  identique  ${c.quoi}` : `  DIFFÉRENT  ${c.quoi} : ${c.obtenue ?? "absent"} au lieu de ${c.attendue ?? "(pas de référence)"}`)),
     ...(r.refus.length ? [`livraison refusée (${r.refus.length}) :`, ...r.refus.map((x) => `  ${x}`)] : []),
-    `écart à la source : chaîne ${r.ecart.chaine.inventes.length} mot(s) inventé(s), ${r.ecart.chaine.inversions} inversion(s) ; revue ${r.ecart.revue.inventes.length} mot(s) nouveau(x), ${r.ecart.revue.retirees.length} diapositive(s) retirée(s)`,
+    `écart à la source : chaîne ${r.ecart.chaine.inventes.length} mot(s) inventé(s), ${r.ecart.chaine.inversions} inversion(s) ; revue ${r.ecart.revue.inventes.length} mot(s) nouveau(x), ${r.ecart.revue.retirees.length} diapositive(s) retirée(s)`
+      + (r.ecart.livrees.activites.length ? ` ; activités : ${r.ecart.livrees.activites.length} livrée(s), ${r.ecart.livrees.minutes} minutes, ${r.ecart.livrees.activites.reduce((n, a) => n + a.inventes.length, 0)} mot(s) inventé(s)` : ""),
     ...(nouvelleReference ? [`empreintes obtenues écrites dans ${nouvelleReference} (${r.cas} · ${r.extrait})`] : []),
     r.conforme ? `conforme à la référence (${r.comparaisons.length} empreintes identiques)` : `NON CONFORME : ${r.comparaisons.filter((c) => c.attendue === null || c.attendue !== c.obtenue).length} écart(s) à la référence — monter de version est un acte (rejeu, diff, décision)`,
   ];
