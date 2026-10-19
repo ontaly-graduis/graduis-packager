@@ -12,7 +12,7 @@ import { diagnostiquer, type Rapport } from "../src/diagnostic/regles";
 import { GEOMETRIES } from "../src/dessin/geometries";
 import { emettre } from "../src/emission/emettre";
 import { lire } from "../src/lecture/lire";
-import { SeanceSpec } from "../src/pivot/seance-spec";
+import { SeanceSpec, blocsDe } from "../src/pivot/seance-spec";
 import { chargerTheme } from "../src/theme/theme";
 import { construirePapier } from "../src/papier/construire";
 import { chromiumDisponible, imprimer, versionDuNavigateur } from "../src/papier/imprimer";
@@ -63,7 +63,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   });
 
   it("redessine les 7 schémas : un dessin chacun, géométries prises en charge, aucune couleur au pivot (PKG-B2)", () => {
-    const schemas = spec.sequences.flatMap((s) => s.blocs).filter((b) => b.figure === "schema");
+    const schemas = blocsDe(spec).filter((b) => b.figure === "schema");
     expect(schemas.map((b) => b.source.diapo)).toEqual([15, 16, 17, 18, 19, 20, 31]);
     expect(schemas.every((b) => (b.dessin?.elements.length ?? 0) >= 20)).toBe(true);
     const geometries = new Set(schemas.flatMap((b) => b.dessin!.elements.flatMap((e) => (e.type === "forme" ? [e.geometrie] : []))));
@@ -78,7 +78,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   });
 
   it("organise les textes : étapes clés dans l'ordre de leurs numéros, définitions, fiches illustrées (PKG-B3)", () => {
-    const bloc = (n: number) => spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === n)!;
+    const bloc = (n: number) => blocsDe(spec).find((b) => b.source.diapo === n)!;
     const noeuds = (n: number) => bloc(n).structure!.rangees.flatMap((r) => r.colonnes.flatMap((c) => c.noeuds));
     const etapes = noeuds(58)[0]!;
     expect(etapes.type === "liste" && etapes.numerotee && etapes.items.map((i) => i.texte.split(" ")[0])).toEqual(["Accéder", "Vérifier", "Consolider/transformer", "Soumettre"]);
@@ -88,7 +88,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   });
 
   it("partitionne les schémas : colonnes rangées par leurs numéros, logigramme par ses étapes (PKG-B3)", () => {
-    const partition = (n: number) => spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === n)!.dessin!.partition;
+    const partition = (n: number) => blocsDe(spec).find((b) => b.source.diapo === n)!.dessin!.partition;
     expect([15, 16, 17, 18, 19, 20, 31].map(partition)).toEqual([
       undefined, undefined,
       { mode: "colonnes", pas: 4 }, { mode: "colonnes", pas: 4 }, { mode: "colonnes", pas: 4 }, { mode: "colonnes", pas: 4 },
@@ -97,7 +97,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   });
 
   it("recompose les processus en phases au gabarit « cas » du wizard (PKG-B4)", () => {
-    const bloc = (n: number) => spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === n)!;
+    const bloc = (n: number) => blocsDe(spec).find((b) => b.source.diapo === n)!;
     const lu = (n: number) => {
       const c = bloc(n).composition;
       return c?.gabarit === "cas" ? { phases: c.cas.map((k) => [k.numero, k.etapes.length, k.etapes.filter((e) => e.detail).length]), legende: c.legende?.length ?? 0 } : null;
@@ -110,7 +110,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   });
 
   it("recompose les fiches personae au gabarit « tableau » du wizard (PKG-B5)", () => {
-    const bloc = (n: number) => spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === n)!;
+    const bloc = (n: number) => blocsDe(spec).find((b) => b.source.diapo === n)!;
     const lu = (n: number) => {
       const t = bloc(n).composition;
       if (t?.gabarit !== "tableau") return null;
@@ -149,7 +149,7 @@ describe.skipIf(!existsSync(DECK))("corpus — deck boost acheteur", () => {
   }, 30_000); // l'aller-retour des 166 diapositives frôle les 5 s par défaut quand la suite tourne en parallèle
 
   it("garde les visuels d'origine : pictogrammes, minuteurs, météo, icônes de section, photo de couverture (PKG-B6)", () => {
-    const blocs = spec.sequences.flatMap((s) => s.blocs);
+    const blocs = blocsDe(spec);
     const avec = (role: string) => blocs.filter((b) => b.visuels.some((v) => v.role === role)).map((b) => b.source.diapo);
     expect(avec("duree")).toEqual([3, 5, 42]);
     expect(blocs.filter((b) => b.figure === "ecran-animation" || b.figure === "demonstration").filter((b) => !b.visuels.some((v) => v.role === "pictogramme")).map((b) => b.source.diapo)).toEqual([10]);

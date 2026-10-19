@@ -1,7 +1,8 @@
-// Le pivot `graduis/seance-spec@0` : le signifié d'une séance présentielle, source unique des trois sorties.
+// Le pivot `graduis/seance-spec@1` : le signifié d'une séance présentielle, source unique des trois sorties ; ses blocs de
+// contenu, et les activités dérivées qui pointent vers eux (ACT-1).
 import { z } from "zod";
 
-export const SCHEMA_SEANCE = "graduis/seance-spec@0";
+export const SCHEMA_SEANCE = "graduis/seance-spec@1";
 
 export const FIGURES = [
   "couverture", "ecran-animation", "transition", "objectifs", "contenu", "processus", "schema",
@@ -271,9 +272,43 @@ export const Bloc = z.object({
   notes: z.string(),
 }).strict();
 
+/** Les gestes que joue une activité dérivée (spec v1 § 5.2) : ceux du dictionnaire, et la Sélection sur image, sa variante. */
+export const GESTES = ["rappel", "classement", "categorisation", "selection-sur-image"] as const;
+export type Geste = (typeof GESTES)[number];
+
+/**
+ * Les dérivations sans invention (spec v1 § 5.3) : chacune lit une figure source et joue un geste. Le geste se dérive de la
+ * dérivation, le repli papier du geste : le pivot ne garde ni l'un ni l'autre (I-PKG-1).
+ */
+export const DERIVATIONS = ["rappel", "etapes-a-replacer", "qui-fait-quoi", "ordre-des-pas", "ou-cliquez-vous"] as const;
+export type Derivation = (typeof DERIVATIONS)[number];
+
+export const DERIVATION: Readonly<Record<Derivation, { readonly geste: Geste; readonly source: Figure }>> = {
+  rappel: { geste: "rappel", source: "etapes-cles" },
+  "etapes-a-replacer": { geste: "classement", source: "schema" },
+  "qui-fait-quoi": { geste: "categorisation", source: "processus" },
+  "ordre-des-pas": { geste: "classement", source: "pas-a-pas" },
+  "ou-cliquez-vous": { geste: "selection-sur-image", source: "pas-a-pas" },
+};
+
+/** Le temps MFAP d'un geste : le Rappel régule, les autres réalisent. */
+export const TEMPS_DE_GESTE: Readonly<Record<Geste, Temps>> = { rappel: "R*", classement: "R", categorisation: "R", "selection-sur-image": "R" };
+
+/**
+ * Une activité dérivée (I-PKG-12) : elle pointe vers son bloc source et ne copie rien — remplacer la source met l'activité à
+ * jour. Sa durée, en minutes, est son contrat de temps (I-PKG-14).
+ */
+export const Activite = z.object({
+  id: z.string().regex(/^a\d{3}$/),
+  figure: z.literal("activite"),
+  derivation: z.enum(DERIVATIONS),
+  derive_de: z.string().regex(/^b\d{3}$/),
+  duree: z.number().int().positive(),
+}).strict();
+
 export const Sequence = z.object({
   id: z.string().regex(/^s\d{3}$/),
-  blocs: z.array(Bloc).min(1),
+  blocs: z.array(z.union([Bloc, Activite])).min(1),
 }).strict();
 
 export const SeanceSpec = z.object({
@@ -292,6 +327,14 @@ export function verifierSequences(spec: SeanceSpec, retenues: readonly string[])
 }
 export type Sequence = z.infer<typeof Sequence>;
 export type Bloc = z.infer<typeof Bloc>;
+export type Activite = z.infer<typeof Activite>;
+
+export const estActivite = (b: Bloc | Activite): b is Activite => b.figure === "activite";
+/** Les blocs de contenu d'un pivot ou d'une séquence, sans ses activités. */
+export const blocsDe = (s: { readonly sequences: readonly Sequence[] } | Sequence): Bloc[] =>
+  ("sequences" in s ? s.sequences.flatMap((q) => q.blocs) : s.blocs).filter((b): b is Bloc => !estActivite(b));
+/** Les activités d'un pivot. */
+export const activitesDe = (s: { readonly sequences: readonly Sequence[] }): Activite[] => s.sequences.flatMap((q) => q.blocs).filter(estActivite);
 export type Pas = z.infer<typeof Pas>;
 export type Visuel = z.infer<typeof Visuel>;
 export type Dessin = z.infer<typeof Dessin>;

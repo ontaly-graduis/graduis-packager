@@ -3,6 +3,7 @@ import { dessinEnSvg } from "../../dessin/svg";
 import type { Composition, Structure, Vignette } from "../../pivot/seance-spec";
 import type { BlocDeSalle, SequenceDeSalle, VisuelDeSalle } from "../donnees";
 import { planDeDevoilement } from "../unites";
+import { ETAT_INITIAL, activite, type EtatDActivite } from "./activites";
 
 /** Le nom du thème (le texte de remplacement du logo), injecté à la construction du lecteur. */
 declare const NOM_DU_THEME: string;
@@ -18,6 +19,8 @@ export interface Contexte {
    * dévoilement de l'étape ; ou rien (présentateur).
    */
   readonly anime: "bloc" | "premiere" | "etape" | "aucun";
+  /** L'état de chaque activité, par bloc : ce que la régie a saisi. */
+  readonly activites?: ReadonlyMap<string, EtatDActivite>;
 }
 
 /** L'entrée de la diapositive s'anime (titre, puis le corps). */
@@ -550,6 +553,9 @@ export function rendreDiapo(ctx: Contexte, seq: SequenceDeSalle, b: BlocDeSalle,
       break;
     case "glossaire":
       corps.append(defile(ctx, liste(ctx, b.lignes, 0, false, "liste glossaire")));
+      break;
+    case "activite":
+      corps.append(activite(ctx, b, etape, ctx.activites?.get(b.id) ?? ETAT_INITIAL));
       break;
     case "renvoi":
       corps.classList.add("centre");

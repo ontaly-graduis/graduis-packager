@@ -8,7 +8,7 @@ import { emettre } from "../src/emission/emettre";
 import { disposition } from "../src/emission/grammaire";
 import { lire } from "../src/lecture/lire";
 import { stringify2 } from "../src/lib/json";
-import { FIGURES, SeanceSpec } from "../src/pivot/seance-spec";
+import { FIGURES, SeanceSpec, blocsDe } from "../src/pivot/seance-spec";
 import { qualifierReleve } from "../src/qualification/qualifier";
 import { relever } from "../src/releve/releve";
 import { paletteDesJetons } from "../src/emission/gabarit";
@@ -97,10 +97,10 @@ describe("le PPT de validation (PKG-C1)", () => {
     const { spec: relu, ecarts } = lire(dupliquer(octets, 2), PROFIL);
     const ids = relu.sequences.flatMap((s) => s.blocs.map((b) => b.id));
     expect(new Set(ids).size).toBe(ids.length);
-    const n = spec.sequences.flatMap((s) => s.blocs).length;
+    const n = blocsDe(spec).length;
     expect(ids).toHaveLength(n + 1);
     expect(ids[2]).toBe(`b${String(n + 1).padStart(3, "0")}`);
-    expect(relu.sequences.flatMap((s) => s.blocs)[2]!.source.diapo).toBe(2);
+    expect(blocsDe(relu)[2]!.source.diapo).toBe(2);
     expect(ecarts.map((e) => e.message)).toEqual([`identifiant b002 dupliqué : renuméroté b${String(n + 1).padStart(3, "0")}`]);
   });
 
@@ -109,8 +109,8 @@ describe("le PPT de validation (PKG-C1)", () => {
     const p = unzipSync(octets);
     p["ppt/slides/slide2.xml"] = strToU8(strFromU8(p["ppt/slides/slide2.xml"]!).replace(CONSIGNES[1], "Sélectionner la DA à traiter"));
     const { spec: relu } = lire(zipSync(p as Zippable), PROFIL);
-    const avant = spec.sequences.flatMap((s) => s.blocs);
-    const apres = relu.sequences.flatMap((s) => s.blocs);
+    const avant = blocsDe(spec);
+    const apres = blocsDe(relu);
     const changes = avant.filter((b, i) => stringify2(b) !== stringify2(apres[i]));
     expect(changes.map((b) => b.id)).toEqual(["b002"]);
     expect(apres[1]!.pas.map((x) => x.consigne)).toEqual([CONSIGNES[0], "Sélectionner la DA à traiter"]);
@@ -143,11 +143,11 @@ describe("la structure des textes en grammaire, et l'ingestion complémentaire (
     p["ppt/slides/slide2.xml"] = strToU8(strFromU8(p["ppt/slides/slide2.xml"]!).replace("Accueil et tour de table", "Accueil des participants"));
     const { spec: relu, ecarts } = lire(zipSync(p as Zippable), PROFIL);
     expect(ecarts).toEqual([]);
-    const [avant, apres] = [spec, relu].map((x) => x.sequences.flatMap((q) => q.blocs)[1]!);
+    const [avant, apres] = [spec, relu].map((x) => blocsDe(x)[1]!);
     const liste = apres!.structure!.rangees[1]!.colonnes[0]!.noeuds[1]!;
     expect(liste.type === "liste" && liste.items[0]!.texte).toBe("Accueil des participants");
     expect(apres!.textes[1]).toBe(avant!.textes[1]!.replace("Accueil et tour de table", "Accueil des participants"));
-    expect(stringify2(relu.sequences.flatMap((q) => q.blocs)[0])).toBe(stringify2(spec.sequences.flatMap((q) => q.blocs)[0]));
+    expect(stringify2(blocsDe(relu)[0])).toBe(stringify2(blocsDe(spec)[0]));
   });
 
   it("lit une zone de texte ajoutée à un texte organisé : une rangée de plus, par l'heuristique de l'ingestion initiale, signalée", async () => {
@@ -155,7 +155,7 @@ describe("la structure des textes en grammaire, et l'ingestion complémentaire (
     const p = unzipSync(octets);
     ajouter(p, 2, zoneDeTexte("Prévoir un badge visiteur"));
     const { spec, ecarts } = lire(zipSync(p as Zippable), PROFIL);
-    const b = spec.sequences.flatMap((q) => q.blocs)[1]!;
+    const b = blocsDe(spec)[1]!;
     expect(b.structure!.rangees).toHaveLength(3);
     expect(b.structure!.rangees[2]!.colonnes[0]!.noeuds).toEqual([{ type: "paragraphe", texte: "Prévoir un badge visiteur" }]);
     expect(b.textes.at(-1)).toBe("Prévoir un badge visiteur");
@@ -170,7 +170,7 @@ describe("la structure des textes en grammaire, et l'ingestion complémentaire (
     p["ppt/slides/_rels/slide2.xml.rels"] = strToU8(strFromU8(p["ppt/slides/_rels/slide2.xml.rels"]!).replace("</Relationships>", '<Relationship Id="rIdAjout" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/ajout.png"/></Relationships>'));
     ajouter(p, 2, '<p:pic><p:nvPicPr><p:cNvPr id="991" name="Image 990" descr="Une image contenant un cercle"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rIdAjout"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="100000" y="100000"/><a:ext cx="300000" cy="300000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>');
     const { spec, ecarts } = lire(zipSync(p as Zippable), PROFIL);
-    const [a, b] = [avant, spec].map((x) => x.sequences.flatMap((q) => q.blocs)[1]!);
+    const [a, b] = [avant, spec].map((x) => blocsDe(x)[1]!);
     expect(b!.textes).toEqual([...a!.textes, "Attention aux doublons"]);
     expect(b!.visuels).toHaveLength(a!.visuels.length + 1);
     expect(b!.visuels.at(-1)).toEqual({ media: expect.stringMatching(/^sha256:/), capture: false });
@@ -187,7 +187,7 @@ describe("la structure des textes en grammaire, et l'ingestion complémentaire (
     p["ppt/slides/_rels/slide2.xml.rels"] = strToU8(t("ppt/slides/_rels/slide2.xml.rels").replace(/slideLayout\d+\.xml/, "slideLayout99.xml"));
     p["[Content_Types].xml"] = strToU8(t("[Content_Types].xml").replace("</Types>", '<Override PartName="/ppt/slideLayouts/slideLayout99.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/></Types>'));
     const { spec, ecarts } = lire(zipSync(p as Zippable), PROFIL);
-    const b = spec.sequences.flatMap((q) => q.blocs)[1]!;
+    const b = blocsDe(spec)[1]!;
     expect(b.id).toBe("b002");
     expect(b.figure).toBe("contenu");
     expect(b.textes.join(" ")).toContain("Prise en main d'Oracle Fusion");
@@ -208,7 +208,7 @@ describe("les schémas en formes natives (PKG-C3)", () => {
     const { spec, octets } = await valider(await deckDeSchema(), "d.pptx");
     const p = unzipSync(octets);
     const x = strFromU8(p["ppt/slides/slide2.xml"]!);
-    const b = spec.sequences.flatMap((q) => q.blocs)[1]!;
+    const b = blocsDe(spec)[1]!;
     expect(x).toContain(`name="G·schéma · étapes · ${b.dessin!.partition!.pas} pas"`);
     expect(x).toContain(`<a:chOff x="${Math.round(b.dessin!.cadre[0] * 12700)}" y="${Math.round(b.dessin!.cadre[1] * 12700)}"/>`);
     expect(x).toMatch(/name="G·forme · pas 1 · ordre 0 · pastille"/);
@@ -231,7 +231,7 @@ describe("les schémas en formes natives (PKG-C3)", () => {
     expect(strFromU8(p["docProps/app.xml"]!)).toContain("<Slides>3</Slides>");
     const { spec: relu, ecarts } = lire(octets, PROFIL);
     expect(ecarts).toEqual([]);
-    expect(relu.sequences.flatMap((q) => q.blocs).map((b) => b.id)).toEqual(spec.sequences.flatMap((q) => q.blocs).map((b) => b.id));
+    expect(blocsDe(relu).map((b) => b.id)).toEqual(blocsDe(spec).map((b) => b.id));
   });
 
   it("relit une composition retouchée : une étape réécrite, une autre déplacée d'une case (avec son signal), une autre recolorée", async () => {
@@ -251,14 +251,14 @@ describe("les schémas en formes natives (PKG-C3)", () => {
     p["ppt/slides/slide2.xml"] = strToU8(morceaux.join("<p:sp>"));
     const { spec: relu, ecarts } = lire(zipSync(p as Zippable), PROFIL);
     expect(ecarts).toEqual([]);
-    const [avant, apres] = [spec, relu].map((s) => s.sequences.flatMap((q) => q.blocs)[1]!);
+    const [avant, apres] = [spec, relu].map((s) => blocsDe(s)[1]!);
     if (avant!.composition?.gabarit !== "tableau" || apres!.composition?.gabarit !== "tableau") throw new Error("tableau attendu");
     const attendues = avant!.composition.etapes.map((e, i) =>
       i === 0 ? { ...e, texte: "Demande déposée" } : i === 2 ? { ...e, ligne: 3, colonne: 2 } : i === 3 ? { ...e, fond: "ambre-fort" } : e);
     expect(apres!.composition.etapes).toEqual(attendues);
     expect(apres!.textes).toContain("Demande déposée");
     expect(apres!.dessin).toEqual(avant!.dessin);
-    expect(stringify2(relu.sequences.flatMap((q) => q.blocs)[0])).toBe(stringify2(spec.sequences.flatMap((q) => q.blocs)[0]));
+    expect(stringify2(blocsDe(relu)[0])).toBe(stringify2(blocsDe(spec)[0]));
   });
 
   it("reprend dans le dessin ce qu'ONET y ajoute, dans son repère, et le dit", async () => {
@@ -266,7 +266,7 @@ describe("les schémas en formes natives (PKG-C3)", () => {
     const p = unzipSync(octets);
     ajouter(p, 2, zoneDeTexte("Note du formateur"));
     const { spec: relu, ecarts } = lire(zipSync(p as Zippable), PROFIL);
-    const [avant, apres] = [spec, relu].map((s) => s.sequences.flatMap((q) => q.blocs)[1]!);
+    const [avant, apres] = [spec, relu].map((s) => blocsDe(s)[1]!);
     expect(apres!.dessin!.elements).toHaveLength(avant!.dessin!.elements.length + 1);
     const ajout = apres!.dessin!.elements.at(-1)!;
     expect(ajout.type === "forme" && ajout.texte?.paragraphes[0]!.fragments[0]!.texte).toBe("Note du formateur");
@@ -280,7 +280,7 @@ describe("les schémas en formes natives (PKG-C3)", () => {
     const p = unzipSync(octets);
     p["ppt/presentation.xml"] = strToU8(strFromU8(p["ppt/presentation.xml"]!).replace('<p:sldId id="258" r:id="rId12"/>', ""));
     const { spec: relu, ecarts } = lire(zipSync(p as Zippable), PROFIL);
-    const [avant, apres] = [spec, relu].map((s) => s.sequences.flatMap((q) => q.blocs)[1]!);
+    const [avant, apres] = [spec, relu].map((s) => blocsDe(s)[1]!);
     expect(apres!.dessin).toBeUndefined();
     expect(apres!.composition).toEqual(avant!.composition);
     expect(ecarts).toEqual([{ diapo: 2, message: "schéma recomposé sans sa diapositive annexe : le dessin d'origine manque" }]);

@@ -251,3 +251,59 @@ export async function deckDeTextes(): Promise<Uint8Array> {
   ], { x: 5.9, y: 2.0, w: 3.8, h: 2.6, fontSize: 14, valign: "top" });
   return new Uint8Array((await pptx.write({ outputType: "nodebuffer" })) as Buffer);
 }
+
+export const ETAPES_CLES = ["Ouvrir la demande", "Vérifier le fournisseur", "Soumettre la commande"] as const;
+export const PAS_DE_COMMANDE = ["Ouvrir le menu Achats", "Choisir la demande", "Cliquer sur Transformer"] as const;
+export const LIGNES_DE_PROCESSUS = [
+  ["Saisir la demande", "Demandeur", "ERP"], ["Valider la demande", "Manager", "ERP"],
+  ["Signer le bon", "Acheteur", "Signature"], ["Envoyer au fournisseur", "Acheteur", "Signature"],
+] as const;
+
+/**
+ * Une séquence à activer (ACT-1) : un schéma de quatre étapes numérotées (des pastilles annoncent leurs boîtes), un processus
+ * (Étape × Acteur × Outil), un pas-à-pas de trois pas, des étapes clés — chacune la source d'une dérivation sans invention.
+ */
+export async function deckDActivites(): Promise<Uint8Array> {
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_16x9";
+  pptx.defineSlideMaster({ title: "Titre seul", background: { color: "FFFFFF" }, objects: [] });
+  pptx.defineSlideMaster({ title: "Slide transition", background: { color: "FFFFFF" }, objects: [] });
+  pptx.defineSlideMaster({ title: "Disposition personnalisée", background: { color: "FFFFFF" }, objects: [] });
+  pptx.defineSlideMaster({ title: "Que retenez-vous", background: { color: "FFFFFF" }, objects: [] });
+  pptx.addSlide({ masterName: "Titre seul" }).addText("Ouverture", { x: 1, y: 2, w: 8, h: 1 });
+  pptx.addSlide({ masterName: "Slide transition" }).addText("Créer une commande", { x: 1, y: 2, w: 8, h: 1 });
+
+  const s = pptx.addSlide({ masterName: "Disposition personnalisée" });
+  s.addText("Circuit de la commande", { x: 0.4, y: 0.2, w: 9, h: 0.6, fontSize: 24, bold: true });
+  ["Transformer la demande", "Compléter la commande", "Soumettre au circuit", "Signer le bon"].forEach((t, i) => {
+    const x = 0.4 + i * 2.4;
+    s.addText(t, { shape: pptx.ShapeType.roundRect, x, y: 1.5, w: 1.9, h: 0.8, fill: { color: "2E75B6" }, color: "FFFFFF", fontSize: 10, align: "center", valign: "middle", rectRadius: 0.1 });
+    s.addText(String(i + 1), { shape: pptx.ShapeType.ellipse, x: x - 0.12, y: 1.38, w: 0.26, h: 0.26, fill: { color: "FFFFFF" }, line: { color: "002060", width: 0.75 }, color: "002060", fontSize: 8, align: "center" });
+    s.addText(`Détail ${i + 1}`, { x, y: 2.4, w: 1.9, h: 0.4, fontSize: 8, color: "404040", align: "center" });
+    s.addText(`Note ${i + 1}`, { x, y: 3.0, w: 1.9, h: 0.3, fontSize: 7, color: "404040", align: "center" });
+    if (i < 3) s.addShape(pptx.ShapeType.line, { x: x + 1.9, y: 1.9, w: 0.5, h: 0, line: { color: "A3A7AF", width: 1, endArrowType: "triangle" } });
+  });
+  for (let k = 0; k < 6; k++) s.addShape(pptx.ShapeType.rect, { x: 0.3 + k * 1.6, y: 4.2, w: 1.2, h: 0.4, fill: { color: "DCF4CE" } });
+
+  const p = pptx.addSlide({ masterName: "Disposition personnalisée" });
+  p.addText("Processus de la commande", { x: 0.4, y: 0.2, w: 9, h: 0.6, fontSize: 24, bold: true });
+  p.addTable([["Étape", "Acteur", "Outil"], ...LIGNES_DE_PROCESSUS.map((l) => [...l])].map((l) => l.map((text) => ({ text }))), { x: 0.5, y: 1.2, w: 9, fontSize: 12 });
+
+  const c = pptx.addSlide({ masterName: "Disposition personnalisée" });
+  c.addText("Transformer la demande", { x: 0.4, y: 0.2, w: 9, h: 0.6, fontSize: 24, bold: true });
+  c.addImage({ data: "image/png;base64," + png(1600, 800).toString("base64"), x: 0.5, y: 1, w: 6, h: 3 });
+  const pastille = (n: string, x: number, y: number) =>
+    c.addText(n, { shape: pptx.ShapeType.ellipse, x, y, w: 0.3, h: 0.3, fill: { color: "F28E00" }, align: "center", fontSize: 10 });
+  const zone = (x: number, y: number) => c.addText("", { shape: pptx.ShapeType.rect, x, y, w: 1.5, h: 0.4, line: { color: "F28E00", width: 2 } });
+  PAS_DE_COMMANDE.forEach((t, i) => {
+    pastille(String(i + 1), 1.2 + i * 1.6, 1.6 + i * 0.8);
+    zone(1.6 + i * 1.6, 1.55 + i * 0.8);
+    pastille(String(i + 1), 7.0, 1.6 + i * 1.0);
+    c.addText(t, { x: 7.4, y: 1.5 + i * 1.0, w: 2.4, h: 0.5, fontSize: 12 });
+  });
+
+  const e = pptx.addSlide({ masterName: "Que retenez-vous" });
+  e.addText("Les étapes clés", { x: 0.4, y: 0.2, w: 9, h: 0.6, fontSize: 24, bold: true });
+  e.addText(ETAPES_CLES.map((text, i) => ({ text, options: { bullet: { type: "number" as const }, breakLine: i < ETAPES_CLES.length - 1 } })), { x: 0.5, y: 1.2, w: 9, h: 2.5, fontSize: 16, valign: "top" });
+  return new Uint8Array((await pptx.write({ outputType: "nodebuffer" })) as Buffer);
+}

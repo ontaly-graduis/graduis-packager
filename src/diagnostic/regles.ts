@@ -4,18 +4,30 @@ import type { Forme } from "../ooxml/formes";
 import { sha256, stringify2 } from "../lib/json";
 import type { Releve } from "../releve/releve";
 import { estCapture } from "../releve/geometrie";
-import { FIGURES, TEMPS_DE_FIGURE, type Bloc, type Figure, type SeanceSpec, type Temps } from "../pivot/seance-spec";
+import { DERIVATION, FIGURES, TEMPS_DE_FIGURE, TEMPS_DE_GESTE, blocsDe, estActivite, type Bloc, type Figure, type SeanceSpec, type Temps } from "../pivot/seance-spec";
 import type { Qualification } from "../qualification/figures";
 import { GEOMETRIES } from "../dessin/geometries";
 import { motif, type ProfilSource } from "../profil/profil";
 
 export const SCHEMA_RAPPORT = "graduis/rapport@0";
 
-/** La charte d'harmonisation : les seuils de H2, H3 et H9, validés avec le client sur son démonstrateur ; elle vit au procédé. */
+/** La durée d'une activité dérivée selon son geste, en minutes : son défaut, que le PPT d'auteur peut changer (I-PKG-14). */
+const minutes = z.number().int().positive();
+export const Durees = z.object({ rappel: minutes, classement: minutes, categorisation: minutes, "selection-sur-image": minutes }).strict();
+export type Durees = z.infer<typeof Durees>;
+
+/** Les durées de la charte Graduis par défaut (spec v1 § 4.8), quand celle du procédé n'en dit pas. */
+export const DUREES_GRADUIS: Durees = { rappel: 5, classement: 5, categorisation: 8, "selection-sur-image": 3 };
+
+/**
+ * La charte d'harmonisation : les seuils de H2, H3 et H9, validés avec le client sur son démonstrateur, et la durée des
+ * activités par geste ; elle vit au procédé.
+ */
 export const Charte = z.object({
   motsParEcran: z.number().int().positive(),
   pastillesParCapture: z.number().int().positive(),
   ecartSequence: z.number().positive(),
+  durees: Durees.optional(),
 }).strict();
 export type Charte = z.infer<typeof Charte>;
 
@@ -118,23 +130,22 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
   // Séquences : temps, démonstrations, densité (H1, H9).
   let rang = 0;
   const lignes: LigneSequence[] = spec.sequences.map((s) => {
-    const figures = s.blocs.map((b) => b.figure);
-    const transition = s.blocs.find((b) => b.figure === "transition");
+    const contenus = blocsDe(s);
+    const figures = contenus.map((b) => b.figure);
+    // Les temps d'une séquence : ceux de ses figures, et ceux des gestes de ses activités (une activité réalise ou régule).
+    const temps = [...figures.map((f) => TEMPS_DE_FIGURE[f]), ...s.blocs.filter(estActivite).map((a) => TEMPS_DE_GESTE[DERIVATION[a.derivation].geste])];
+    const transition = contenus.find((b) => b.figure === "transition");
     if (transition) rang += 1;
     return {
       id: s.id,
       numero: transition ? rang : null,
       titre: transition?.titre ?? "(ouverture)",
-      diapositives: s.blocs.length,
+      diapositives: contenus.length,
       operatoire: figures.includes("pas-a-pas"),
-      temps: {
-        E: figures.some((f) => TEMPS_DE_FIGURE[f] === "E"),
-        R: figures.some((f) => TEMPS_DE_FIGURE[f] === "R"),
-        "R*": figures.some((f) => TEMPS_DE_FIGURE[f] === "R*"),
-      },
+      temps: { E: temps.includes("E"), R: temps.includes("R"), "R*": temps.includes("R*") },
       demonstrations: figures.filter((f) => f === "demonstration").length,
-      pas: s.blocs.reduce((n, b) => n + b.pas.length, 0),
-      mots: s.blocs.reduce((n, b) => n + mots(texteDuBloc(b)), 0),
+      pas: contenus.reduce((n, b) => n + b.pas.length, 0),
+      mots: contenus.reduce((n, b) => n + mots(texteDuBloc(b)), 0),
     };
   });
   for (const l of lignes.filter((x) => x.operatoire)) {
@@ -155,7 +166,7 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
   }
 
   // H4 — numéros de séquence saisis sur les transitions, contre l'ordre.
-  const transitions = spec.sequences.flatMap((s) => s.blocs.filter((b) => b.figure === "transition"));
+  const transitions = blocsDe(spec).filter((b) => b.figure === "transition");
   const saisis = transitions.map((b) => b.textes.find((t) => /^\d{1,2}$/.test(t.trim())) ?? null);
   if (saisis.some((n, i) => n !== null && Number(n) !== i + 1)) {
     c("H4", "avis", null, null, `Numéros saisis sur les transitions : ${saisis.map((n) => n ?? "—").join(", ")} ; l'ordre donne 1 à ${transitions.length}. La numérotation sera dérivée.`);
@@ -164,7 +175,7 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
   // H6 — un énoncé de mise en pratique repris d'un autre cas.
   const vus: { cle: string; diapo: number }[] = [];
   for (const s of spec.sequences) {
-    for (const b of s.blocs.filter((x) => x.figure === "mise-en-pratique")) {
+    for (const b of blocsDe(s).filter((x) => x.figure === "mise-en-pratique")) {
       const cle = b.textes.filter((t) => !(profil.pratique && motif(profil.pratique.titre).teste(t))).join(" ").replace(/\s+/g, " ").trim();
       if (!cle) continue;
       const deja = vus.find((v) => similarite(v.cle, cle) >= SIMILAIRE);
@@ -174,7 +185,7 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
   }
 
   for (const s of spec.sequences) {
-    for (const b of s.blocs) {
+    for (const b of blocsDe(s)) {
       const n = b.source.diapo;
       const texte = [texteDuBloc(b), b.notes].join(" ");
       // H8
@@ -250,7 +261,7 @@ export function diagnostiquer(spec: SeanceSpec, releve: Releve, qualifications: 
     }
   }
 
-  const blocs = spec.sequences.flatMap((s) => s.blocs);
+  const blocs = blocsDe(spec);
   const tousPas = blocs.flatMap((b) => b.pas);
   const figures = Object.fromEntries(FIGURES.map((f) => [f, blocs.filter((b) => b.figure === f).length]).filter(([, v]) => v));
   return {

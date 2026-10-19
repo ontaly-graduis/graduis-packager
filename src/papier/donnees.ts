@@ -3,13 +3,14 @@
 // glossaire). Ce qui ne va pas au papier y est nommé ; ce qui y va se recette sur la couche texte du PDF.
 import { verifierSequences, type Figure, type SeanceSpec } from "../pivot/seance-spec";
 import { mettreEnSalle, type BlocDeSalle, type DonneesDeSalle, type Habillage } from "../salle/donnees";
+import type { ContenuDActivite } from "../activites/deriver";
 
 const SCHEMA_PAPIER = "graduis/papier@0";
 
 /** Absentes du papier : les écrans d'animation (des moments de la salle, pas un contenu). */
-const ABSENTES: ReadonlySet<Figure> = new Set(["ecran-animation"]);
+const ABSENTES: ReadonlySet<Figure | "activite"> = new Set(["ecran-animation"]);
 /** Renvoyées en annexe : la synthèse et le glossaire. */
-const EN_ANNEXE: ReadonlySet<Figure> = new Set(["synthese", "glossaire"]);
+const EN_ANNEXE: ReadonlySet<Figure | "activite"> = new Set(["synthese", "glossaire"]);
 
 export interface SequenceDePapier {
   readonly id: string;
@@ -62,7 +63,19 @@ export function mettreSurPapier(spec: SeanceSpec, px: (media: string) => readonl
  * composition, PKG-C3), ses tableaux, ses consignes.
  */
 export function textesDuBloc(b: BlocDeSalle): string[] {
-  return [b.titre ?? "", ...b.lignes, ...b.tableaux.flat(2), ...(b.regionMap?.pas ?? []).map((p) => p.libelle)];
+  return [b.titre ?? "", ...b.lignes, ...b.tableaux.flat(2), ...(b.regionMap?.pas ?? []).map((p) => p.libelle), ...(b.activite ? surLaFiche(b.activite.contenu) : [])];
+}
+
+/**
+ * Ce que la fiche d'une activité imprime de sa source (son repli papier) : les éléments à ordonner, les cartes et leurs
+ * colonnes ; ni ce qu'un rappel doit retrouver, ni un corrigé. Les consignes d'une Sélection sur image sont celles de ses pas.
+ */
+function surLaFiche(c: ContenuDActivite): string[] {
+  switch (c.geste) {
+    case "rappel": case "selection-sur-image": return [];
+    case "classement": return c.presentation.map((i) => c.items[i]!);
+    case "categorisation": return [...c.categories, ...c.presentation.map((i) => c.cartes[i]!.texte)];
+  }
 }
 
 /**

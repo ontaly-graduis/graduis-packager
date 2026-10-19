@@ -6,8 +6,15 @@ import { DOMParser, type Element } from "@xmldom/xmldom";
 import { sha256 } from "../lib/json";
 import { formesDeDiapositive, type Forme } from "../ooxml/formes";
 import { Paquet } from "../ooxml/paquet";
-import { SCHEMA_SEANCE, SeanceSpec, type Bloc, type Pas, type Sequence, type Visuel } from "../pivot/seance-spec";
-import { ESPACES, ETIQUETTES, NOMS, PROPRIETES, ROLES_DE_COULEUR, ancrageDeZone, couleurDeRole, figureDeDisposition, partitionDeNom, roleDeVisuel } from "../emission/grammaire";
+import { DERIVATION, DERIVATIONS, SCHEMA_SEANCE, SeanceSpec, blocsDe, type Activite, type Bloc, type Derivation, type Geste, type Pas, type Sequence, type Visuel } from "../pivot/seance-spec";
+import {
+  ESPACES, ETIQUETTES, NOMS, PROPRIETES, ROLES_DE_COULEUR, ancrageDeZone, couleurDeRole, empreinteDesTextes, figureDeDisposition, gesteDeDisposition,
+  partitionDeNom, roleDeVisuel, type TextesDActivite,
+} from "../emission/grammaire";
+import { DUREES_GRADUIS, type Durees } from "../diagnostic/regles";
+import { deriver, derivationDe } from "../activites/deriver";
+import { lireDuree } from "../activites/habillage";
+import { idDActivite } from "../activites/proposer";
 import { lireCouleur, paletteDuMasque } from "../ooxml/couleurs";
 import { NS, chemin, elementsEnfants } from "../ooxml/paquet";
 import { stylesDuMasque } from "../ooxml/styles";
@@ -199,12 +206,83 @@ function schemaDe(arbre: Element, l: LecteurDeDessin, ecart: (m: string) => void
   return { composition: lue.composition, prises };
 }
 
-/** PPT de validation → pivot, et les écarts à la grammaire ; le profil de source relit ce qui est venu hors grammaire. */
-export function lire(octets: Uint8Array, profil: ProfilSource): { spec: SeanceSpec; ecarts: Ecart[] } {
+/** Une diapositive d'activité telle que lue : ce que disent sa disposition, ses étiquettes, sa durée et ce qu'elle montre. */
+interface ActiviteLue {
+  readonly n: number;
+  /** Le nombre de blocs lus avant elle : elle se place juste après le dernier. */
+  readonly avant: number;
+  readonly geste: Geste;
+  readonly id: string | undefined;
+  readonly derive: string | undefined;
+  readonly derivation: string | undefined;
+  readonly empreinte: string | undefined;
+  readonly duree: string | null;
+  readonly montre: TextesDActivite;
+  readonly captures: readonly string[];
+}
+
+/** Ce qu'une diapositive d'activité montre : ses textes à leur place dans la grammaire, ses captures. */
+function montreDActivite(formes: readonly Forme[], notes: string, hashDe: (f: Forme) => string | undefined): { montre: TextesDActivite; captures: string[] } {
+  const nommee = (nom: string) => formes.find((f) => f.nom.startsWith(nom));
+  const paragraphesDe = (f: Forme | undefined) => (f?.texte ?? []).filter((t) => t.trim() !== "");
+  const titre = formes.find((f) => f.espace?.type === "title" || f.espace?.type === "ctrTitle");
+  const colonnes = formes.find((f) => f.nature === "tableau" && f.nom.startsWith(NOMS.colonnes));
+  return {
+    montre: {
+      titre: titre ? texteDe(titre) : "",
+      consigne: nommee(NOMS.consigne) ? texteDe(nommee(NOMS.consigne)!) : "",
+      contenu: paragraphesDe(espace(formes, ESPACES.contenu)),
+      consignes: paragraphesDe(espace(formes, ESPACES.consignes)),
+      colonnes: colonnes?.lignes?.[0] ? [...colonnes.lignes[0]] : [],
+      source: nommee(NOMS.source) ? texteDe(nommee(NOMS.source)!) : "",
+      notes,
+    },
+    captures: formes.filter((f) => f.nature === "image" && f.media && f.nom.startsWith(NOMS.capture)).map((f) => hashDe(f)!).filter(Boolean),
+  };
+}
+
+/**
+ * Une activité lue rejoint le pivot si sa source s'y trouve et s'y prête : la source est celle que dit son étiquette, ou —
+ * ajoutée à la main — le bloc qui la précède ; la dérivation, celle que le geste tire de la figure source. Ce qu'elle montre
+ * dérive de sa source : une retouche dans PowerPoint (l'empreinte émise ne correspond plus) est signalée, non reprise.
+ */
+function resoudreActivite(a: ActiviteLue, blocs: readonly Bloc[], durees: Durees, pris: Set<string>, ecart: (m: string) => void): Activite | null {
+  const source = a.derive ? blocs.find((b) => b.id === a.derive) : blocs[a.avant - 1];
+  if (!source) {
+    ecart(a.derive ? `activité dont la source (${a.derive}) n'est plus au PPT : retirée` : "activité ajoutée sans diapositive qui la précède : ignorée");
+    return null;
+  }
+  const etiquetee = DERIVATIONS.find((d) => d === a.derivation);
+  const derivation: Derivation | undefined = etiquetee && DERIVATION[etiquetee].geste === a.geste && DERIVATION[etiquetee].source === source.figure ? etiquetee : derivationDe(a.geste, source.figure);
+  if (!derivation) {
+    ecart(`aucune activité ne se dérive d'une diapositive « ${source.figure} » (${source.id}) par le geste « ${a.geste} » : diapositive ignorée`);
+    return null;
+  }
+  if (!deriver({ derivation, derive_de: source.id }, source)) {
+    ecart(`la diapositive ${source.id} ne se prête pas à l'activité « ${derivation} » (rien à y prendre sans inventer) : diapositive ignorée`);
+    return null;
+  }
+  if (!a.derive) ecart(`activité ajoutée : « ${derivation} », dérivée de la diapositive qui la précède (${source.id})`);
+  if (a.empreinte ? empreinteDesTextes(a.montre, a.captures) !== a.empreinte : [...Object.values(a.montre)].some((v) => (Array.isArray(v) ? v.length > 0 : v !== ""))) {
+    ecart(`le contenu d'une activité ne se retouche pas dans PowerPoint : il dérive de ${source.id} — retouche non reprise (modifier la source)`);
+  }
+  const lue = a.duree === null ? null : lireDuree(a.duree);
+  if (a.duree !== null && lue === null) ecart(`durée d'activité illisible (« ${a.duree} ») : celle de la charte`);
+  const id = a.id && /^a\d{3}$/.test(a.id) && !pris.has(a.id) ? a.id : idDActivite(source.id, pris);
+  pris.add(id);
+  return { id, figure: "activite", derivation, derive_de: source.id, duree: lue ?? durees[DERIVATION[derivation].geste] };
+}
+
+/**
+ * PPT de validation → pivot, et les écarts à la grammaire ; le profil de source relit ce qui est venu hors grammaire, les
+ * durées de la charte complètent une activité sans la sienne.
+ */
+export function lire(octets: Uint8Array, profil: ProfilSource, durees: Durees = DUREES_GRADUIS): { spec: SeanceSpec; ecarts: Ecart[] } {
   const paquet = new Paquet(octets);
   const ecarts: Ecart[] = [];
   const props = proprietes(paquet);
   const lus: { bloc: Omit<Bloc, "id"> & { id?: string }; n: number }[] = [];
+  const activitesLues: ActiviteLue[] = [];
   // Les diapositives annexes : le dessin d'origine d'un schéma recomposé, rattaché à son bloc (elles ne sont pas des blocs).
   const annexes: { id: string; n: number; dessin: Dessin | undefined }[] = [];
   const { largeur } = paquet.taille();
@@ -212,7 +290,7 @@ export function lire(octets: Uint8Array, profil: ProfilSource): { spec: SeanceSp
   // grammaire), on la lit comme on a lu le deck hérité. Calculée une fois, au besoin.
   let heuristique: Map<number, Bloc> | undefined;
   const parHeuristique = (n: number) => {
-    heuristique ??= new Map(qualifierReleve(relever(octets, props.get(PROPRIETES.nom) ?? "validation.pptx").releve, profil).spec.sequences.flatMap((s) => s.blocs).map((b) => [b.source.diapo, b]));
+    heuristique ??= new Map(blocsDe(qualifierReleve(relever(octets, props.get(PROPRIETES.nom) ?? "validation.pptx").releve, profil).spec).map((b) => [b.source.diapo, b]));
     return heuristique.get(n)!;
   };
   for (const d of paquet.diapositives()) {
@@ -220,6 +298,17 @@ export function lire(octets: Uint8Array, profil: ProfilSource): { spec: SeanceSp
     const nom = paquet.disposition(d.chemin)?.nom ?? "";
     const figure = figureDeDisposition(nom);
     const tags = etiquettes(paquet, d.chemin);
+    const geste = gesteDeDisposition(nom);
+    if (geste) {
+      const formes = formesDeDiapositive(paquet, d.chemin);
+      const hashDe = (f: Forme) => { const o = f.media ? paquet.octets(f.media) : undefined; return o ? sha256(o) : undefined; };
+      const duree = formes.find((f) => f.nom.startsWith(NOMS.duree));
+      activitesLues.push({
+        n: d.n, avant: lus.length, geste, id: tags.get(ETIQUETTES.bloc), derive: tags.get(ETIQUETTES.derive), derivation: tags.get(ETIQUETTES.derivation),
+        empreinte: tags.get(ETIQUETTES.textes), duree: duree ? texteDe(duree) : null, ...montreDActivite(formes, paquet.notes(d.chemin), hashDe),
+      });
+      continue;
+    }
     const source = Number.parseInt(tags.get(ETIQUETTES.source) ?? "", 10);
     const id = tags.get(ETIQUETTES.bloc);
     if (!figure) {
@@ -329,9 +418,17 @@ export function lire(octets: Uint8Array, profil: ProfilSource): { spec: SeanceSp
     vus.add(id);
     return { ...bloc, id } as Bloc;
   });
+  // Les activités, résolues sur les blocs lus, rejoignent leur place : juste après le dernier bloc qui les précède.
+  const pris = new Set<string>();
+  const activites = activitesLues.map((a) => ({ avant: a.avant, activite: resoudreActivite(a, blocs, durees, pris, (message) => ecarts.push({ diapo: a.n, message })) }));
+  const ordonnes: (Bloc | Activite)[] = [];
+  for (let k = 0; k <= blocs.length; k++) {
+    for (const a of activites) if (a.avant === k && a.activite) ordonnes.push(a.activite);
+    if (k < blocs.length) ordonnes.push(blocs[k]!);
+  }
   // Une séquence s'ouvre à chaque transition ; son identifiant suit son premier bloc.
   const sequences: Sequence[] = [];
-  for (const b of blocs) {
+  for (const b of ordonnes) {
     const courante = sequences[sequences.length - 1];
     if (!courante || b.figure === "transition") sequences.push({ id: `s${b.id.slice(1)}`, blocs: [b] });
     else courante.blocs.push(b);

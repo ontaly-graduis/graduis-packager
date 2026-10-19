@@ -1,5 +1,6 @@
 // Les visuels d'origine dans la salle (PKG-B6) : le pictogramme d'un écran dans son disque, le minuteur dans la puce
 // des minutes, la galerie d'une météo, le pictogramme d'une mise en pratique sur son aplat, l'icône de section en tête.
+import { blocsDe } from "../src/pivot/seance-spec";
 import { expect, test } from "@playwright/test";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -35,7 +36,7 @@ test.beforeAll(async () => {
   url = await ecrire(spec);
   // Le pictogramme blanc de la mise en pratique, reposé sur l'ambre pâle, qui le noie (1,1:1).
   const aplat = structuredClone(spec);
-  for (const b of aplat.sequences.flatMap((q) => q.blocs)) {
+  for (const b of blocsDe(aplat)) {
     for (const v of b.visuels) if (b.figure === "mise-en-pratique" && v.role === "pictogramme") v.fond = "ambre-pale";
   }
   urlAplat = await ecrire(aplat);

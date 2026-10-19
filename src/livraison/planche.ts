@@ -7,10 +7,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { esc, STYLE_DOCUMENT } from "../diagnostic/rapport-html";
-import type { SeanceSpec } from "../pivot/seance-spec";
+import { blocsDe, type SeanceSpec } from "../pivot/seance-spec";
 import type { DonneesDeSalle } from "../salle/donnees";
 import type { Theme } from "../theme/theme";
-import { LIBELLES } from "../pivot/libelles";
+import { libelleDeBloc } from "../pivot/libelles";
 
 /** Les diapositives d'un deck, rendues par LibreOffice puis pdftoppm : numéro → JPEG. */
 function apercus(deck: string, pages: readonly number[]): Map<number, Uint8Array> {
@@ -61,11 +61,12 @@ const enDonnee = (o: Uint8Array | undefined) => (o ? `data:image/jpeg;base64,${B
 export async function planche(deck: string, spec: SeanceSpec, salle: string, theme: Theme): Promise<string> {
   const html = readFileSync(salle, "utf8");
   const donnees = JSON.parse(html.match(/<script type="application\/json" id="donnees">([\s\S]*?)<\/script>/)![1]!) as DonneesDeSalle;
-  const source = new Map(spec.sequences.flatMap((q) => q.blocs).map((b) => [b.id, b.source.diapo]));
-  const blocs = donnees.sequences.flatMap((q) => q.blocs.map((b) => ({ id: b.id, etapes: b.etapes, figure: b.figure, titre: b.titre, diapo: source.get(b.id) ?? 0 })));
+  // Une activité n'a pas de diapositive d'origine : la planche montre ce qui était déjà là, avant et après.
+  const source = new Map(blocsDe(spec).map((b) => [b.id, b.source.diapo]));
+  const blocs = donnees.sequences.flatMap((q) => q.blocs.flatMap((b) => (b.activite ? [] : [{ id: b.id, etapes: b.etapes, figure: b.figure, titre: b.titre, diapo: source.get(b.id) ?? 0 }])));
   const avant = apercus(deck, blocs.map((b) => b.diapo));
   const apres = await vuesDeSalle(salle, blocs);
-  const lignes = blocs.map((b) => `<section class="regle"><h3><span>Diapositive ${b.diapo} · ${esc(b.titre ?? "")}</span><small>${esc(LIBELLES[b.figure] ?? b.figure)}</small></h3>`
+  const lignes = blocs.map((b) => `<section class="regle"><h3><span>Diapositive ${b.diapo} · ${esc(b.titre ?? "")}</span><small>${esc(libelleDeBloc(b))}</small></h3>`
     + `<div class="avant-apres"><figure><img src="${enDonnee(avant.get(b.diapo))}" alt=""><figcaption>avant : le deck d'origine</figcaption></figure>`
     + `<figure><img src="${enDonnee(apres.get(b.id))}" alt=""><figcaption>après : la salle</figcaption></figure></div></section>`).join("");
   const titre = donnees.sequences.map((q) => (q.numero !== null ? `Séquence ${q.numero} · ${q.titre}` : q.titre)).join(" — ");

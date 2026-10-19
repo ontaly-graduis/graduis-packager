@@ -3,7 +3,7 @@
 // rapporté aux constats de toute la journée, donne le temps humain résiduel d'un deck (le chiffrage). Page locale : elle
 // porte le contenu du client et ne se publie pas (I-PKG-9).
 import { stringify2 } from "../lib/json";
-import { verifierSequences, type SeanceSpec } from "../pivot/seance-spec";
+import { blocsDe, verifierSequences, type SeanceSpec } from "../pivot/seance-spec";
 import type { Theme } from "../theme/theme";
 import { esc, STYLE_DOCUMENT } from "./rapport-html";
 import { regles, type Charte, type Rapport } from "./regles";
@@ -38,7 +38,7 @@ interface Point {
 export function revueHtml(rapport: Rapport, spec: SeanceSpec, positions: ReadonlyMap<string, number>, sequences: readonly string[], theme: Theme, charte: Charte): string {
   const actions = regles(charte);
   verifierSequences(spec, sequences);
-  const blocs = spec.sequences.flatMap((q) => q.blocs);
+  const blocs = blocsDe(spec);
   const positionDe = (source: number) => { const b = blocs.find((x) => x.source.diapo === source); return (b ? positions.get(b.id) : undefined) ?? 10000 + source; };
   const diapoDuBloc = (source: number | null) => {
     if (source === null) return "séquence";

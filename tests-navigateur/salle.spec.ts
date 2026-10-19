@@ -142,7 +142,7 @@ test.describe("débordement", () => {
       visuels: [], tableaux: [], pas: [], notes: "",
     });
     const spec = {
-      schema: "graduis/seance-spec@0" as const,
+      schema: "graduis/seance-spec@1" as const,
       source: { nom: "long.pptx", empreinte: "sha256:" + "c".repeat(64) },
       sequences: [{ id: "s001", blocs: [bloc(1, "contenu", 30), bloc(2, "glossaire", 60), bloc(3, "contenu", 1)] }],
     };

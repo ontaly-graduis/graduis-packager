@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { stringify2 } from "../src/lib/json";
 import { relever, type Releve } from "../src/releve/releve";
 import { qualifierReleve } from "../src/qualification/qualifier";
-import { SeanceSpec } from "../src/pivot/seance-spec";
+import { SeanceSpec, blocsDe } from "../src/pivot/seance-spec";
 import { diagnostiquer } from "../src/diagnostic/regles";
 import { rapportHtml } from "../src/diagnostic/rapport-html";
 import { chargerTheme } from "../src/theme/theme";
@@ -16,7 +16,7 @@ const p = (v: number) => Math.round(v * POUCE);
 describe("qualification du deck synthétique", async () => {
   const { releve } = relever(await deckSynthetique(), "synthetique.pptx");
   const { spec, qualifications } = qualifierReleve(releve, PROFIL);
-  const blocs = spec.sequences.flatMap((s) => s.blocs);
+  const blocs = blocsDe(spec);
 
   it("produit un seance-spec valide, un bloc par diapositive", () => {
     expect(() => SeanceSpec.parse(spec)).not.toThrow();
@@ -71,7 +71,7 @@ describe("zones proposées par ordre de lecture (décision du 17/10)", () => {
   };
 
   it("attribue les zones libres aux pas sans zone, marquées « proposee »", () => {
-    const pas = qualifierReleve(releve, PROFIL).spec.sequences[0]!.blocs[0]!.pas;
+    const pas = blocsDe(qualifierReleve(releve, PROFIL).spec)[0]!.pas;
     const parNumero = new Map(pas.map((x) => [x.numero, x]));
     expect(parNumero.get(1)).toMatchObject({ ancrage: "proposee", zone: [50, 16.67, 33.33, 16.67] });
     expect(parNumero.get(2)).toMatchObject({ ancrage: "proposee", zone: [16.67, 66.67, 33.33, 16.67] });

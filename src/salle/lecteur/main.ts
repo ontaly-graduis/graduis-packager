@@ -7,6 +7,7 @@ import { ajusterTextes } from "./textes";
 import { relier } from "./liens";
 import { panneauDuPlan, sequencesDuPlan } from "./plan";
 import { debutsDePages, decalageCourant, decalagePage, type Item } from "./defilement";
+import { ETAT_INITIAL, regie, saisir, type Action, type EtatDActivite } from "./activites";
 
 const lire = <T>(id: string): T => JSON.parse(document.getElementById(id)?.textContent ?? "null") as T;
 const donnees = lire<DonneesDeSalle>("donnees");
@@ -33,6 +34,8 @@ let blocRendu = -1;
 let etapeRendue = -1;
 /** Les transformations des éléments qui glissent (rail, plan de capture), pour les animer d'une étape à l'autre. */
 const glisses = new Map<string, string>();
+/** Ce que la régie a saisi pour chaque activité : on y revient, on le retrouve. */
+const activites = new Map<string, EtatDActivite>();
 
 const scene = document.getElementById("scene")!;
 const surcouche = document.getElementById("surcouche")!;
@@ -45,6 +48,8 @@ const COMMANDES: readonly (readonly [readonly string[], string])[] = [
   [["M"], "Plan de la séance : aller à une diapositive (filtrer, ↑ ↓, Entrée)"],
   [["Origine", "Fin"], "Aller au début, à la fin"],
   [["Z"], "Zoomer sur le pas courant d'une capture (et revenir)"],
+  [["1", "…", "9"], "Activité : marquer ce qui sort, dicter l'ordre, ranger une carte (sa carte, puis sa colonne)"],
+  [["⌫"], "Activité : annuler la dernière saisie (sans saisie : reculer)"],
   [["T"], "Minuteur de l'activité : démarrer, mettre en pause"],
   [["B", "."], "Écran noir"],
   [["N"], "Notes de l'animateur en surimpression"],
@@ -165,7 +170,7 @@ function rendreSurcouche(): void {
 }
 
 function contexte(doc: Document, z: boolean, anime: Contexte["anime"]): Contexte {
-  return { doc, medias, zoom: z, anime };
+  return { doc, medias, zoom: z, anime, activites };
 }
 
 /**
@@ -303,7 +308,8 @@ function rendrePresentateur(): void {
   };
   cadre("courante", x, pos.etape);
   cadre("suivante", y, ensuite.etape);
-  d.getElementById("notes")!.textContent = x.b.notes || "Pas de notes pour cette diapositive.";
+  const notesDuBloc = x.b.notes || "Pas de notes pour cette diapositive.";
+  d.getElementById("notes")!.textContent = x.b.activite ? `${notesDuBloc}\n\n${regie(x.b, activites.get(x.b.id) ?? ETAT_INITIAL)}` : notesDuBloc;
   d.getElementById("position")!.textContent =
     `${x.s.numero !== null ? `Séquence ${x.s.numero} · ` : ""}${x.rang + 1} / ${x.s.blocs.length}${x.b.etapes ? ` · étape ${pos.etape} / ${x.b.etapes}` : ""}`;
 }
@@ -338,9 +344,28 @@ function basculerMinuteur(): void {
   else minuteur = { fin: minuteur.fin + (Date.now() - minuteur.pause), pause: null };
 }
 
+/** La touche, pour la régie d'une activité : un chiffre (par sa position, quelle que soit la disposition du clavier), ⌫, Échap. */
+function actionDe(e: KeyboardEvent): Action | null {
+  const chiffre = /^(?:Digit|Numpad)([1-9])$/.exec(e.code)?.[1];
+  if (chiffre && !e.metaKey && !e.ctrlKey && !e.altKey) return Number(chiffre);
+  return e.key === "Backspace" ? "retour" : e.key === "Escape" ? "echap" : null;
+}
+
 function touche(e: KeyboardEvent): void {
   // Plan ouvert : ses touches ne passent pas par ici ; une frappe égarée hors de lui lui rend la main.
   if (plan) return plan.querySelector("input")?.focus();
+  // Une activité en jeu prend ses touches ; celles qu'elle ne prend pas gardent leur sens (⌫ sans saisie recule).
+  const courant = plats[pos.bloc]?.b;
+  const action = courant?.activite ? actionDe(e) : null;
+  if (courant && action !== null) {
+    const etat = saisir(courant, pos.etape, activites.get(courant.id) ?? ETAT_INITIAL, action);
+    if (etat) {
+      activites.set(courant.id, etat);
+      e.preventDefault();
+      rendre();
+      return;
+    }
+  }
   const avant = pos;
   switch (e.key) {
     case "ArrowRight": case "ArrowDown": case "PageDown": case " ": case "Enter":

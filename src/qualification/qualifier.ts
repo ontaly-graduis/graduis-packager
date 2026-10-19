@@ -1,4 +1,6 @@
 // Relevé → pivot₀ (`seance-spec`) : un bloc par diapositive, des séquences coupées aux transitions, des pas en % de capture.
+import type { Durees } from "../diagnostic/regles";
+import { proposerActivites } from "../activites/proposer";
 import type { Boite, Forme } from "../ooxml/formes";
 import type { Releve, DiapositiveReleve, FormeReleve } from "../releve/releve";
 import { POUCE, aCadreTexte, dedans, estCapture, estPastille, estZone, texteDe } from "../releve/geometrie";
@@ -230,8 +232,11 @@ export interface Qualifie {
   readonly qualifications: ReadonlyMap<number, Qualification>;
 }
 
-/** Relevé → pivot₀, selon le profil de source de sa famille de gabarit. */
-export function qualifierReleve(r: Releve, profil: ProfilSource): Qualifie {
+/**
+ * Relevé → pivot₀, selon le profil de source de sa famille de gabarit ; en sensibilité moyenne (`durees` donné), avec les
+ * activités que la chaîne propose.
+ */
+export function qualifierReleve(r: Releve, profil: ProfilSource, durees?: Durees): Qualifie {
   const qualifications = new Map<number, Qualification>();
   const sequences: Sequence[] = [];
   for (const d of r.diapositives) {
@@ -244,7 +249,7 @@ export function qualifierReleve(r: Releve, profil: ProfilSource): Qualifie {
   }
   return {
     // Le pivot sort normalisé par son schéma (ordre des clés compris) : lu dans le PPT de validation, il a le même hash.
-    spec: SeanceSpec.parse({ schema: SCHEMA_SEANCE, source: { nom: r.deck.nom, empreinte: r.deck.empreinte }, sequences }),
+    spec: SeanceSpec.parse((durees ? (x: SeanceSpec) => proposerActivites(x, durees) : (x: SeanceSpec) => x)({ schema: SCHEMA_SEANCE, source: { nom: r.deck.nom, empreinte: r.deck.empreinte }, sequences })),
     qualifications,
   };
 }

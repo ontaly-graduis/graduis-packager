@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { lireCouleur } from "../src/ooxml/couleurs";
 import { tracer } from "../src/dessin/geometries";
 import { dessinEnSvg, transformerChemin } from "../src/dessin/svg";
-import { ROLES, SeanceSpec, type Dessin } from "../src/pivot/seance-spec";
+import { ROLES, SeanceSpec, type Dessin, blocsDe } from "../src/pivot/seance-spec";
 import { qualifierReleve } from "../src/qualification/qualifier";
 import { roleDe, roleDeTexte } from "../src/qualification/roles";
 import { relever } from "../src/releve/releve";
@@ -62,7 +62,7 @@ describe("géométries", () => {
 describe("le schéma du deck synthétique", async () => {
   const { releve } = relever(await deckDeSchema(), "schema.pptx");
   const { spec } = qualifierReleve(releve, PROFIL);
-  const bloc = spec.sequences.flatMap((s) => s.blocs).find((b) => b.source.diapo === 2)!;
+  const bloc = blocsDe(spec).find((b) => b.source.diapo === 2)!;
   const dessin = bloc.dessin!;
 
   it("qualifie la diapositive en schéma et la redessine au pivot, titre écarté", () => {

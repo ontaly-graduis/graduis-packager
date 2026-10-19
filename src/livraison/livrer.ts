@@ -16,10 +16,10 @@ import { qualifierReleve } from "../qualification/qualifier";
 import { relever, type Releve } from "../releve/releve";
 import { construireSalle } from "../salle/construire";
 import { ecartDeLivraison, type Ecart } from "../ecart/ecart";
-import { empreinteDuTheme, type ProcedeCharge } from "../procede/procede";
+import { activitesDuProcede, dureesDuProcede, empreinteDuTheme, type ProcedeCharge } from "../procede/procede";
 import { avecConversionsFigees, type Convertir } from "../medias/convertir";
 
-const SCHEMA_LIVRAISON = "graduis/livraison@1";
+const SCHEMA_LIVRAISON = "graduis/livraison@2";
 
 export interface SortieLivree {
   readonly empreinte: string;
@@ -48,6 +48,8 @@ export interface Manifeste {
     readonly chaine: { readonly inventes: number; readonly inversions: number };
     readonly revue: { readonly inventes: number; readonly inversions: number; readonly retirees: number; readonly ajoutes: number; readonly dupliques: number };
     readonly conserve: number;
+    /** Les activités dérivées : proposées par la chaîne, ajoutées à la revue, livrées et leurs minutes, leurs mots inventés (cible : zéro). */
+    readonly activites: { readonly chaine: number; readonly revue: number; readonly livrees: number; readonly minutes: number; readonly inventes: number };
     readonly franchies: readonly string[];
   };
   readonly sorties: Readonly<Record<string, SortieLivree>>;
@@ -83,7 +85,7 @@ const extrait = (s: SeanceSpec, sequences?: readonly string[]): SeanceSpec =>
 export async function livrer(octets: Uint8Array, nom: string, o: OptionsDeLivraison): Promise<Livraison> {
   if (!estUnPptDeValidation(octets)) throw new Error(`${nom} n'est pas un PPT de validation : l'heuristique ne livre jamais (I-PKG-4)`);
   const { procede: p, profil, theme } = o.procede;
-  const { spec, ecarts } = lire(octets, profil);
+  const { spec, ecarts } = lire(octets, profil, dureesDuProcede(p));
   if (o.releveSource.deck.empreinte !== spec.source.empreinte) {
     throw new Error(`le relevé donné (${o.releveSource.deck.nom}) n'est pas celui du deck dont procède ${nom} : l'écart à la source ne se mesure pas (I-PKG-19)`);
   }
@@ -99,7 +101,7 @@ export async function livrer(octets: Uint8Array, nom: string, o: OptionsDeLivrai
   };
 
   // Le rapport, sur toute la journée ; ses bloquants, dans les séquences livrées. L'écart : la chaîne contre le relevé, puis la revue.
-  const qualifie = qualifierReleve(o.releveSource, profil);
+  const qualifie = qualifierReleve(o.releveSource, profil, activitesDuProcede(p));
   const rapport: Rapport = diagnostiquer(spec, o.releveSource, qualifie.qualifications, { charte: p.charte, profil });
   const ecart = ecartDeLivraison(o.releveSource, qualifie.spec, spec, p.sensibilite);
   const bloquants: Constat[] = [
@@ -119,6 +121,10 @@ export async function livrer(octets: Uint8Array, nom: string, o: OptionsDeLivrai
         ajoutes: ecart.revue.ajoutes.length, dupliques: ecart.revue.dupliques.length,
       },
       conserve: ecart.revue.conserve,
+      activites: {
+        chaine: ecart.chaine.activites.length, revue: ecart.revue.activites.length, livrees: ecart.livrees.activites.length,
+        minutes: ecart.livrees.minutes, inventes: ecart.livrees.activites.reduce((n, a) => n + a.inventes.length, 0),
+      },
       franchies: ecart.franchies,
     },
     sorties,
@@ -139,7 +145,7 @@ export async function livrer(octets: Uint8Array, nom: string, o: OptionsDeLivrai
   } else {
     poser(`papier${suffixe}.html`, papier.html);
   }
-  poser(`animation${suffixe}.pptx`, emettre(extrait(spec, o.sequences), { theme, media }));
+  poser(`animation${suffixe}.pptx`, emettre(extrait(spec, o.sequences), { theme, media, gestes: activitesDuProcede(p) !== undefined }));
   poser("rapport.html", rapportHtml(rapport, theme, p.charte));
   fichiers.set("rapport.json", stringify2(rapport));
   fichiers.set("ecart.json", stringify2(ecart));

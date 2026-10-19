@@ -1,4 +1,5 @@
 // Témoins de la salle : navigation, RegionMap, mise en salle, assemblage (déterminisme, 0 hex hors jetons, aucune ressource distante).
+import { blocsDe } from "../src/pivot/seance-spec";
 import { describe, expect, it } from "vitest";
 import { relever } from "../src/releve/releve";
 import { qualifierReleve } from "../src/qualification/qualifier";
@@ -55,7 +56,7 @@ describe("contraste des pictogrammes", () => {
 describe("salle du deck synthétique", async () => {
   const { releve, medias } = relever(await deckSynthetique(), "synthetique.pptx");
   const { spec } = qualifierReleve(releve, PROFIL);
-  const pas = spec.sequences[0]!.blocs[1]!;
+  const pas = blocsDe(spec)[1]!;
   const media = (h: string) => {
     const m = medias.get(h);
     return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined;
@@ -100,7 +101,7 @@ describe("salle d'un schéma recomposé", () => {
     const { deckDeTableau } = await import("./fixture");
     const { releve, medias } = relever(await deckDeTableau(), "tableau.pptx");
     const { spec } = qualifierReleve(releve, PROFIL);
-    const b = spec.sequences.flatMap((s) => s.blocs).find((x) => x.composition?.gabarit === "tableau")!;
+    const b = blocsDe(spec).find((x) => x.composition?.gabarit === "tableau")!;
     const c = b.composition!;
     const illustration = c.gabarit === "tableau" ? c.illustration?.elements.find((e) => e.type === "image") : undefined;
     expect(illustration?.type).toBe("image");

@@ -1,7 +1,7 @@
 // Le diff de deux livraisons (P3 : une modification se lit en diff) : le PPT d'auteur, le pivot bloc par bloc et champ par
 // champ, chaque sortie. Une image changée (une capture remplacée) se montre avant et après.
 import { esc, STYLE_DOCUMENT } from "../diagnostic/rapport-html";
-import type { Bloc, SeanceSpec } from "../pivot/seance-spec";
+import { estActivite, type Activite, type Bloc, type SeanceSpec } from "../pivot/seance-spec";
 import type { Theme } from "../theme/theme";
 import type { Manifeste } from "./livrer";
 
@@ -13,7 +13,8 @@ export interface Changement {
 
 export interface BlocChange {
   readonly id: string;
-  readonly diapo: number;
+  /** La diapositive d'origine ; une activité n'en a pas : son titre dit d'où elle dérive. */
+  readonly diapo: number | null;
   readonly titre: string | null;
   readonly etat: "ajoute" | "retire" | "modifie";
   readonly changements: readonly Changement[];
@@ -57,7 +58,7 @@ export function differ(avant: { manifeste: Manifeste; spec: SeanceSpec }, apres:
   const blocsDe = (s: SeanceSpec) => new Map(s.sequences.flatMap((q) => q.blocs).map((b) => [b.id, b]));
   const [a, b] = [blocsDe(avant.spec), blocsDe(apres.spec)];
   const blocs: BlocChange[] = [];
-  const decrit = (x: Bloc) => ({ id: x.id, diapo: x.source.diapo, titre: x.titre });
+  const decrit = (x: Bloc | Activite) => (estActivite(x) ? { id: x.id, diapo: null, titre: `activité ${x.derivation}, dérivée de ${x.derive_de}` } : { id: x.id, diapo: x.source.diapo, titre: x.titre });
   for (const [id, x] of a) {
     const y = b.get(id);
     if (!y) { blocs.push({ ...decrit(x), etat: "retire", changements: [] }); continue; }
@@ -98,7 +99,7 @@ export function diffHtml(d: Diff, theme: Theme, images: { readonly avant: Readon
       const [x, y] = [images.avant[c.avant as string], images.apres[c.apres as string]];
       return x && y ? `<div class="avant-apres"><figure><img src="${x}" alt=""><figcaption>avant</figcaption></figure><figure><img src="${y}" alt=""><figcaption>après</figcaption></figure></div>` : "";
     }).join("");
-    return `<section class="regle"><h3><span>${esc(b.id)} · diapositive d'origine ${b.diapo} · ${esc(b.titre ?? "")}</span><small>${LIBELLE_ETAT[b.etat]}</small></h3><ul class="changements">${lignes}</ul>${vues}</section>`;
+    return `<section class="regle"><h3><span>${esc(b.id)} · ${b.diapo !== null ? `diapositive d'origine ${b.diapo} · ` : ""}${esc(b.titre ?? "")}</span><small>${LIBELLE_ETAT[b.etat]}</small></h3><ul class="changements">${lignes}</ul>${vues}</section>`;
   }).join("");
   return `<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

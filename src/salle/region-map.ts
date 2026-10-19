@@ -2,6 +2,7 @@
 // `src/effecteur/moteur/experience/contracts.ts` (décision du 17/10, A-2), sous-ensemble utilisé par la salle.
 import type { Bloc } from "../pivot/seance-spec";
 
+/** `observe` : la zone se commente (le pas-à-pas) ; `act` : on la désigne, jouée en `find` — « où cliquez-vous ? » (ACT-1). */
 export type ZoneRole = "act" | "observe";
 
 export interface Zone {

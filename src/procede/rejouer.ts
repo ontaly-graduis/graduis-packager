@@ -15,7 +15,7 @@ import { livrer, type Livraison } from "../livraison/livrer";
 import type { Impression } from "../papier/imprimer";
 import { qualifierReleve } from "../qualification/qualifier";
 import { relever } from "../releve/releve";
-import { versionsEnEcart, type ProcedeCharge, type Version } from "./procede";
+import { activitesDuProcede, versionsEnEcart, type ProcedeCharge, type Version } from "./procede";
 
 /** Ce que la référence attend d'une livraison : ses empreintes, ou son refus. */
 interface LivraisonAttendue {
@@ -87,7 +87,7 @@ export async function rejouer(p: ProcedeCharge, o: OptionsDeRejeu): Promise<Reje
 
   // Relever et qualifier le deck : le pivot₀ et son rapport.
   const { releve, medias } = relever(new Uint8Array(readFileSync(o.deck)), basename(o.deck));
-  const { spec: pivot0, qualifications } = qualifierReleve(releve, p.profil);
+  const { spec: pivot0, qualifications } = qualifierReleve(releve, p.profil, activitesDuProcede(p.procede));
   const rapport = diagnostiquer(pivot0, releve, qualifications, { charte: p.procede.charte, profil: p.profil });
   const ecrits: [string, string | Uint8Array][] = [
     ["releve.json", stringify2(releve)], ["seance-spec.json", stringify2(pivot0)],
@@ -95,7 +95,7 @@ export async function rejouer(p: ProcedeCharge, o: OptionsDeRejeu): Promise<Reje
   ];
   // Émettre le PPT de validation : le support de la revue.
   const media = (h: string) => { const m = medias.get(h); return m ? { ext: m.ext, octets: m.octets, px: releve.medias[h]?.px ?? null } : undefined; };
-  const emis = emettre(pivot0, { theme: p.theme, media });
+  const emis = emettre(pivot0, { theme: p.theme, media, gestes: activitesDuProcede(p.procede) !== undefined });
   ecrits.push(["validation.pptx", emis]);
   for (const [f, c] of ecrits) writeFileSync(join(o.sortie, f), c);
   if (cas === "deck") {

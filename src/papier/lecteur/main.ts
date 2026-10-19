@@ -6,6 +6,8 @@ import type { DonneesDePapier, SequenceDePapier } from "../donnees";
 import { capture, cas, composerTableau, el, liste, schema, structure, tableau, type Contexte } from "../../salle/lecteur/rendu";
 import { relier } from "../../salle/lecteur/liens";
 import { ajusterTextes } from "../../salle/lecteur/textes";
+import { CONSIGNES_DE_PAPIER } from "../../activites/habillage";
+import { LIBELLES_DE_GESTE } from "../../pivot/libelles";
 
 /** Le nom du thème (le texte de remplacement du logo), injecté à la construction du lecteur. */
 declare const NOM_DU_THEME: string;
@@ -183,6 +185,9 @@ function bloc(b: BlocDeSalle): HTMLElement {
     case "glossaire":
       a.append(texte(b, "liste glossaire"));
       break;
+    case "activite":
+      a.append(fiche(b));
+      break;
     default: {
       a.append(texte(b));
       for (const t of b.tableaux) a.append(tableau(ctx, t));
@@ -190,6 +195,60 @@ function bloc(b: BlocDeSalle): HTMLElement {
     }
   }
   return a;
+}
+
+/** Une case à cocher ou à numéroter, à remplir au stylo. */
+const caseVide = () => el(document, "span", "case-fiche");
+
+/**
+ * Le repli papier d'une activité (spec v1 § 5.2) : sa consigne, d'où elle dérive, et de quoi répondre — une zone d'écriture
+ * (Rappel), une liste à numéroter (Classement), un tableau à cocher (Catégorisation), la capture où entourer chaque zone
+ * (Sélection sur image). Les éléments gardent les numéros de la salle ; le corrigé se donne au tableau, pas sur la fiche.
+ */
+function fiche(b: BlocDeSalle): HTMLElement {
+  const act = b.activite!;
+  const c = act.contenu;
+  const reponse = el(document, "div", `reponse-fiche r-${c.geste}`);
+  switch (c.geste) {
+    case "rappel": {
+      const lignes = el(document, "div", "lignes-fiche");
+      lignes.style.setProperty("--n", String(Math.max(5, c.items.length + 1)));
+      reponse.append(lignes);
+      break;
+    }
+    case "classement": {
+      const ol = el(document, "ol", "a-numeroter");
+      c.presentation.forEach((i, k) => {
+        const li = el(document, "li");
+        li.append(el(document, "span", "num", String(k + 1)), el(document, "span", "", c.items[i]!), caseVide());
+        ol.append(li);
+      });
+      reponse.append(ol);
+      break;
+    }
+    case "categorisation": {
+      const t = el(document, "table", "a-cocher");
+      const tete = el(document, "tr");
+      tete.append(el(document, "th", "", c.intitule), ...c.categories.map((k) => el(document, "th", "", k)));
+      t.append(tete);
+      c.presentation.forEach((i, k) => {
+        const tr = el(document, "tr");
+        const libelle = el(document, "td");
+        libelle.append(el(document, "span", "num", String(k + 1)), el(document, "span", "", c.cartes[i]!.texte));
+        tr.append(libelle, ...c.categories.map(() => { const td = el(document, "td", "coche"); td.append(caseVide()); return td; }));
+        t.append(tr);
+      });
+      reponse.append(t);
+      break;
+    }
+    case "selection-sur-image":
+      for (const v of b.visuels) reponse.append(capture(ctx, v, LARGEUR, HAUTEUR_CAPTURE).boite);
+      { const k = consignes(b); if (k) reponse.append(k); }
+      break;
+  }
+  return encadre("activite", `Activité · ${LIBELLES_DE_GESTE[act.geste]}`,
+    el(document, "p", "consigne-fiche", CONSIGNES_DE_PAPIER[act.geste]), el(document, "p", "source-fiche", act.source), reponse,
+    b.duree ? el(document, "p", "duree", `${b.duree} minutes`) : null);
 }
 
 function notes(q: SequenceDePapier): HTMLElement {
