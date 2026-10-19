@@ -77,10 +77,13 @@ export async function rejouer(p: ProcedeCharge, o: OptionsDeRejeu): Promise<Reje
   const versions = versionsEnEcart(p, o.moteurs);
   const verrou = versions.find((v) => v.bloquante);
   if (verrou) throw new Error(`le ${verrou.quoi} diffère de celui du procédé (${verrou.trouvee ?? "absent"} au lieu de ${verrou.attendue}) : npm ci d'abord, ou monter de version`);
-  const reference = JSON.parse(readFileSync(resolve(p.racine, p.procede.reference), "utf8")) as Reference;
+  // Un procédé dupliqué n'a pas encore de référence : son premier rejeu n'est pas conforme, il l'écrit (`--nouvelle-reference`).
+  const fichierDeReference = resolve(p.racine, p.procede.reference);
+  const reference = existsSync(fichierDeReference) ? JSON.parse(readFileSync(fichierDeReference, "utf8")) as Reference : null;
+  if (!reference && !o.nouvelleReference) throw new Error(`référence absente (${p.procede.reference}) : un premier rejeu l'écrit, avec --nouvelle-reference`);
   const cas = o.revue ? "revue" : "deck";
   const extrait = o.sequences ? o.sequences.join("-") : "journee";
-  const attendu = reference.cas[cas];
+  const attendu = reference?.cas[cas];
   const comparaisons: Comparaison[] = [];
   const comparer = (quoi: string, attendue: string | null | undefined, obtenue: string | null) => comparaisons.push({ quoi, attendue: attendue ?? null, obtenue });
   mkdirSync(o.sortie, { recursive: true });
