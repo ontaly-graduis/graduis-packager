@@ -58,8 +58,11 @@ export interface Paire {
 export interface Lectures {
   readonly schema: typeof SCHEMA_LECTURES;
   readonly deck: { readonly nom: string; readonly empreinte: string };
-  /** Le gabarit : l'empreinte de ses masques, dispositions, couleurs et polices (spec § 4.3), son thème, ses dispositions. */
-  readonly gabarit: { readonly empreinte: string; readonly theme: string; readonly dispositions: readonly string[] };
+  /**
+   * Le gabarit : l'empreinte de ses masques, dispositions, couleurs et polices (spec § 4.3), son thème, les noms de ses
+   * dispositions et les empreintes des images que dessinent ses masques et ses dispositions (son identité visuelle).
+   */
+  readonly gabarit: { readonly empreinte: string; readonly theme: string; readonly dispositions: readonly string[]; readonly images: readonly string[] };
   readonly diapositives: readonly LectureDiapo[];
   readonly paires: readonly Paire[];
 }
@@ -185,7 +188,15 @@ function gabaritDe(paquet: Paquet): Lectures["gabarit"] {
   });
   const themes: string[] = [];
   const dispositions = new Set<string>();
+  const images = new Set<string>();
+  const imagesDe = (partie: string) => {
+    for (const r of paquet.relations(partie)) {
+      const o = r.type === "image" && !r.externe ? paquet.octets(r.cible) : undefined;
+      if (o) images.add(sha256(o));
+    }
+  };
   const description = masques.map((masque) => {
+    imagesDe(masque);
     const relsMasque = new Map(paquet.relations(masque).map((r) => [r.id, r.cible]));
     const ids = chemin(paquet.racine(masque), ["p:sldLayoutIdLst"]);
     const disp = (ids ? enfants(ids, NS.p, "sldLayoutId") : []).flatMap((l) => {
@@ -194,6 +205,7 @@ function gabaritDe(paquet: Paquet): Lectures["gabarit"] {
       const cSld = chemin(paquet.racine(partie), ["p:cSld"]);
       const nom = cSld?.getAttribute("name") ?? "";
       dispositions.add(nom);
+      imagesDe(partie);
       const arbre = cSld && enfant(cSld, NS.p, "spTree");
       const espaces = (arbre ? descendants(arbre, NS.p, "ph") : []).map((ph) => {
         const sp = ph.parentNode?.parentNode?.parentNode as Element | null;
@@ -221,6 +233,7 @@ function gabaritDe(paquet: Paquet): Lectures["gabarit"] {
     empreinte: sha256(stringify2({ taille: paquet.taille(), masques: description })),
     theme: themes[0] ?? "",
     dispositions: [...dispositions].sort(),
+    images: [...images].sort(),
   };
 }
 

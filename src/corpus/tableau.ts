@@ -7,7 +7,11 @@ import type { Lectures } from "./lectures";
 
 const SCHEMA_TABLEAU = "graduis/tableau-corpus@0";
 
-/** Deux decks sont d'une même famille de gabarit quand leurs noms de dispositions se recouvrent à ce point (Jaccard ; mesuré : ≥ 0,81 dans une famille, ≤ 0,17 entre familles). */
+/**
+ * Deux decks sont d'une même famille de gabarit quand leurs noms de dispositions se recouvrent à ce point (Jaccard ; mesuré :
+ * ≥ 0,81 dans une famille, ≤ 0,17 entre familles, mais 0,5 et plus entre decks partis du modèle Office par défaut) et que leurs
+ * masques partagent au moins une image (mesuré : de 0,24 à 1 dans une famille, 0 entre familles) — ou n'en dessinent aucune.
+ */
 export const SEUIL_GABARIT = 0.5;
 
 export interface MesureDeDeck {
@@ -87,13 +91,14 @@ function jaccard(a: readonly string[], b: readonly string[]): number {
   return union ? inter / union : 1;
 }
 
-/** Les familles de gabarit : composantes connexes des decks dont les dispositions se recouvrent (ou de même empreinte), nommées G1, G2… dans l'ordre du manifeste. */
+/** Les familles de gabarit : composantes connexes des decks de même gabarit (ou de même empreinte), nommées G1, G2… dans l'ordre du manifeste. */
 function famillesDeGabarit(mesures: readonly MesureDeDeck[]): string[] {
   const famille: number[] = mesures.map((_, i) => i);
   const racine = (i: number): number => (famille[i] === i ? i : (famille[i] = racine(famille[i]!)));
   mesures.forEach((a, i) => mesures.slice(0, i).forEach((b, j) => {
     const ga = a.lectures.gabarit, gb = b.lectures.gabarit;
-    if (ga.empreinte === gb.empreinte || jaccard(ga.dispositions, gb.dispositions) >= SEUIL_GABARIT) famille[racine(i)] = racine(j);
+    const memeIdentite = (!ga.images.length && !gb.images.length) || ga.images.some((x) => gb.images.includes(x));
+    if (ga.empreinte === gb.empreinte || (jaccard(ga.dispositions, gb.dispositions) >= SEUIL_GABARIT && memeIdentite)) famille[racine(i)] = racine(j);
   }));
   const noms = new Map<number, string>();
   return mesures.map((_, i) => {
@@ -250,7 +255,7 @@ export function tableauEnMarkdown(t: Tableau): string {
     "",
     "## Gabarits par client",
     "",
-    `Une famille de gabarit réunit les decks dont les noms de dispositions se recouvrent à ${fr(SEUIL_GABARIT)} au moins (Jaccard), ou de même empreinte.`,
+    `Une famille de gabarit réunit les decks de même empreinte, ou dont les noms de dispositions se recouvrent à ${fr(SEUIL_GABARIT)} au moins (Jaccard) et dont les masques partagent une image (ou n'en dessinent aucune).`,
     "",
     table(["Client", "Decks", "Empreintes distinctes", "Familles de gabarit"], t.gabarits.map((g) => [g.client, g.decks, g.empreintes, g.familles.join(", ")])),
     "",

@@ -151,7 +151,7 @@ describe("la vérité de terrain", () => {
 
 const lectures = (n: number, etendu: Partial<Lectures> = {}): Lectures => ({
   schema: "graduis/lectures@0", deck: { nom: `d${n}`, empreinte: "sha256:0" },
-  gabarit: { empreinte: `sha256:${n}`, theme: "", dispositions: ["Titre", "Contenu", "Section"] }, diapositives: [], paires: [], ...etendu,
+  gabarit: { empreinte: `sha256:${n}`, theme: "", dispositions: ["Titre", "Contenu", "Section"], images: ["sha256:logo"] }, diapositives: [], paires: [], ...etendu,
 });
 const q = (figure: Qualification["figure"], signal: string): Qualification => ({ figure, signal });
 
@@ -170,7 +170,9 @@ describe("le tableau comparé", () => {
       }),
     },
     { nom: "b.pptx", famille: "comportemental", client: "c1", role: "gabarit", lectures: lectures(2) },
-    { nom: "c.pptx", famille: "metier", client: "c2", role: "gabarit", lectures: { ...lectures(3), gabarit: { empreinte: "sha256:3", theme: "", dispositions: ["Autre"] } } },
+    { nom: "c.pptx", famille: "metier", client: "c2", role: "gabarit", lectures: { ...lectures(3), gabarit: { empreinte: "sha256:3", theme: "", dispositions: ["Autre"], images: [] } } },
+    // Les mêmes noms de dispositions, mais un autre masque : un autre gabarit.
+    { nom: "d.pptx", famille: "metier", client: "c2", role: "gabarit", lectures: { ...lectures(4), gabarit: { empreinte: "sha256:4", theme: "", dispositions: ["Titre", "Contenu", "Section"], images: ["sha256:autre"] } } },
   ];
   const t = tableauDuCorpus({ nom: "essai", empreinte: "sha256:e", profil: "sha256:p" }, mesures);
 
@@ -191,7 +193,7 @@ describe("le tableau comparé", () => {
   });
 
   it("range les gabarits en familles, par client", () => {
-    expect(t.gabarits).toEqual([{ client: "c1", decks: 2, empreintes: 2, familles: ["G1"] }, { client: "c2", decks: 1, empreintes: 1, familles: ["G2"] }]);
+    expect(t.gabarits).toEqual([{ client: "c1", decks: 2, empreintes: 2, familles: ["G1"] }, { client: "c2", decks: 2, empreintes: 2, familles: ["G2", "G3"] }]);
   });
 
   it("s'écrit en Markdown sans dépendre de l'heure ni du poste", () => {
